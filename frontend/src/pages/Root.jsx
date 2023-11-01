@@ -2,7 +2,7 @@ import React from "react";
 import { Outlet } from "react-router-dom";
 import NavigationBar from "../components/NavBar";
 // import Footer from "../components/Footer"
-const RootLayout = () => {
+export default function Root() {
   return (
     <>
       <NavigationBar />
@@ -10,5 +10,4 @@ const RootLayout = () => {
       {/* <Footer /> */}
     </>
   );
-};
-export default RootLayout;
+}

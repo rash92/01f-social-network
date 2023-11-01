@@ -1,13 +1,13 @@
 import NavigationBar from "./components/NavBar";
 import React from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import RootLayout from "./pages/Root";
+import Root from "./pages/Root";
 import Home from "./pages/Home";
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <RootLayout />,
+    element: <Root />,
     children: [
       {
         path: "/",
@@ -15,12 +15,12 @@ const router = createBrowserRouter([
       },
       {
         path: "/:id",
-        element: <h1>hello world</h1>,
+        element: <h1>404 Page Not Found</h1>,
       },
-      // {
-      //   path: "/login",
-      //   element: <LoginForm />,
-      // },
+      {
+        path: "/groups",
+        element: <h1>Groups</h1>,
+      },
       // {
       //   path: "/signup",
       //   element: <SignUp />,

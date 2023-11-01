@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { Nav, Navbar, NavItem, Container } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 // import { getJson, Url } from "../helpers/helpers";
+import classes from "./NavBar.module.css";
 
 const NavigationBar = () => {
   // const {isLoggedIn, username, onLogout} = useContext(AuthContext)
@@ -40,39 +41,24 @@ const NavigationBar = () => {
           id="basic-navbar-nav"
           className="justify-content-end md"
         >
-          <Nav>
+          <Nav className={classes.NavBarFlex}>
             <>
               <NavItem>
-                <Link
-                  className="nav-link"
-                  style={{ color: "white" }}
-                  to="/login"
-                >
-                  Login
-                </Link>
-              </NavItem>
-              <NavItem>
-                <Link
-                  className="nav-link"
-                  style={{ color: "white" }}
-                  to="/signup"
-                >
-                  Sign Up
+                <Link className={classes.NavLink} to="/groups">
+                  Groups
                 </Link>
               </NavItem>
             </>
             <NavItem>
-              <span className="nav-link" style={{ color: "white" }}>
-                John Doe
-              </span>
+              <span className={classes.NavLink}>John Doe</span>
             </NavItem>
             <NavItem>
               <button
                 // onClick={logoutHandler}
-                className="nav-link"
+                className={classes.NavLink}
                 style={{ color: "white", background: "none", border: "none" }}
               >
-                logout
+                Logout
               </button>
             </NavItem>
           </Nav>
