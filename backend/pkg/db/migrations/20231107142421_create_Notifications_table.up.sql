@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS Notifications(
+   Id BLOB NOT NULL PRIMARY KEY,
+   Body TEXT NOT NULL,
+   Type TEXT NOT NULL,
+   CreatedAt DATETIME NOT NULL,
+   RecieverId BLOB NOT NULL,
+   SenderId BLOB NOT NULL,
+   Seen BOOL NOT NULL,
+   FOREIGN KEY (RecieverId) REFERENCES Users(Id),
+   FOREIGN KEY (SenderId) REFERENCES Users(Id)
+);
