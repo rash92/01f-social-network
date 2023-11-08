@@ -3,6 +3,7 @@ import React from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import Root from "./pages/Root";
 import Home from "./pages/Home";
+import Chat from "./pages/Chat";
 
 const router = createBrowserRouter([
   {
@@ -21,6 +22,10 @@ const router = createBrowserRouter([
         path: "/groups",
         element: <h1>Groups</h1>,
       },
+      {
+        path: "/chat",
+        element: <Chat />
+      }
       // {
       //   path: "/signup",
       //   element: <SignUp />,
