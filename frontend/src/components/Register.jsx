@@ -1,20 +1,69 @@
 import FormGroup from "./FormGroup";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
-import { useState } from "react";
-import { Container } from "react-bootstrap";
+import {useState} from "react";
+import {validateEmail, getJson} from "../helpers/helpers";
 
-export default function Register({ setShowRegisterForm }) {
+export default function Register({setShowRegisterForm}) {
+  const [error, setError] = useState({isError: false, message: ""});
+
   const [emailValue, setEmailValue] = useState("");
   const [passwordValue, setPasswordValue] = useState("");
   const [firstNameValue, setFirstNameValue] = useState("");
   const [lastNameValue, setLastNameValue] = useState("");
   const [usernameValue, setUsernameValue] = useState("");
   const [dateOfBirthValue, setDateOfBirthValue] = useState("");
-  const [avatarValue, setAvatarValue] = useState("");
+  const [avatarValue, setAvatarValue] = useState({value: "", file: null});
   const [aboutMeValue, setAboutMeValue] = useState("");
+
+  const isNotEmty = (val) => {
+    return val.length > 0;
+  };
+
+  const isPasswordStrong = (val) => {
+    return val.length > 7;
+  };
+
+  const registerHandler = async (e) => {
+    e.preventDefault();
+    // const isVatarValid = avatarValue.file != null && avatarValue.file.size
+
+    const formIsValid =
+      validateEmail(emailValue) &&
+      isPasswordStrong(passwordValue) &&
+      isNotEmty(firstNameValue) &&
+      isNotEmty(lastNameValue) &&
+      isNotEmty(dateOfBirthValue);
+
+    if (!formIsValid) {
+      alert("Please fill all fields");
+      return;
+    }
+    const formData = new FormData();
+    formData.append("image", avatarValue.file);
+    formData.append("email", emailValue);
+    formData.append("password", passwordValue);
+    formData.append("firstname", firstNameValue);
+    formData.append("lastname", lastNameValue);
+    formData.append("username", usernameValue);
+    formData.append("dob", dateOfBirthValue);
+
+    try {
+      const res = await getJson("newUser", {
+        method: "POST",
+        body: formData,
+      });
+
+      setShowRegisterForm(false);
+    } catch (err) {
+      // console.log(err);
+      setError({isError: true, message: err.message});
+    }
+  };
+
   return (
-    <Form>
+    <Form onSubmit={registerHandler}>
+      {error.isError && <div className="invalid-feedback">{error.message}</div>}
       <FormGroup
         value={emailValue}
         setValue={setEmailValue}

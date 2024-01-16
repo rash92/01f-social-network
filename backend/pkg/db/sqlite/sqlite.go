@@ -1,4 +1,4 @@
-package main
+package sqlite
 
 import (
 	"log"
@@ -8,12 +8,12 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
-func main() {
+func Magarate() {
 	// Define the database URL for SQLite3
-	dbURL := "sqlite:///Users/bilal/Desktop/social-network/backend/pkg/db/sqlite/sqlite.db"
-
+	dbURL := "sqlite://./pkg/db/sqlite/sqlite.db"
+  
 	// Define the migration source
-	sourceURL := "file:///Users/bilal/Desktop/social-network/backend/pkg/db/migrations" // Update with the path to your migrations
+	sourceURL := "file://./pkg/db/migrations" // Update with the path to your migrations
 
 	// Initialize a new instance of the Migrate struct
 	m, err := migrate.New(sourceURL, dbURL)
