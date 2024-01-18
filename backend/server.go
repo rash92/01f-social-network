@@ -188,10 +188,11 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-
-func main() {
-	fmt.Println("main func started")
-	http.HandleFunc("/", homePage)
-	http.HandleFunc("/ws", ws.WsEndpoint)
-	log.Fatal(http.ListenAndServe(":8080", nil))
 }
+
+// func main() {
+// 	fmt.Println("main func started")
+// 	http.HandleFunc("/", homePage)
+// 	http.HandleFunc("/ws", ws.WsEndpoint)
+// 	log.Fatal(http.ListenAndServe(":8080", nil))
+// }
