@@ -7,9 +7,8 @@ import (
 	"log"
 	"net/http"
 
-	dbfuncs "server/pkg/db/dbfuncs"
-	// magarate "server/pkg/db/sqlite"
-	handlefuncs "server/pkg/handlefuncs"
+	"server/pkg/db/dbfuncs"
+	"server/pkg/handlefuncs"
 	"sync"
 	"time"
 
@@ -26,28 +25,12 @@ func init() {
 	}
 }
 
-func DeleteUserByUsername(username string) error {
-	stmt, err := db.Prepare("DELETE FROM Users WHERE firstname= ?")
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	_, err = stmt.Exec(username)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 var (
 	upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
-			// Modify this to match your allowed origins
 			return origin == "http://localhost:8000"
 
 		},
@@ -55,15 +38,11 @@ var (
 	activeConnections = make(map[*websocket.Conn]string)
 	connectionLock    sync.Mutex
 	messageLock       sync.Mutex
-
-	// userListLock      sync.Mutex
 )
 
 func handleConnection(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("user_token")
 	if err != nil || !dbfuncs.ValidateCookie(cookie.Value) {
-
-		// If the cookie is not valid, close the WebSocket connection
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -73,7 +52,6 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() {
-		// fmt.Println("conncetion closing")
 		conn.Close()
 
 	}()
@@ -87,7 +65,7 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 	activeConnections[conn] = userID
 	connectionLock.Unlock()
 	isLoggingOut := false
-	broadcastUserList(userID)
+	broadcastUserList()
 	for {
 
 		_, p, err := conn.ReadMessage()
@@ -111,7 +89,7 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 			}
 			delete(activeConnections, conn)
 			connectionLock.Unlock()
-			broadcastUserList(userID)
+			broadcastUserList()
 			fmt.Println("User", userID, "disconnected")
 
 			break
@@ -154,7 +132,7 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func broadcastUserList(id string) {
+func broadcastUserList() {
 
 	var userList []string
 
@@ -166,7 +144,6 @@ func broadcastUserList(id string) {
 
 	}
 	connectionLock.Unlock()
-	// Broadcast the list to all connected clients
 
 	message := map[string]interface{}{
 		"data": userList,
@@ -187,9 +164,7 @@ func main() {
 	defer db.Close()
 	handlefuncs.SetDatabase(db)
 	dbfuncs.SetDatabase(db)
-	// DeleteUserByUsername("bilal")
-	// magarate.Magarate()
-	// http.HandleFunc("/ws", handleConnection)
+	http.HandleFunc("/ws", handleConnection)
 	http.HandleFunc("/newUser", handlefuncs.HandleNewUser)
 	http.HandleFunc("/check-nickname", handlefuncs.HanndleUserNameIsDbOrEmail)
 	http.HandleFunc("/check-email", handlefuncs.HanndleUserNameIsDbOrEmail)
