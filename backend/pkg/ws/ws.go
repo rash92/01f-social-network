@@ -129,14 +129,14 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 		_, msgBytes, err := conn.ReadMessage()
 		//possibly don't want to immediately delete the connection if there is an error
 		if err != nil {
-			myNewConnections := []*websocket.Conn{}
+			myUpdatedConnections := []*websocket.Conn{}
 			for _, c := range activeConnections[userID] {
 				if c != conn {
-					myNewConnections = append(myNewConnections, conn)
+					myUpdatedConnections = append(myUpdatedConnections, conn)
 				}
 				connectionLock.Lock()
-				activeConnections[userID] = myNewConnections
-				if len(myNewConnections) == 0 {
+				activeConnections[userID] = myUpdatedConnections
+				if len(myUpdatedConnections) == 0 {
 					delete(activeConnections, userID)
 					log.Println("User", userID, "disconnected, unable to read from websocket, error:", err)
 				}
@@ -158,18 +158,23 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 			handleGroupMessage(receivedData)
 		case "requestToFollow":
 			//fill in
+			// If the request is for a user with a public profile, it should be automatically
+			// accepted. Otherwise, notify that user that you want to follow them.
 		case "answerRequestToFollow":
 			//fill in
 		case "requestToJoinGroup":
 			//fill in
+			// Notify the creator.
 		case "answerRequestToJoinGroup":
 			//fill in
 		case "inviteToGroup":
 			//fill in
+			// Notify the person you're inviting.
 		case "answerInviteToGroup":
 			//fill in
-		case "notification":
+		case "createEvent":
 			//fill in
+			// Notify other group members.
 		case "post":
 			//fill in
 		case "comment":
@@ -180,6 +185,12 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 			//fill in
 		case "register":
 			//fill in
+			//I.e. Update other users that this user has registered.
+			// At present, if the user associated with this connection is an existing
+			// user, their arrival is communicated to other users by the call to
+			// broadcastUserList before this indefinite for loop. But we also need
+			// to communicate when a newly registered users has come online, so that
+			// they can be added to the list of users who can be messaged.
 		case "updatePrivacySetting":
 			//fill in
 		default:
@@ -248,8 +259,9 @@ func handleGroupMessage(receivedData handlefuncs.Message) {
 	receivedData.ID = id.String()
 	receivedData.Created = created.Format(time.RFC3339)
 	message := map[string]interface{}{
-		"data": receivedData,
-		"type": receivedData.Type,
+		"data":    receivedData,
+		"type":    receivedData.Type,
+		"groupId": receivedData.RecipientID,
 	}
 
 	rows, err := db.Query("SELECT * FROM GroupMembers WHERE GroupId = ?", receivedData.RecipientID)
