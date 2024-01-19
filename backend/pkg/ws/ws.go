@@ -32,12 +32,10 @@ var (
 		},
 	}
 
-	//need to flip this map to be map[user]*websocket.Conn (or userid or string etc.)
-	activeConnections = make(map[*websocket.Conn]string)
+	// String is userID. The slice of pointers to websocket.Conn is the connections for that user.
+	activeConnections = make(map[string][]*websocket.Conn)
 	connectionLock    sync.Mutex
 	dbLock            sync.Mutex
-
-	// userListLock      sync.Mutex
 )
 
 //check capitalization of json bit
@@ -98,7 +96,7 @@ type BasicUserInfo struct {
 
 // pull some of this stuff out into separate functions to make cleaner
 // can consider channel approach instead of mutex
-func handleConnection(w http.ResponseWriter, r *http.Request) {
+func HandleConnection(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("user_token")
 	if err != nil || !dbfuncs.ValidateCookie(cookie.Value) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -118,29 +116,57 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 	}
 
 	connectionLock.Lock()
-	activeConnections[conn] = userID
+	if _, ok := activeConnections[userID]; !ok {
+		activeConnections[userID] = []*websocket.Conn{conn}
+	} else {
+		activeConnections[userID] = append(activeConnections[userID], conn)
+	}
 	connectionLock.Unlock()
+
+	broadcastUserList()
 
 	for {
 		_, msgBytes, err := conn.ReadMessage()
 		//possibly don't want to immediately delete the connection if there is an error
 		if err != nil {
-			connectionLock.Lock()
-			delete(activeConnections, conn)
-			connectionLock.Unlock()
-			log.Println("User", userID, "disconnected, unable to read from websocket, error:", err)
-			break
+			myNewConnections := []*websocket.Conn{}
+			for _, c := range activeConnections[userID] {
+				if c != conn {
+					myNewConnections = append(myNewConnections, conn)
+				}
+				connectionLock.Lock()
+				activeConnections[userID] = myNewConnections
+				if len(myNewConnections) == 0 {
+					delete(activeConnections, userID)
+					log.Println("User", userID, "disconnected, unable to read from websocket, error:", err)
+				}
+				connectionLock.Unlock()
+				break
+			}
 		}
-		var recievedData WsMessage
-		err = json.Unmarshal(msgBytes, &recievedData)
+
+		var receivedData handlefuncs.Message
+		err = json.Unmarshal(msgBytes, &receivedData)
 		if err != nil {
 			log.Println("Error unmarshalling websocket message:", err)
 		}
 
-		switch recievedData.Type {
+		switch receivedData.Type {
 		case "privateMessage":
-			//fill in
+			handlePrivateMessage(receivedData)
 		case "groupMessage":
+			handleGroupMessage(receivedData)
+		case "requestToFollow":
+			//fill in
+		case "answerRequestToFollow":
+			//fill in
+		case "requestToJoinGroup":
+			//fill in
+		case "answerRequestToJoinGroup":
+			//fill in
+		case "inviteToGroup":
+			//fill in
+		case "answerInviteToGroup":
 			//fill in
 		case "notification":
 			//fill in
@@ -158,135 +184,96 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 			//fill in
 		default:
 			//unexpected type
-			log.Println("Unexpected websocket message type:", recievedData.Type)
+			log.Println("Unexpected websocket message type:", receivedData.Type)
 		}
 
 	}
 
-}
-
-func handleConnectionOld(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("user_token")
-	if err != nil || !dbfuncs.ValidateCookie(cookie.Value) {
-
-		// If the cookie is not valid, close the WebSocket connection
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		fmt.Println("Error upgrading to WebSocket:", err)
-		return
-	}
-	defer func() {
-		// fmt.Println("conncetion closing")
-		conn.Close()
-
-	}()
-
-	userID, err := dbfuncs.GetUserIdFromCokie(cookie.Value)
-	if err != nil {
-		fmt.Println("Error sending user ID to client:", err)
-	}
-
-	connectionLock.Lock()
-	activeConnections[conn] = userID
-	connectionLock.Unlock()
-
-	isLoggingOut := false
-	broadcastUserList()
-
-	for {
-
-		_, p, err := conn.ReadMessage()
-		if err != nil {
-			connectionLock.Lock()
-			if isLoggingOut {
-				for client, id := range activeConnections {
-					if id == userID && client != conn {
-						fmt.Println(id, client)
-						data := map[string]interface{}{
-							"data": "log me out",
-							"type": "logout",
-						}
-						err := client.WriteJSON(data)
-						if err != nil {
-							fmt.Println("Error logout message  to client:", err)
-						}
-					}
-				}
-
-			}
-			delete(activeConnections, conn)
-			connectionLock.Unlock()
-			broadcastUserList()
-			fmt.Println("User", userID, "disconnected")
-
-			break
-		}
-
-		var receivedData handlefuncs.Message
-
-		err = json.Unmarshal(p, &receivedData)
-		if receivedData.Type == "logout" {
-			isLoggingOut = true
-		}
-		if err != nil {
-			fmt.Println(err, "eror of  Unmarshal")
-		}
-		fmt.Println(receivedData, "receivedData message")
-		dbLock.Lock()
-		id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
-		dbLock.Unlock()
-		if err != nil {
-			fmt.Println(err, "error adding message in the data base main line 120")
-		}
-
-		receivedData.ID = id.String()
-		receivedData.Created = created.Format(time.RFC3339)
-		message := map[string]interface{}{
-			"data": receivedData,
-			"type": receivedData.Type,
-		}
-
-		for client, id := range activeConnections {
-			if id == receivedData.RecipientID {
-				err := client.WriteJSON(message)
-				if err != nil {
-					fmt.Println("Error sending user list to client:", err)
-				}
-
-			}
-
-		}
-	}
 }
 
 func broadcastUserList() {
-
 	var userList []string
 
 	connectionLock.Lock()
-
-	for _, userID := range activeConnections {
-
+	for userID := range activeConnections {
 		userList = append(userList, userID)
-
 	}
 	connectionLock.Unlock()
-	// Broadcast the list to all connected clients
 
 	message := map[string]interface{}{
 		"data": userList,
 		"type": "online-user",
 	}
+
 	for client := range activeConnections {
-
-		err := client.WriteJSON(message)
-		if err != nil {
-			fmt.Println("Error sending user list to client:", err)
+		for _, c := range activeConnections[client] {
+			err := c.WriteJSON(message)
+			if err != nil {
+				fmt.Println("Error sending user list to client:", err)
+			}
 		}
-
 	}
 
+}
+
+func handlePrivateMessage(receivedData handlefuncs.Message) {
+	dbLock.Lock()
+	id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
+	dbLock.Unlock()
+	if err != nil {
+		log.Println(err, "error adding message to database")
+	}
+	receivedData.ID = id.String()
+	receivedData.Created = created.Format(time.RFC3339)
+	message := map[string]interface{}{
+		"data": receivedData,
+		"type": receivedData.Type,
+	}
+	for _, c := range activeConnections[receivedData.RecipientID] {
+		err := c.WriteJSON(message)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+func handleGroupMessage(receivedData handlefuncs.Message) {
+	dbLock.Lock()
+	// Change this to AddGroupMessage or adapt AddMessage to handle both.
+	id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
+	dbLock.Unlock()
+	if err != nil {
+		log.Println(err, "error adding message to data base")
+	}
+	receivedData.ID = id.String()
+	receivedData.Created = created.Format(time.RFC3339)
+	message := map[string]interface{}{
+		"data": receivedData,
+		"type": receivedData.Type,
+	}
+
+	rows, err := db.Query("SELECT * FROM GroupMembers WHERE GroupId = ?", receivedData.RecipientID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var userId string
+		err = rows.Scan(&userId)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, c := range activeConnections[userId] {
+			err := c.WriteJSON(message)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
+
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
