@@ -157,9 +157,9 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 		case "groupMessage":
 			handleGroupMessage(receivedData)
 		case "requestToFollow":
-			//fill in
 			// If the request is for a user with a public profile, it should be automatically
 			// accepted. Otherwise, notify that user that you want to follow them.
+			handleRequestToFollow(receivedData)
 		case "answerRequestToFollow":
 			//fill in
 		case "requestToJoinGroup":
@@ -288,4 +288,14 @@ func handleGroupMessage(receivedData handlefuncs.Message) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func handleRequestToFollow(receivedData handlefuncs.Message) {
+	// If the request is for a user with a public profile, add the requester
+	// to their followers list. Otherwise, add a notification to the database
+	// and send it to the user with the private profile if they're online.
+	// Also, set the Unseens field of the private user to true.
+	// The notification should include the requester and recipient's IDs (and
+	// maybe usernames), the type of notification, the time it was created, and
+	// its status (pending, as opposed to accepted or rejected).
 }
