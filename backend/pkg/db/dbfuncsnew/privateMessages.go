@@ -7,13 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type PrivateMessage struct {
-	Id          string
-	SenderId    string
-	RecipientId string
-	CreatedAt   time.Time
-}
-
 func AddMessage() {}
 
 func AddMessageOld(sender_id, recipient_id, message, Type string) (uuid.UUID, time.Time, error) {

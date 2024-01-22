@@ -8,9 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type Comment struct {
-}
-
 func AddComment() {
 
 }

@@ -15,13 +15,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type Posts struct {
-	Id        string
-	Title     string
-	Body      string
-	CreatorId string
-}
-
 func AddPost() {
 
 }
