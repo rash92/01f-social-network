@@ -206,7 +206,7 @@ func main() {
 	// http.HandleFunc("/fillter", handlefuncs.HandleFilter)
 	http.HandleFunc("/get-users", handlefuncs.HandleGetUsers)
 	http.HandleFunc("/get-messages", handlefuncs.MessagesHandler)
-	http.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir("images"))))
+	http.Handle("/images/", http.StripPrefix("/images", http.FileServer(http.Dir("./pkg/db/images"))))
 
 	fmt.Println("Starting server on http://localhost:8000")
 	err := http.ListenAndServe(":8000", nil)

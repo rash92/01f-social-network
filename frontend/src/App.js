@@ -1,8 +1,8 @@
-import NavigationBar from "./components/NavBar";
-import React from "react";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import {createBrowserRouter, RouterProvider} from "react-router-dom";
 import Root from "./pages/Root";
 import Home from "./pages/Home";
+import PrivateRoutes from "./components/PrivateRoutes";
+import Profile from "./components/Profile";
 
 const router = createBrowserRouter([
   {
@@ -17,10 +17,16 @@ const router = createBrowserRouter([
         path: "/:id",
         element: <h1>404 Page Not Found</h1>,
       },
+
+      // {
+      //   path: "/groups",
+      //   element: <PrivateRoutes component={f} />,
+      // },
       {
-        path: "/groups",
-        element: <h1>Groups</h1>,
+        path: "/profile/:id",
+        element: <PrivateRoutes component={Profile} />,
       },
+
       // {
       //   path: "/signup",
       //   element: <SignUp />,
