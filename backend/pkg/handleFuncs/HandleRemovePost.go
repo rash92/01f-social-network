@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	dbfuncs "server/pkg/db/dbfuncs"
+	"server/pkg/db/dbfuncs"
 )
 
 type postId struct {
@@ -33,7 +33,7 @@ func HandleRemovePost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		userIdSession, err := dbfuncs.GetUserIdFromCokie(cookie.Value)
+		userIdSession, err := dbfuncs.GetUserIdFromCookie(cookie.Value)
 		if err != nil {
 			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 			return

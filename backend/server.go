@@ -52,7 +52,7 @@ func init() {
 
 // 	}()
 
-// 	userID, err := dbfuncs.GetUserIdFromCokie(cookie.Value)
+// 	userID, err := dbfuncs.GetUserIdFromCookie(cookie.Value)
 // 	if err != nil {
 // 		fmt.Println("Error sending user ID to client:", err)
 // 	}

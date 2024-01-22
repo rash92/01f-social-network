@@ -94,6 +94,11 @@ type BasicUserInfo struct {
 	//fill in later if more needed
 }
 
+// Be sure to allow possibilty of one of a user's connections being closed
+// while they still have other connections open. Make this distinct from
+// logging out, although logging out will include closing the current
+// connection.
+
 // pull some of this stuff out into separate functions to make cleaner
 // can consider channel approach instead of mutex
 func HandleConnection(w http.ResponseWriter, r *http.Request) {
@@ -108,9 +113,13 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 		log.Println("Error upgrading to WebSocket:", err)
 		return
 	}
-	defer conn.Close()
 
-	userID, err := dbfuncs.GetUserIdFromCokie(cookie.Value) // fix spelling of cokie
+	defer func() {
+		closeConnection(conn)
+		conn.Close()
+	}()
+
+	userID, err := dbfuncs.GetUserIdFromCookie(cookie.Value) // fix spelling of cokie
 	if err != nil {
 		log.Println("Error retrieving userID from database:", err)
 	}
@@ -125,6 +134,7 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 
 	broadcastUserList()
 
+eventLoop:
 	for {
 		_, msgBytes, err := conn.ReadMessage()
 		//possibly don't want to immediately delete the connection if there is an error
@@ -152,39 +162,16 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 		}
 
 		switch receivedData.Type {
-		case "privateMessage":
-			handlePrivateMessage(receivedData)
-		case "groupMessage":
-			handleGroupMessage(receivedData)
-		case "requestToFollow":
-			// If the request is for a user with a public profile, it should be automatically
-			// accepted. Otherwise, notify that user that you want to follow them.
-			handleRequestToFollow(receivedData)
-		case "answerRequestToFollow":
-			//fill in
-		case "requestToJoinGroup":
-			//fill in
-			// Notify the creator.
-		case "answerRequestToJoinGroup":
-			//fill in
-		case "inviteToGroup":
-			//fill in
-			// Notify the person you're inviting.
-		case "answerInviteToGroup":
-			//fill in
-		case "createEvent":
-			//fill in
-			// Notify other group members.
-		case "post":
-			//fill in
-		case "comment":
-			//fill in
+		// case "login":
+		// This is covered at the start of handleConnection.
+
+		// Sign out and register:
 		case "logout":
-			//fill in
-		case "login":
-			//fill in
+			handleLogout(userID)
+			break eventLoop
 		case "register":
 			//fill in
+			// Ask why sites make you log in after registering.
 			//I.e. Update other users that this user has registered.
 			// At present, if the user associated with this connection is an existing
 			// user, their arrival is communicated to other users by the call to
@@ -192,7 +179,59 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 			// to communicate when a newly registered users has come online, so that
 			// they can be added to the list of users who can be messaged.
 		case "updatePrivacySetting":
+		//fill in
+
+		// Chat:
+		case "privateMessage":
+			handlePrivateMessage(receivedData)
+		case "groupMessage":
+			handleGroupMessage(receivedData)
+
+		// Cases that require notofications:
+		case "requestToFollow":
+			// If the request is for a user with a public profile, it should be automatically
+			// accepted. Otherwise, notify that user that you want to follow them.
+			handleRequestToFollow(receivedData)
+		case "answerRequestToFollow":
+			answerRequestToFollow(receivedData)
+		case "requestToJoinGroup":
+			// Notify the creator.
+			requestToJoinGroup(receivedData)
+		case "answerRequestToJoinGroup":
 			//fill in
+			answerRequestToJoinGroup(receivedData)
+		case "inviteToJoinGroup":
+			//fill in
+			// Notify the person you're inviting.
+			inviteToJoinGroup(receivedData)
+		case "answerInviteToGroup":
+			//fill in
+			answerInviteToJoinGroup(receivedData)
+		case "createEvent":
+			//fill in
+			// Notify other group members.
+			createEvent(receivedData)
+
+		// General posts, comments, and likes:
+		case "post":
+			//fill in
+		case "comment":
+			//fill in
+		case "like":
+			// fill in
+
+		// Group business:
+		case "groupCreate":
+			//fill in
+		case "groupPost":
+			//fill in
+		case "groupComment":
+			//fill in
+		case "groupLike":
+		// fill in
+		case "attendEvent":
+			//fill in
+
 		default:
 			//unexpected type
 			log.Println("Unexpected websocket message type:", receivedData.Type)
@@ -225,6 +264,40 @@ func broadcastUserList() {
 		}
 	}
 
+}
+
+// I've left the actual closing of the connection at the backend
+// till after this function returns. That way closeConnection can
+// be used both to close the other connections associated with
+// userID and to close the current connection.
+func closeConnection(conn *websocket.Conn) {
+	data := map[string]interface{}{
+		"data": "",
+		"type": "logout",
+	}
+	err := conn.WriteJSON(data)
+	if err != nil {
+		fmt.Println("Error sending logout message to client:", err)
+	}
+	err = conn.Close()
+	if err != nil {
+		log.Println("Error closing websocket connection:", err)
+	}
+}
+
+// Tell other connections associated with userID to close themselves
+// at the front end. Delete the userID from activeConnections. Broadcast
+// the updated user list. The current connection will be closed at the
+// when the event loop breaks.
+func handleLogout(userID string) {
+	for _, c := range activeConnections[userID] {
+		closeConnection(c)
+		c.Close()
+	}
+	connectionLock.Lock()
+	delete(activeConnections, userID)
+	connectionLock.Unlock()
+	broadcastUserList()
 }
 
 func handlePrivateMessage(receivedData handlefuncs.Message) {
@@ -290,12 +363,53 @@ func handleGroupMessage(receivedData handlefuncs.Message) {
 	}
 }
 
+// If the request is for a user with a public profile, add the requester
+// to their followers list. Otherwise, add a notification to the database
+// and send it to the user with the private profile if they're online.
+// Also, set the Unseens field of the private user to true.
+// The notification should include the requester and recipient's IDs (and
+// maybe usernames), the type of notification, the time it was created, and
+// its status (pending, as opposed to accepted or rejected).
 func handleRequestToFollow(receivedData handlefuncs.Message) {
-	// If the request is for a user with a public profile, add the requester
-	// to their followers list. Otherwise, add a notification to the database
-	// and send it to the user with the private profile if they're online.
-	// Also, set the Unseens field of the private user to true.
-	// The notification should include the requester and recipient's IDs (and
-	// maybe usernames), the type of notification, the time it was created, and
-	// its status (pending, as opposed to accepted or rejected).
+
+}
+
+// If the request is for a user with a public profile, add the requester
+// to their followers list. Otherwise, add a notification to the database
+// and send it to the user with the private profile if they're online.
+// Decide if we want to notify the requester of the result.
+func answerRequestToFollow(receivedData handlefuncs.Message) {
+}
+
+// Add a notification to the database and send it to the group creator
+// if they're online. The notification should include the requester and
+// type of notification, the time it was created, and the group ID, in
+// case the recipient has created multiple groups.
+func requestToJoinGroup(receivedData handlefuncs.Message) {
+}
+
+// If the answer is yes, add the requester to the group members list
+// and broadcast the updated list to all group members. Either way,
+// decide if we want to notify the requester of the result. If so,
+// and I think we should, add a notification to the database and send
+// it to the requester if they're online. The notification should
+// include which group and whether the answer was yes or no.
+func answerRequestToJoinGroup(receivedData handlefuncs.Message) {
+}
+
+// Add a notification to the database and send it to the person
+// being invited if they're online.
+func inviteToJoinGroup(receivedData handlefuncs.Message) {
+}
+
+// If the answer is yes, add the invitee to the group members list
+// in the database and broadcast the updated list to all group members.
+// Either way, update the status of that notification in the database:
+// i.e. change it from pending to accepted or rejected. Decide if we
+// want to notify the inviter of the result.
+func answerInviteToJoinGroup(receivedData handlefuncs.Message) {
+}
+
+// Add an event to the database and send it to all group members.
+func createEvent(receivedData handlefuncs.Message) {
 }

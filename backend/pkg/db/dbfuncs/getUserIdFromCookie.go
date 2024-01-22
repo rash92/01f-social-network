@@ -4,7 +4,7 @@ import (
 	"database/sql"
 )
 
-func GetUserIdFromCokie(sessionId string) (string, error) {
+func GetUserIdFromCookie(sessionId string) (string, error) {
 	var userID string
 	var db *sql.DB
 	db, err := sql.Open("sqlite3", "./forum.db")
