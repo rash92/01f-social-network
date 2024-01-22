@@ -16,11 +16,10 @@ import (
 )
 
 type Posts struct {
-	Id string
-	Title string
-	Body string
+	Id        string
+	Title     string
+	Body      string
 	CreatorId string
-
 }
 
 func AddPost() {
@@ -60,7 +59,7 @@ func FindLikeUsers() {
 }
 
 func FindPostsCats() {
-	
+
 }
 
 func FindPostsCatsOld(PostId string) []string {
@@ -152,7 +151,6 @@ func AddLikesOld(UserID, PostId string) error {
 
 	return nil
 }
-
 
 func AddDislikesOld(UserID, PostId string) error {
 	newDislike, err := database.Prepare("INSERT INTO Likes VALUES (?,?,?,?)")
