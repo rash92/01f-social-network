@@ -2,6 +2,7 @@ package dbfuncs
 
 import "database/sql"
 
+// moved
 func GetUserIdFromPostId(postId string) (string, error) {
 	var userID string
 	var db *sql.DB

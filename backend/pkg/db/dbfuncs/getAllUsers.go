@@ -21,6 +21,7 @@ type User struct {
 	LastMessageTime time.Time
 }
 
+// moved
 func GetAllUsersSortedByLastMessage(id string) ([]User, error) {
 	query := `
 	SELECT

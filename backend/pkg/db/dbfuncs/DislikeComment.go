@@ -7,6 +7,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// moved
 func DislikeComment(UserID, CommentId string) {
 	newDislike, _ := database.Prepare("INSERT INTO CommentLikes VALUES (?,?,?,?)")
 	updateDislike, _ := database.Prepare("UPDATE CommentLikes SET Liked=?, Disliked=? WHERE UserId=? AND CommentId=?")

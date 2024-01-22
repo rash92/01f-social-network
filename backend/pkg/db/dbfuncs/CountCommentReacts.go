@@ -7,6 +7,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// moved
 func CountCommentReacts(CommentId string) (likes, dislikes int) {
 	rows, err := database.Query("SELECT Liked, Disliked FROM CommentLikes WHERE CommentId=?", CommentId)
 	if err == sql.ErrNoRows {

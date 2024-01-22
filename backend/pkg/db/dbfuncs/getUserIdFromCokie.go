@@ -4,6 +4,7 @@ import (
 	"database/sql"
 )
 
+// moved
 func GetUserIdFromCokie(sessionId string) (string, error) {
 	var userID string
 	var db *sql.DB

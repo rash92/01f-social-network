@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// moved
 func ValidateCookie(cookieValue string) bool {
 	db, err := sql.Open("sqlite3", "./forum.db")
 	if err != nil {

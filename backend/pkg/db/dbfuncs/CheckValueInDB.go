@@ -7,6 +7,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// moved
 func CheckValueInDB(w http.ResponseWriter, r *http.Request, val, name string) (string, bool, error) {
 	if name != "Nickname" && name != "Email" {
 		return "Invalid column name", false, nil

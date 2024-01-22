@@ -7,6 +7,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// moved
 func AddUser(nickName, firstName, lastName, Email, profile, aboutMe, privacy, DOB string, Password []byte) error {
 	id, err := uuid.NewRandom()
 	if err != nil {

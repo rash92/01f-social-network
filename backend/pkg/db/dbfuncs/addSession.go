@@ -7,6 +7,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// moved
 func AddSession(id uuid.UUID, user, UserID string, Expires time.Time) {
 	statement, _ := database.Prepare("INSERT INTO sessions VALUES (?,?,?,?)")
 

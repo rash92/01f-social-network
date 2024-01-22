@@ -4,6 +4,7 @@ import (
 	"fmt"
 )
 
+// moved
 func DeleteSessionColumn(column string, value interface{}) error {
 	stmt, err := database.Prepare(fmt.Sprintf("DELETE FROM Sessions WHERE %s = ?", column))
 	if err != nil {
