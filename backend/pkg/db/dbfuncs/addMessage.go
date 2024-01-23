@@ -9,9 +9,11 @@ import (
 
 func AddMessage(sender_id, recipient_id, message, Type string) (uuid.UUID, time.Time, error) {
 
-	if Type != "message" || sender_id == "" || recipient_id == "" || message == "" {
+	isWrongType := Type != "PrivateMessage" && Type != "GroupMessage"
 
-		return uuid.Nil, time.Now(), fmt.Errorf("invalid error")
+	if isWrongType || sender_id == "" || recipient_id == "" || message == "" {
+
+		return uuid.Nil, time.Now(), fmt.Errorf("invalid type")
 	}
 
 	id, err := uuid.NewRandom()
@@ -20,7 +22,7 @@ func AddMessage(sender_id, recipient_id, message, Type string) (uuid.UUID, time.
 		return uuid.Nil, time.Now(), err
 	}
 	created := time.Now()
-	statement, err := database.Prepare("INSERT INTO Messages VALUES (?,?,?,?,?)")
+	statement, err := database.Prepare(fmt.Sprintf("INSERT INTO %s VALUES (?,?,?,?,?)", Type))
 	if err != nil {
 		fmt.Println(err, "AddMessage line 27")
 		return uuid.Nil, created, err

@@ -171,7 +171,8 @@ eventLoop:
 			break eventLoop
 		case "register":
 			//fill in
-			// Ask why sites make you log in after registering.
+			// Ask why sites make you log in after registering. Answer: because the
+			// makers of these sites are lazy.
 			//I.e. Update other users that this user has registered.
 			// At present, if the user associated with this connection is an existing
 			// user, their arrival is communicated to other users by the call to
@@ -229,8 +230,8 @@ eventLoop:
 			//fill in
 		case "groupLike":
 		// fill in
-		case "attendEvent":
-			//fill in
+		case "toggleAttendEvent":
+			toggleAttendEvent(receivedData)
 
 		default:
 			//unexpected type
@@ -321,9 +322,10 @@ func handlePrivateMessage(receivedData handlefuncs.Message) {
 	}
 }
 
+// Note: I've adapted dbfuncs.AddMessage to handle both private and group
+// messages.
 func handleGroupMessage(receivedData handlefuncs.Message) {
 	dbLock.Lock()
-	// Change this to AddGroupMessage or adapt AddMessage to handle both.
 	id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
 	dbLock.Unlock()
 	if err != nil {
@@ -412,4 +414,11 @@ func answerInviteToJoinGroup(receivedData handlefuncs.Message) {
 
 // Add an event to the database and send it to all group members.
 func createEvent(receivedData handlefuncs.Message) {
+}
+
+// Toggle the user's attendance at the event in the database and
+// broadcast the updated list of attendees to all group members
+// who are online, or just the change in the user's attendance
+// and let the frontend handle the update.
+func toggleAttendEvent(receivedData handlefuncs.Message) {
 }
