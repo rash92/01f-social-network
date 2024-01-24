@@ -49,6 +49,23 @@ type WsMessage struct {
 	TimeStamp time.Time `json:"time"`
 }
 
+// Should everything have a Type field so that the client will know how to
+// how to handle it?
+
+// Make all signals implement the same interface, so that they can be
+// handled in the same way. In particular, they should all have a Type
+// field, so that the client will know how to handle them. We need to
+// deal with toggleAttendEvent now: it's not a message, but it should
+// hence the error.
+
+// Consider whether we want to be sending id numbers to the client.
+// We can continue for now as if we are, and modify this later if we
+// decide not to. Be sure to investigate the security implications
+// of sending id numbers to the client. If we decide not to send id
+// numbers, we need to consider the actual threat model, and avoid
+// naively attempting to fix things that don't actually address the
+// real threat.
+
 // these should match the database fields, check types in database and make them match, also move them to db package eventually
 type PrivateMessage struct {
 	Id          string    `json:"Id"`
@@ -64,6 +81,13 @@ type GroupMessage struct {
 	GroupId   string    `json:"GroupId"`
 	Message   string    `json:"Message"`
 	CreatedAt time.Time `json:"CreatedAt"`
+}
+
+type ToggleAttendEvent struct {
+	EventId string `json:"EventId"`
+	UserId  string `json:"UserId"`
+	GroupId string `json:"GroupId"`
+	Type    string `json:"Type"`
 }
 
 type Notification struct {
@@ -161,6 +185,8 @@ eventLoop:
 			log.Println("Error unmarshalling websocket message:", err)
 		}
 
+		// Make all signals implement the same interface, so that they can be
+		// handled in the same way.
 		switch receivedData.Type {
 		// case "login":
 		// This is covered at the start of handleConnection.
@@ -396,6 +422,8 @@ func requestToJoinGroup(receivedData handlefuncs.Message) {
 // and I think we should, add a notification to the database and send
 // it to the requester if they're online. The notification should
 // include which group and whether the answer was yes or no.
+// Also, if YES, add user to GroupEventParticipants with the choice
+// field set to false for all events in that group.
 func answerRequestToJoinGroup(receivedData handlefuncs.Message) {
 }
 
@@ -409,10 +437,14 @@ func inviteToJoinGroup(receivedData handlefuncs.Message) {
 // Either way, update the status of that notification in the database:
 // i.e. change it from pending to accepted or rejected. Decide if we
 // want to notify the inviter of the result.
+// Also, if YES, add user to GroupEventParticipants with the choice
+// field set to false for all events in that group.
 func answerInviteToJoinGroup(receivedData handlefuncs.Message) {
 }
 
 // Add an event to the database and send it to all group members.
+// Add all groups members to GroupEventParticipants with the choice
+// field set to false.
 func createEvent(receivedData handlefuncs.Message) {
 }
 
@@ -420,5 +452,43 @@ func createEvent(receivedData handlefuncs.Message) {
 // broadcast the updated list of attendees to all group members
 // who are online, or just the change in the user's attendance
 // and let the frontend handle the update.
-func toggleAttendEvent(receivedData handlefuncs.Message) {
+func toggleAttendEvent(receivedData *ToggleAttendEvent) {
+	dbLock.Lock()
+	err := dbfuncs.ToggleAttendEvent(receivedData.EventId, receivedData.UserId)
+	dbLock.Unlock()
+	if err != nil {
+		log.Println(err, "error toggling event attendance")
+	}
+
+	message := map[string]interface{}{
+		"data":    receivedData,
+		"type":    receivedData.Type,
+		"eventId": receivedData.EventId,
+		"userId":  receivedData.UserId,
+		"groupId": receivedData.GroupId,
+	}
+
+	rows, err := db.Query("SELECT * FROM GroupMember WHERE GroupId = ?", receivedData.GroupId)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var userId string
+		err = rows.Scan(&userId)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, c := range activeConnections[userId] {
+			err := c.WriteJSON(message)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
