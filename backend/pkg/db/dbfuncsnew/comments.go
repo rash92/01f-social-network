@@ -8,33 +8,22 @@ import (
 	"github.com/google/uuid"
 )
 
-func AddComment() {
-
-}
-
-func AddCommentOld(Comment, SessionId string, PostId string) (string, error) {
-	// fmt.Println(Comment, SessionId, PostId)
+// check if pointery way of doing it is working with * and & the right way etc., or if we want to just pass in by value
+func AddComment(comment *Comment) error {
+	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
 	if err != nil {
-		return "", err
+		return err
 	}
-
-	created := time.Now()
-	statement, err := database.Prepare("INSERT INTO Comments VALUES (?,?,?,?,?)")
+	comment.Id = id.String()
+	comment.CreatedAt = time.Now()
+	statement, err := db.Prepare("INSERT INTO Comments VALUES (?,?,?,?,?,?)")
 	if err != nil {
-		return "", err
+		return err
 	}
-	var UserId uuid.UUID
-	err = database.QueryRow("SELECT  userId  FROM Sessions WHERE Id=?", SessionId).Scan(&UserId)
+	statement.Exec(comment.Id, comment.Body, comment.CreatorId, comment.PostId, comment.CreatedAt, comment.Image)
 
-	if err != nil {
-
-		return "", err
-	}
-
-	statement.Exec(id, Comment, UserId, PostId, created)
-
-	return id.String(), nil
+	return nil
 }
 
 func CountCommentReacts() {

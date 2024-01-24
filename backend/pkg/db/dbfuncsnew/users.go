@@ -11,14 +11,39 @@ import (
 	"github.com/google/uuid"
 )
 
-func AddSession() {
+func AddUser(user *User) error {
+	//may want to use autoincrement instead of uuids?
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return err
+	}
+	user.Id = id.String()
+	user.CreatedAt = time.Now()
+	statement, err := db.Prepare("INSERT INTO Comments VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+	if err != nil {
+		return err
+	}
+	statement.Exec(user.Id, user.NickName, user.FirstName, user.LastName, user.Email, user.Password, user.Profile, user.AboutMe, user.PrivacySetting, user.DateOfBirth, user.CreatedAt)
 
+	return nil
 }
 
-func AddSessionOld(id uuid.UUID, user, UserID string, Expires time.Time) {
-	statement, _ := database.Prepare("INSERT INTO sessions VALUES (?,?,?,?)")
+func AddSession(session *Session, sessionMins time.Duration) error {
+	//may want to use autoincrement instead of uuids?
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return err
+	}
 
-	statement.Exec(id, user, Expires, UserID)
+	session.Id = id.String()
+	session.Expires = time.Now().Add(time.Minute * sessionMins)
+	statement, err := db.Prepare("INSERT INTO groups VALUES (?,?,?)")
+	if err != nil {
+		return err
+	}
+	statement.Exec(session.Id, session.Expires, session.UserId)
+
+	return nil
 }
 
 func DeleteSessionColumn() {
@@ -38,26 +63,6 @@ func DeleteSessionColumnOld(column string, value interface{}) error {
 	}
 	return nil
 
-}
-
-func AddUser() {
-
-}
-
-func AddUserOld(nickName, firstName, lastName, Email, profile, aboutMe, privacy, DOB string, Password []byte) error {
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return err
-	}
-	created := time.Now()
-	statement, err := database.Prepare("INSERT INTO Users VALUES (?,?,?,?,?,?,?,?,?,?,?)")
-	if err != nil {
-		return err
-	}
-
-	statement.Exec(id, nickName, firstName, lastName, Email, Password, profile, aboutMe, privacy, DOB, created)
-
-	return nil
 }
 
 func CheckValueInDB() {

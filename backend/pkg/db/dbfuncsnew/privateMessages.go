@@ -1,34 +1,24 @@
 package dbfuncs
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-func AddMessage() {}
-
-func AddMessageOld(sender_id, recipient_id, message, Type string) (uuid.UUID, time.Time, error) {
-
-	if Type != "message" || sender_id == "" || recipient_id == "" || message == "" {
-
-		return uuid.Nil, time.Now(), fmt.Errorf("invalid error")
-	}
-
+func AddPrivateMessage(privateMessage *PrivateMessage) error {
+	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
 	if err != nil {
-		fmt.Println(err, "AddMessage line 21")
-		return uuid.Nil, time.Now(), err
+		return err
 	}
-	created := time.Now()
-	statement, err := database.Prepare("INSERT INTO Messages VALUES (?,?,?,?,?)")
+	privateMessage.Id = id.String()
+	privateMessage.CreatedAt = time.Now()
+	statement, err := db.Prepare("INSERT INTO groups VALUES (?,?,?,?,?)")
 	if err != nil {
-		fmt.Println(err, "AddMessage line 27")
-		return uuid.Nil, created, err
+		return err
 	}
+	statement.Exec(privateMessage.Id, privateMessage.SenderId, privateMessage.RecipientId, privateMessage.Message, privateMessage.CreatedAt)
 
-	_, err = statement.Exec(id, sender_id, recipient_id, message, created)
-	fmt.Println(err, "AddMessage line 27")
-	return id, created, nil
+	return nil
 }

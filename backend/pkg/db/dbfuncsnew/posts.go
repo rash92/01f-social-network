@@ -15,8 +15,31 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func AddPost() {
+func AddPost(post *Post) error {
+	//may want to use autoincrement instead of uuids?
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return err
+	}
+	post.Id = id.String()
+	post.CreatedAt = time.Now()
+	statement, err := db.Prepare("INSERT INTO groups VALUES (?,?,?,?,?,?,?,?)")
+	if err != nil {
+		return err
+	}
+	statement.Exec(post.Id, post.Title, post.Body, post.CreatorId, post.GroupId, post.CreatedAt, post.Image, post.PrivacyLevel)
 
+	return nil
+}
+
+func AddPostChosenFollower(postChosenFollower *PostChosenFollower) error {
+	statement, err := db.Prepare("INSERT INTO groups VALUES (?,?)")
+	if err != nil {
+		return err
+	}
+	statement.Exec(postChosenFollower.PostId, postChosenFollower.FollowerId)
+
+	return nil
 }
 
 func CountLikesDislikes() {
@@ -35,10 +58,6 @@ func SaveImage() {
 
 }
 
-func AddCat() {
-
-}
-
 func AddDislikes() {
 
 }
@@ -48,10 +67,6 @@ func AddLikes() {
 }
 
 func FindLikeUsers() {
-
-}
-
-func FindPostsCats() {
 
 }
 
@@ -316,52 +331,4 @@ func CountLikesDislikesOld(PostId string) (likes, dislikes int) {
 	}
 
 	return
-}
-
-func AddPostOld(cookieVal, PostTitle, PostBody string, categories []string) (string, error) {
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return "", err
-	}
-	created := time.Now()
-	statement, err := database.Prepare("INSERT INTO Posts VALUES (?,?,?,?,?)")
-
-	if err != nil {
-		return "", err
-	}
-	var UserId uuid.UUID
-	err = database.QueryRow("SELECT  userId FROM Sessions WHERE  Id=?", cookieVal).Scan(&UserId)
-	if err != nil {
-		return "", err
-	}
-
-	statement.Exec(id, PostTitle, PostBody, UserId, created)
-
-	statement, err = database.Prepare("INSERT INTO PostCat VALUES (?,?)")
-	if err != nil {
-		return "", err
-	}
-
-	for _, v := range categories {
-		row := database.QueryRow("SELECT Id FROM Categories WHERE Name = ?", v)
-
-		var CatId uuid.UUID
-		err := row.Scan(&CatId)
-		if err != nil {
-			fmt.Println("error of adding linking post with cats")
-			log.Fatal(err)
-
-		}
-		statement.Exec(id, CatId)
-	}
-
-	return id.String(), nil
-}
-
-func AddCatOld(CatName string, CatDesc string) {
-	id, _ := uuid.NewRandom()
-	created := time.Now()
-	statement, _ := database.Prepare("INSERT INTO Categories VALUES (?,?,?,?)")
-	statement.Exec(id, CatName, CatDesc, created)
-
 }

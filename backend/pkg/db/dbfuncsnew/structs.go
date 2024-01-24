@@ -3,8 +3,6 @@ package dbfuncs
 import (
 	"database/sql"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // global database variable, so we only have to open it once and can access it etc.
@@ -13,7 +11,7 @@ var db *sql.DB
 
 // structs based on database for entering and retrieving info
 type User struct {
-	Id             uuid.UUID
+	Id             string
 	NickName       string
 	FirstName      string
 	LastName       string
@@ -34,7 +32,7 @@ type PrivateMessage struct {
 	CreatedAt   time.Time
 }
 
-type Posts struct {
+type Post struct {
 	Id           string
 	Title        string
 	Body         string
@@ -50,16 +48,16 @@ type Comment struct {
 	Body      string
 	CreatorId string
 	PostId    string
-	CreatedAt string
+	CreatedAt time.Time
 	Image     string
 }
 
-type Follows struct {
+type Follow struct {
 	FollowerId  string
 	FollowingId string
 }
 
-type Groups struct {
+type Group struct {
 	Id          string
 	Title       string
 	Description string
@@ -68,13 +66,13 @@ type Groups struct {
 }
 
 // double check what status means
-type GroupMembers struct {
+type GroupMember struct {
 	GroupId string
 	UserId  string
 	Status  string
 }
 
-type GroupEvents struct {
+type GroupEvent struct {
 	Id          string
 	GroupId     string
 	Title       string
@@ -84,38 +82,38 @@ type GroupEvents struct {
 }
 
 // currently different to database, will change database to replace choice with groupId
-type GroupEventParticipants struct {
+type GroupEventParticipant struct {
 	EventId string
 	UserId  string
 	GroupId string
 }
 
-type Sessions struct {
+type Session struct {
 	Id      string
-	Expires string
+	Expires time.Time
 	UserId  string
 }
 
-type PostChosenFollowers struct {
+type PostChosenFollower struct {
 	PostId     string
 	FollowerId string
 }
 
-type PostLikes struct {
+type PostLike struct {
 	UserId   string
 	PostId   string
 	Liked    bool
 	Disliked bool
 }
 
-type CommentLikes struct {
+type CommentLike struct {
 	UserId    string
 	CommentId string
 	Liked     bool
 	Disliked  bool
 }
 
-type GroupMessages struct {
+type GroupMessage struct {
 	Id        string
 	SenderId  string
 	GroupId   string
@@ -124,11 +122,11 @@ type GroupMessages struct {
 }
 
 // misspelled in database - fix reciever to receiver
-type Notifications struct {
+type Notification struct {
 	Id         string
 	Body       string
 	Type       string
-	CreatedAt  string
+	CreatedAt  time.Time
 	ReceiverId string
 	SenderId   string
 	Seen       bool
