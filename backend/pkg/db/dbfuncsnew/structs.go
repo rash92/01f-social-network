@@ -7,91 +7,134 @@ import (
 	"github.com/google/uuid"
 )
 
-var database *sql.DB
+// global database variable, so we only have to open it once and can access it etc.
+// possibly we don't want it globally and open and close it as needed
+var db *sql.DB
 
-func SetDatabase(db *sql.DB) {
-	database = db
-}
-
+// structs based on database for entering and retrieving info
 type User struct {
-	Id              uuid.UUID
-	FirstName       string
-	LastName        string
-	Age             int
-	Gender          string
-	Img             string
-	Created         time.Time
-	LastMessageTime time.Time
+	Id             uuid.UUID
+	NickName       string
+	FirstName      string
+	LastName       string
+	Email          string
+	Password       string
+	Profile        string
+	AboutMe        string
+	PrivacySetting string
+	DateOfBirth    string
+	CreatedAt      time.Time
 }
 
 type PrivateMessage struct {
 	Id          string
 	SenderId    string
 	RecipientId string
+	Message     string
 	CreatedAt   time.Time
 }
 
 type Posts struct {
-	Id        string
-	Title     string
-	Body      string
-	CreatorId string
+	Id           string
+	Title        string
+	Body         string
+	CreatorId    string
+	GroupId      string
+	CreatedAt    time.Time
+	Image        string
+	PrivacyLevel string
 }
 
 type Comment struct {
+	Id        string
+	Body      string
+	CreatorId string
+	PostId    string
+	CreatedAt string
+	Image     string
 }
 
-type ImageOld struct {
-	Data string `json:"data"`
-}
-type UserOld struct {
-	Email      string    `json:"email"`
-	NickName   string    `json:"nickname"`
-	FirstName  string    ` json:"firstName"`
-	LastName   string    `json:"lastName"`
-	Age        string    `json:"age"`
-	Gender     string    `json:"gender"`
-	Password   string    `json:"password"`
-	Id         uuid.UUID `json:"id"`
-	Created_at time.Time `json:"created_at"`
-	Aboutme    string    `json:"aboutme"`
-	Avatar     *Image    `json:"avatar,omitempty"`
+type Follows struct {
+	FollowerId  string
+	FollowingId string
 }
 
-type CategoriesOld struct {
-	Id          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Created_at  time.Time `json:"created_at"`
+type Groups struct {
+	Id          string
+	Title       string
+	Description string
+	CreatorId   string
+	CreatedAt   time.Time
 }
 
-type PostOld struct {
-	Id         uuid.UUID `json:"id"`
-	UserId     uuid.UUID `json:"userid"`
-	Title      string    `json:"title"`
-	Body       string    `json:"body"`
-	Categories []string  `json:"categories"`
-	Created_at time.Time `json:"created_at"`
-	Comments   []Comment `json:"comments"`
-	Likes      int       `json:"likes"`
-	Dislikes   int       `json:"dislikes"`
+// double check what status means
+type GroupMembers struct {
+	GroupId string
+	UserId  string
+	Status  string
 }
-type CommentOld struct {
-	ID        string    `json:"id"`
-	Body      string    `json:"body"`
-	UserID    string    `json:"user_id"`
-	PostID    string    `json:"post_id"`
-	CreatedAt time.Time `json:"created_at"`
-	Likes     int       `json:"likes"`
-	Dislikes  int       `json:"dislikes"`
-	Username  string    `json:"username"`
+
+type GroupEvents struct {
+	Id          string
+	GroupId     string
+	Title       string
+	Description string
+	CreatorId   string
+	Time        time.Time
 }
-type SessionOld struct {
-	Id       uuid.UUID
-	Username string
-	Expires  time.Time
-	UserID   string
+
+// currently different to database, will change database to replace choice with groupId
+type GroupEventParticipants struct {
+	EventId string
+	UserId  string
+	GroupId string
 }
+
+type Sessions struct {
+	Id      string
+	Expires string
+	UserId  string
+}
+
+type PostChosenFollowers struct {
+	PostId     string
+	FollowerId string
+}
+
+type PostLikes struct {
+	UserId   string
+	PostId   string
+	Liked    bool
+	Disliked bool
+}
+
+type CommentLikes struct {
+	UserId    string
+	CommentId string
+	Liked     bool
+	Disliked  bool
+}
+
+type GroupMessages struct {
+	Id        string
+	SenderId  string
+	GroupId   string
+	Message   string
+	CreatedAt time.Time
+}
+
+// misspelled in database - fix reciever to receiver
+type Notifications struct {
+	Id         string
+	Body       string
+	Type       string
+	CreatedAt  string
+	ReceiverId string
+	SenderId   string
+	Seen       bool
+}
+
+//above are based on database fields, to deal with database. May need separate structs for front end e.g. version of user without password field
 
 type PostFontEndOld struct {
 	Id         string    `json:"id"`
@@ -104,14 +147,4 @@ type PostFontEndOld struct {
 	Dislikes   int       `json:"dislikes"`
 	Username   string    `json:"username"`
 	Userlikes  []string  `json:"userlikes"`
-}
-
-type MessageOld struct {
-	ID          string `json:"id"`
-	SenderID    string `json:"sender_id"`
-	RecipientID string `json:"recipient_id"`
-	Message     string `json:"message"`
-	Created     string `json:"created"`
-	Type        string `json:"type"`
-	Typing      bool   `json:"typing"`
 }
