@@ -12,7 +12,7 @@ var db *sql.DB
 // structs based on database for entering and retrieving info
 type User struct {
 	Id             string
-	NickName       string
+	Nickname       string
 	FirstName      string
 	LastName       string
 	Email          string
@@ -130,19 +130,4 @@ type Notification struct {
 	ReceiverId string
 	SenderId   string
 	Seen       bool
-}
-
-//above are based on database fields, to deal with database. May need separate structs for front end e.g. version of user without password field
-
-type PostFontEndOld struct {
-	Id         string    `json:"id"`
-	Title      string    `json:"title"`
-	Body       string    `json:"body"`
-	Categories []string  `json:"categories"`
-	Created_at time.Time `json:"created_at"`
-	Comments   []Comment `json:"comments"`
-	Likes      int       `json:"likes"`
-	Dislikes   int       `json:"dislikes"`
-	Username   string    `json:"username"`
-	Userlikes  []string  `json:"userlikes"`
 }

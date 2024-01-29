@@ -2,7 +2,6 @@ package handlefuncs
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	dbfuncs "server/pkg/db/dbfuncs"
 	"time"
@@ -10,23 +9,31 @@ import (
 	"github.com/google/uuid"
 )
 
-type LoginData struct {
-	Nickname string `json:"nickname"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	Cors(&w, r)
 
-	if r.Method == http.MethodPost {
+	if r.Method == "POST" {
 
-		var entredData LoginData
+		var loginData LoginData
 
-		errj := json.NewDecoder(r.Body).Decode(&entredData)
-		fmt.Println(entredData)
-		if errj != nil {
-			http.Error(w, `{"error": "`+errj.Error()+`"}`, http.StatusBadRequest)
+		err := json.NewDecoder(r.Body).Decode(&loginData)
+		if err != nil {
+			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func HandleLoginOld(w http.ResponseWriter, r *http.Request) {
+	Cors(&w, r)
+
+	if r.Method == "POST" {
+
+		var loginData LoginData
+
+		err := json.NewDecoder(r.Body).Decode(&loginData)
+		if err != nil {
+			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 			return
 		}
 
@@ -42,7 +49,7 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if isPasswordValid([]byte(storedPassword), []byte(entredData.Password)) != nil {
+		if isPasswordValid(storedPassword, entredData.Password) != nil {
 			// fmt.Println(isPasswordValid([]byte(storedPassword), []byte(entredData.Password)))
 			http.Error(w, `{"error": "your email or passord is incorrect"}`, http.StatusBadRequest)
 			return

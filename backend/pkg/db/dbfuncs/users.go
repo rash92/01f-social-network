@@ -19,7 +19,7 @@ func AddUser(user *User) error {
 	if err != nil {
 		return err
 	}
-	statement.Exec(user.Id, user.NickName, user.FirstName, user.LastName, user.Email, user.Password, user.Profile, user.AboutMe, user.PrivacySetting, user.DateOfBirth, user.CreatedAt)
+	statement.Exec(user.Id, user.Nickname, user.FirstName, user.LastName, user.Email, user.Password, user.Profile, user.AboutMe, user.PrivacySetting, user.DateOfBirth, user.CreatedAt)
 
 	return nil
 }
