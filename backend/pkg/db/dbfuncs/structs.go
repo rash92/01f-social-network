@@ -2,12 +2,15 @@ package dbfuncs
 
 import (
 	"database/sql"
+	"sync"
 	"time"
 )
 
 // global database variable, so we only have to open it once and can access it etc.
 // possibly we don't want it globally and open and close it as needed
 var db *sql.DB
+
+var dbLock sync.RWMutex
 
 // structs based on database for entering and retrieving info
 type User struct {

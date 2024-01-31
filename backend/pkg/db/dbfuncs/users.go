@@ -1,7 +1,6 @@
 package dbfuncs
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,22 +23,25 @@ func AddUser(user *User) error {
 	return nil
 }
 
-func AddSession(session *Session, sessionMins time.Duration) error {
+func AddSession(userId string) (Session, error) {
 	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
 	if err != nil {
-		return err
+		return Session{}, err
+	}
+	session := Session{
+		Id:      id.String(),
+		Expires: time.Now().Add(time.Minute * 60),
+		UserId:  userId,
 	}
 
-	session.Id = id.String()
-	session.Expires = time.Now().Add(time.Minute * sessionMins)
 	statement, err := db.Prepare("INSERT INTO groups VALUES (?,?,?)")
 	if err != nil {
-		return err
+		return Session{}, err
 	}
 	statement.Exec(session.Id, session.Expires, session.UserId)
 
-	return nil
+	return session, nil
 }
 
 func DeleteSession(sessionId string) error {
@@ -52,33 +54,6 @@ func DeleteSession(sessionId string) error {
 		return err
 	}
 	return nil
-}
-
-// what is this for?!
-// func DeleteSessionColumnOld(column string, value interface{}) error {
-// 	stmt, err := db.Prepare(fmt.Sprintf("DELETE FROM Sessions WHERE %s = ?", column))
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer stmt.Close()
-
-// 	_, err = stmt.Exec(value)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-
-// }
-
-func CheckEmailInDB(email string) (bool, error) {
-	found := ""
-	err := db.QueryRow("SELECT Email FROM Users WHERE Email=?", email).Scan(&found)
-	if err == sql.ErrNoRows {
-		return false, nil
-	} else if err != nil {
-		return false, err
-	}
-	return true, nil
 }
 
 func GetAllUsersSortedByLastMessage() {
@@ -192,16 +167,4 @@ func GetCreatorIdFromPostId(postId string) (string, error) {
 	}
 
 	return creatorId, nil
-}
-
-func ValidateCookie(sessionId string) (bool, error) {
-	var id string
-	var expiration time.Time
-	err := db.QueryRow("SELECT Id, Expires FROM Sessions WHERE Id=?", sessionId).Scan(&id, &expiration)
-	if err == sql.ErrNoRows {
-		return false, nil
-	} else if err != nil {
-		return false, err
-	}
-	return id == sessionId && time.Now().Before(expiration), nil
 }

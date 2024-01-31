@@ -12,6 +12,9 @@ type LoginData struct {
 	Password string `json:"password"`
 }
 
+type LoginResponse struct {
+}
+
 type RegistrationData struct {
 	Email       string `json:"email"`
 	Password    string `json:"password"`
