@@ -15,19 +15,19 @@ func SetDatabase(db *sql.DB) {
 }
 
 type Image struct {
-  Data string `json:"data"`
+	Data string `json:"data"`
 }
 type User struct {
 	Email      string    `json:"email"`
 	NickName   string    `json:"nickname"`
-	FirstName  string    ` json:"firstName"`
+	FirstName  string    `json:"firstName"`
 	LastName   string    `json:"lastName"`
 	Age        string    `json:"age"`
 	Gender     string    `json:"gender"`
 	Password   string    `json:"password"`
 	Id         uuid.UUID `json:"id"`
 	Created_at time.Time `json:"created_at"`
-	Aboutme    string  `json:"aboutme"`
+	Aboutme    string    `json:"aboutme"`
 	Avatar     *Image    `json:"avatar,omitempty"`
 }
 
@@ -87,4 +87,12 @@ type Message struct {
 	Created     string `json:"created"`
 	Type        string `json:"type"`
 	Typing      bool   `json:"typing"`
+}
+
+type Event struct {
+	EventId     string `json:"EventId"`
+	GroupId     string `json:"GroupId"`
+	Title       string `json:"Title"`
+	Description string `json:"Description"`
+	CreatorId   string `json:"CreatorId"`
 }

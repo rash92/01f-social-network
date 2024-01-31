@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	dbfuncs "server/pkg/db/dbfuncs"
+	"server/pkg/db/dbfuncs"
 )
 
 func HandleAddPost(w http.ResponseWriter, r *http.Request) {
@@ -29,8 +29,7 @@ func HandleAddPost(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, `{"error": "something went wrong please login"}`, http.StatusUnauthorized)
 			return
 		}
-		
-	
+
 		if len(newPost.Body) > CharacterLimit {
 
 			http.Error(w, `{"error": "413 Payload Too Large"}`, http.StatusRequestEntityTooLarge)

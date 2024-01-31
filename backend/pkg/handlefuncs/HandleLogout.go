@@ -3,7 +3,7 @@ package handlefuncs
 import (
 	"encoding/json"
 	"net/http"
-	dbfuncs "server/pkg/db/dbfuncs"
+	"server/pkg/db/dbfuncs"
 	"time"
 )
 
