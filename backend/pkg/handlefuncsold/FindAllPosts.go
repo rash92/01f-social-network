@@ -10,7 +10,7 @@ import (
 )
 
 func FindAllPosts() ([]PostFontEnd, error) {
-	rows, err := database.Query("SELECT Id,Title,Body,UserId,Created FROM Posts ORDER BY Created DESC")
+	rows, err := database.Query("SELECT Id,Title,Body,CreatorId,Created FROM Posts ORDER BY Created DESC")
 	if err == sql.ErrNoRows {
 		return []PostFontEnd{}, err
 	} else if err != nil {

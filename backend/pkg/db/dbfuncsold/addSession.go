@@ -1,6 +1,7 @@
 package dbfuncs
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -9,7 +10,11 @@ import (
 
 // moved
 func AddSession(id uuid.UUID, user, UserID string, Expires time.Time) {
-	statement, _ := database.Prepare("INSERT INTO sessions VALUES (?,?,?,?)")
+	statement, err := database.Prepare("INSERT INTO Sessions VALUES (?,?,?)")
+	if err != nil {
+		fmt.Println(err.Error(), "line 14 dbfuncs/addsesion")
+		panic(err)
 
-	statement.Exec(id, user, Expires, UserID)
+	}
+	statement.Exec(id,  Expires, UserID)
 }

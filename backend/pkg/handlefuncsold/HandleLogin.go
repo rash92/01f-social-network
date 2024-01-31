@@ -11,7 +11,6 @@ import (
 )
 
 type LoginData struct {
-	Nickname string `json:"nickname"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
@@ -24,20 +23,21 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 		var entredData LoginData
 
 		errj := json.NewDecoder(r.Body).Decode(&entredData)
-		fmt.Println(entredData)
 		if errj != nil {
 			http.Error(w, `{"error": "`+errj.Error()+`"}`, http.StatusBadRequest)
 			return
 		}
 
-		var id string
-		var username string
-		var storedPassword string
-		var imgUrl string
-
+		var (
+			id             string
+			username       string
+			storedPassword string
+			imgUrl         string
+		)
 		// var storedPassword string
-		err := database.QueryRow("SELECT Id, Password, Nickname,  Profile  FROM Users WHERE Nickname=? OR mail=?", entredData.Nickname, entredData.Email).Scan(&id, &storedPassword, &username, &imgUrl)
+		err := database.QueryRow("SELECT Id, Password, Nickname,  Profile  FROM Users WHERE Email=?", entredData.Email).Scan(&id, &storedPassword, &username, &imgUrl)
 		if err != nil {
+			fmt.Println(err.Error(), "error after getting data")
 			http.Error(w, `{"error": "your email/nickname or password is incorrect"}`, http.StatusBadRequest)
 			return
 		}

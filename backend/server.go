@@ -154,7 +154,19 @@ func init() {
 
 // 	}
 
-// }
+}
+
+func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("user_token")
+		
+		if err != nil || !dbfuncs.ValidateCookie(cookie.Value) {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		handler(w, r)
+	}
+}
 
 func main() {
 	defer db.Close()
@@ -168,7 +180,7 @@ func main() {
 	http.HandleFunc("/checksession", handlefuncs.HandleValidateCookie)
 	http.HandleFunc("/add-post", handlefuncs.HandleAddPost)
 	http.HandleFunc("/get-catogries", handlefuncs.HandleCatogries)
-	http.HandleFunc("/get-posts", handlefuncs.HandleGetPosts)
+	http.HandleFunc("/get-posts", wrapperHandler(handlefuncs.HandleGetPosts))
 	http.HandleFunc("/add-Comment", handlefuncs.HandleAddComment)
 	http.HandleFunc("/logout", handlefuncs.HandleLogout)
 	http.HandleFunc("/react-Post-like-dislike", handlefuncs.HandlePostLikeDislike)
@@ -177,7 +189,7 @@ func main() {
 	// http.HandleFunc("/fillter", handlefuncs.HandleFilter)
 	http.HandleFunc("/get-users", handlefuncs.HandleGetUsers)
 	http.HandleFunc("/get-messages", handlefuncs.MessagesHandler)
-	http.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir("images"))))
+	http.Handle("/images/", http.StripPrefix("/images", http.FileServer(http.Dir("./pkg/db/images"))))
 
 	fmt.Println("Starting server on http://localhost:8000")
 	err := http.ListenAndServe(":8000", nil)

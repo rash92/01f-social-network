@@ -22,7 +22,7 @@ type User struct {
 	NickName   string    `json:"nickname"`
 	FirstName  string    `json:"firstName"`
 	LastName   string    `json:"lastName"`
-	Age        string    `json:"age"`
+	DOB        string    `json:"age"`
 	Gender     string    `json:"gender"`
 	Password   string    `json:"password"`
 	Id         uuid.UUID `json:"id"`

@@ -1,31 +1,42 @@
 import FormGroup from "./FormGroup";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
-import {useState} from "react";
+import {useContext, useState} from "react";
 import {getJson} from "../helpers/helpers";
-
+import AuthContext from "../store/authContext";
+import Alert from "react-bootstrap/Alert";
 export default function Login({setShowRegisterForm}) {
   const [emailValue, setEmailValue] = useState("");
   const [passwordValue, setPasswordValue] = useState("");
+  const [error, setError] = useState({isError: false, error: ""});
+  const {OnLogin} = useContext(AuthContext);
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const res = await getJson("login", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({email: emailValue, password: passwordValue}),
       });
 
-      console.log(res);
+      if (!res.success) {
+        setError({isError: true, error: `something went wrong ${res.status}`});
+        return;
+      }
+
+      OnLogin(res);
     } catch (err) {
-      console.log(err);
+      setError({isError: true, error: err.message});
     }
   };
 
   return (
     <Form onSubmit={handleSubmit}>
+      {error.isError && <Alert variant="danger">{error.error}</Alert>}
+
       <FormGroup
         value={emailValue}
         setValue={setEmailValue}

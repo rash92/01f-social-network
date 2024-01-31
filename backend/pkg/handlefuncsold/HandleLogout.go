@@ -28,6 +28,7 @@ func HandleLogout(w http.ResponseWriter, r *http.Request) {
 			MaxAge:   -1,
 			Secure:   true,
 			HttpOnly: true,
+
 			SameSite: http.SameSiteLaxMode,
 		})
 		response := map[string]interface{}{
