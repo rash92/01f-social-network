@@ -2,7 +2,23 @@ package ws
 
 //general notes/ ideas:
 //consider redoing database tables to combine private messages, group messages and various types of notificaitons in one table
-//and differentiate them with a type field, possibly with empty fields for fields that are not needed for that type of message
+//and differentiate them with a type field, possibly with empty fields for fields that are not needed for that type of message.
+
+// Make sure that we're consistent about capitalization, e.g. "id" vs "Id" vs "ID".
+
+// To read from maps, e.g. activeConnections when looping through active connections,
+// we can use .RLock() and .RUnlock() instead of .Lock() and .Unlock() to avoid
+// blocking other goroutines. I've changes the mutexe types to sync.RWMutex to allow
+// this.
+
+// We also need to protect the database from concurrent reads and writes. The mattn/go-sqlite3
+// documentation says that it's safe for concurrent reads but not for concurrent writes,
+// so, as for the activeConnections map, we can use a sync.RWMutex instead of a sync.Mutex,
+// as long as we make sure to use .RLock() only when reading from the database and .RLock()
+// when writing to it.
+
+// What happens if a user's cookie expires after they've logged in? We need to make sure
+// that we're checking for that and handling it appropriately.
 
 import (
 	"database/sql"
@@ -34,11 +50,8 @@ var (
 
 	// String is userID. The slice of pointers to websocket.Conn is the connections for that user.
 	activeConnections = make(map[string][]*websocket.Conn)
-	connectionLock    sync.Mutex
-	dbLock            sync.Mutex
+	connectionLock    sync.RWMutex
 )
-
-//check capitalization of json bit
 
 // this is what the client sends to the server,
 // Body will be reunmarshalled based on type into PrivateMessage, GroupMessage, or Notification etc.
@@ -49,24 +62,21 @@ type WsMessage struct {
 	TimeStamp time.Time `json:"time"`
 }
 
-// Should everything have a Type field so that the client will know how to
-// how to handle it?
-
-// Make all signals implement the same interface, so that they can be
-// handled in the same way. In particular, they should all have a Type
-// field, so that the client will know how to handle them. We need to
-// deal with toggleAttendEvent now: it's not a message, but it should
-// hence the error.
-
 // Consider whether we want to be sending id numbers to the client.
 // We can continue for now as if we are, and modify this later if we
 // decide not to. Be sure to investigate the security implications
 // of sending id numbers to the client. If we decide not to send id
 // numbers, we need to consider the actual threat model, and avoid
 // naively attempting to fix things that don't actually address the
-// real threat.
+// real threat.  Matt is sending them and happy that it's not a problem.
 
-// these should match the database fields, check types in database and make them match, also move them to db package eventually
+// these should match the database fields, check types in database and
+// make them match, also move them to db package eventually
+// Do they need to match the fields in the database? For example,
+// the frontend won't know the id of a message until it's been added
+// to the database. At the moment, signals are being sent to the
+// frontend in the form of a map from string to interface, with
+// whatever key-value pairs are needed for that type of signal.
 type PrivateMessage struct {
 	Id          string    `json:"Id"`
 	SenderId    string    `json:"SenderId"`
@@ -83,6 +93,12 @@ type GroupMessage struct {
 	CreatedAt time.Time `json:"CreatedAt"`
 }
 
+type RequestToFollow struct {
+	SenderId    string `json:"SenderId"`
+	RecipientId string `json:"RecipientId"`
+}
+
+// We can just use the Event type for this.
 type ToggleAttendEvent struct {
 	EventId string `json:"EventId"`
 	UserId  string `json:"UserId"`
@@ -127,7 +143,9 @@ type BasicUserInfo struct {
 // can consider channel approach instead of mutex
 func HandleConnection(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("user_token")
-	if err != nil || !dbfuncs.ValidateCookie(cookie.Value) {
+	// Add lines to ValidateCookie to RLock the dblock while validating.
+	valid := dbfuncs.ValidateCookie(cookie.Value)
+	if err != nil || !valid {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -140,10 +158,9 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		closeConnection(conn)
-		conn.Close()
 	}()
 
-	userID, err := dbfuncs.GetUserIdFromCookie(cookie.Value) // fix spelling of cokie
+	userID, err := dbfuncs.GetUserIdFromCookie(cookie.Value)
 	if err != nil {
 		log.Println("Error retrieving userID from database:", err)
 	}
@@ -156,6 +173,13 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 	}
 	connectionLock.Unlock()
 
+	// Make sure this works when the user is newly registered. It should
+	// broadcast a list including the new user. In realtime, we had the map
+	// activeConnections = make(map[*websocket.Conn]string). Here we have
+	// activeConnections = make(map[string][]*websocket.Conn). There, when
+	// a new user registered, the other users didn't update their lists of
+	// users. We need to make sure there is logic in the frontend to handle
+	// this.
 	broadcastUserList()
 
 eventLoop:
@@ -179,64 +203,57 @@ eventLoop:
 			}
 		}
 
-		var receivedData handlefuncs.Message
-		err = json.Unmarshal(msgBytes, &receivedData)
+		var signal WsMessage
+		err = json.Unmarshal(msgBytes, &signal)
 		if err != nil {
 			log.Println("Error unmarshalling websocket message:", err)
 		}
 
-		// Make all signals implement the same interface, so that they can be
-		// handled in the same way.
-		switch receivedData.Type {
+		switch signal.Type {
 		// case "login":
-		// This is covered at the start of handleConnection.
+		// No need. This is covered at the start of handleConnection.
 
 		// Sign out and register:
 		case "logout":
-			handleLogout(userID)
+			handleLogout(userID, conn)
 			break eventLoop
-		case "register":
-			//fill in
-			// Ask why sites make you log in after registering. Answer: because the
-			// makers of these sites are lazy.
-			//I.e. Update other users that this user has registered.
-			// At present, if the user associated with this connection is an existing
-			// user, their arrival is communicated to other users by the call to
-			// broadcastUserList before this indefinite for loop. But we also need
-			// to communicate when a newly registered users has come online, so that
-			// they can be added to the list of users who can be messaged.
-		case "updatePrivacySetting":
-		//fill in
 
 		// Chat:
 		case "privateMessage":
+			var receivedData handlefuncs.Message
+			unmarshalBody(signal.Body, &receivedData)
 			handlePrivateMessage(receivedData)
 		case "groupMessage":
+			var receivedData handlefuncs.Message
+			unmarshalBody(signal.Body, &receivedData)
 			handleGroupMessage(receivedData)
 
-		// Cases that require notofications:
+		// // Cases that require notofications:
 		case "requestToFollow":
 			// If the request is for a user with a public profile, it should be automatically
 			// accepted. Otherwise, notify that user that you want to follow them.
+			var receivedData RequestToFollow
+			unmarshalBody(signal.Body, &receivedData)
 			handleRequestToFollow(receivedData)
-		case "answerRequestToFollow":
-			answerRequestToFollow(receivedData)
-		case "requestToJoinGroup":
-			// Notify the creator.
-			requestToJoinGroup(receivedData)
-		case "answerRequestToJoinGroup":
-			//fill in
-			answerRequestToJoinGroup(receivedData)
-		case "inviteToJoinGroup":
-			//fill in
-			// Notify the person you're inviting.
-			inviteToJoinGroup(receivedData)
-		case "answerInviteToGroup":
-			//fill in
-			answerInviteToJoinGroup(receivedData)
+		// 	handleRequestToFollow(receivedData)
+		// case "answerRequestToFollow":
+		// 	answerRequestToFollow(receivedData)
+		// case "requestToJoinGroup":
+		// 	// Notify the creator.
+		// 	requestToJoinGroup(receivedData)
+		// case "answerRequestToJoinGroup":
+		// 	//fill in
+		// 	answerRequestToJoinGroup(receivedData)
+		// case "inviteToJoinGroup":
+		// 	//fill in
+		// 	// Notify the person you're inviting.
+		// 	inviteToJoinGroup(receivedData)
+		// case "answerInviteToGroup":
+		// 	//fill in
+		// 	answerInviteToJoinGroup(receivedData)
 		case "createEvent":
-			//fill in
-			// Notify other group members.
+			var receivedData handlefuncs.Event
+			unmarshalBody(signal.Body, &receivedData)
 			createEvent(receivedData)
 
 		// General posts, comments, and likes:
@@ -257,15 +274,28 @@ eventLoop:
 		case "groupLike":
 		// fill in
 		case "toggleAttendEvent":
-			toggleAttendEvent(receivedData)
+			var receivedData ToggleAttendEvent
+			err = json.Unmarshal(signal.Body, &receivedData)
+			if err != nil {
+				log.Println("Error unmarshalling body of websocket message:", err)
+			}
+			toggleAttendEvent(&receivedData)
 
-		default:
-			//unexpected type
-			log.Println("Unexpected websocket message type:", receivedData.Type)
+			// default:
+			// 	//unexpected type
+			// 	log.Println("Unexpected websocket message type:", receivedData.Type)
 		}
 
 	}
 
+}
+
+func unmarshalBody[T any](signalBody []byte, receivedData T) {
+	err := json.Unmarshal(signalBody, receivedData)
+	if err != nil {
+		log.Println("Error unmarshalling body of websocket message:", err)
+		log.Println("type of receivedData:", fmt.Sprintf("%T", receivedData))
+	}
 }
 
 func broadcastUserList() {
@@ -281,7 +311,7 @@ func broadcastUserList() {
 		"data": userList,
 		"type": "online-user",
 	}
-
+	connectionLock.RLock()
 	for client := range activeConnections {
 		for _, c := range activeConnections[client] {
 			err := c.WriteJSON(message)
@@ -290,13 +320,9 @@ func broadcastUserList() {
 			}
 		}
 	}
-
+	connectionLock.RUnlock()
 }
 
-// I've left the actual closing of the connection at the backend
-// till after this function returns. That way closeConnection can
-// be used both to close the other connections associated with
-// userID and to close the current connection.
 func closeConnection(conn *websocket.Conn) {
 	data := map[string]interface{}{
 		"data": "",
@@ -306,9 +332,8 @@ func closeConnection(conn *websocket.Conn) {
 	if err != nil {
 		fmt.Println("Error sending logout message to client:", err)
 	}
-	err = conn.Close()
-	if err != nil {
-		log.Println("Error closing websocket connection:", err)
+	if err := conn.Close(); err != nil {
+		fmt.Println("Error closing websocket:", err)
 	}
 }
 
@@ -316,11 +341,16 @@ func closeConnection(conn *websocket.Conn) {
 // at the front end. Delete the userID from activeConnections. Broadcast
 // the updated user list. The current connection will be closed at the
 // when the event loop breaks.
-func handleLogout(userID string) {
+// The frontend also needs to trigger handlefuncs.HandleLogOut via http
+// as we don't have access to the cookie using websockets.
+func handleLogout(userID string, thisConn *websocket.Conn) {
+	connectionLock.RLock()
 	for _, c := range activeConnections[userID] {
-		closeConnection(c)
-		c.Close()
+		if c != thisConn {
+			closeConnection(c)
+		}
 	}
+	connectionLock.RUnlock()
 	connectionLock.Lock()
 	delete(activeConnections, userID)
 	connectionLock.Unlock()
@@ -328,9 +358,7 @@ func handleLogout(userID string) {
 }
 
 func handlePrivateMessage(receivedData handlefuncs.Message) {
-	dbLock.Lock()
 	id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
-	dbLock.Unlock()
 	if err != nil {
 		log.Println(err, "error adding message to database")
 	}
@@ -340,20 +368,20 @@ func handlePrivateMessage(receivedData handlefuncs.Message) {
 		"data": receivedData,
 		"type": receivedData.Type,
 	}
+	connectionLock.RLock()
 	for _, c := range activeConnections[receivedData.RecipientID] {
 		err := c.WriteJSON(message)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
+	connectionLock.RUnlock()
 }
 
-// Note: I've adapted dbfuncs.AddMessage to handle both private and group
+// I've adapted dbfuncs.AddMessage to handle both private and group
 // messages.
 func handleGroupMessage(receivedData handlefuncs.Message) {
-	dbLock.Lock()
 	id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
-	dbLock.Unlock()
 	if err != nil {
 		log.Println(err, "error adding message to data base")
 	}
@@ -365,46 +393,38 @@ func handleGroupMessage(receivedData handlefuncs.Message) {
 		"groupId": receivedData.RecipientID,
 	}
 
-	rows, err := db.Query("SELECT * FROM GroupMembers WHERE GroupId = ?", receivedData.RecipientID)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var userId string
-		err = rows.Scan(&userId)
-		if err != nil {
-			log.Fatal(err)
-		}
-		for _, c := range activeConnections[userId] {
+	connectionLock.RLock()
+	recipients := dbfuncs.GetGroupMembers(receivedData.RecipientID)
+	for _, recipient := range recipients {
+		for _, c := range activeConnections[recipient] {
 			err := c.WriteJSON(message)
 			if err != nil {
 				log.Fatal(err)
 			}
 		}
 	}
-
-	err = rows.Err()
-	if err != nil {
-		log.Fatal(err)
-	}
+	connectionLock.RUnlock()
 }
 
 // If the request is for a user with a public profile, add the requester
 // to their followers list. Otherwise, add a notification to the database
 // and send it to the user with the private profile if they're online.
-// Also, set the Unseens field of the private user to true.
+// (No longer? Also, set the Unseens field of the private user to true.)
 // The notification should include the requester and recipient's IDs (and
 // maybe usernames), the type of notification, the time it was created, and
 // its status (pending, as opposed to accepted or rejected).
-func handleRequestToFollow(receivedData handlefuncs.Message) {
-
+func handleRequestToFollow(receivedData RequestToFollow) {
+	// // TODO: Write dbfuncs.IsPublic.
+	// // Commented out, for now, to avoid red lines.
+	// public := dbfuncs.IsPublic(receivedData.RecipientId)
+	// if public {
+	// 	// Add the requester to the recipient's followers list.
+	// } else {
+	// 	// Add a notification to the database and send it to the recipient
+	// 	// if they're online.
+	// }
 }
 
-// If the request is for a user with a public profile, add the requester
-// to their followers list. Otherwise, add a notification to the database
-// and send it to the user with the private profile if they're online.
 // Decide if we want to notify the requester of the result.
 func answerRequestToFollow(receivedData handlefuncs.Message) {
 }
@@ -444,8 +464,35 @@ func answerInviteToJoinGroup(receivedData handlefuncs.Message) {
 
 // Add an event to the database and send it to all group members.
 // Add all groups members to GroupEventParticipants with the choice
-// field set to false.
-func createEvent(receivedData handlefuncs.Message) {
+// field set to false. Add notification for each group member.
+
+// In detail: This will now be part of the handlefuncs package.
+// handlefuncs can import dbfuncs, but not the other way around.
+// It will have to convert the handlefuncs.Event to a dbfuncs.Event,
+// and then call dbfuncs.AddEvent. It will also have to call
+// dbfuncs.GetGroupMembers to get the list of group members.
+// It will then have to loop through the group members and call
+// dbfuncs.AddNotification for each one. It will also have to
+// loop through the group members and call dbfuncs.AddGroupEventParticipant
+// for each one. It will also have to loop through the group members
+
+func createEvent(receivedData handlefuncs.Event) {
+	dbfuncs.AddEvent(receivedData)
+	signal := map[string]interface{}{
+		"data": receivedData,
+		"type": "createEvent",
+	}
+	connectionLock.RLock()
+	recipients := dbfuncs.GetGroupMembers(receivedData.GroupId)
+	for _, recipient := range recipients {
+		for _, c := range activeConnections[recipient] {
+			err := c.WriteJSON(signal)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
+	connectionLock.RUnlock()
 }
 
 // Toggle the user's attendance at the event in the database and
@@ -453,21 +500,17 @@ func createEvent(receivedData handlefuncs.Message) {
 // who are online, or just the change in the user's attendance
 // and let the frontend handle the update.
 func toggleAttendEvent(receivedData *ToggleAttendEvent) {
-	dbLock.Lock()
 	err := dbfuncs.ToggleAttendEvent(receivedData.EventId, receivedData.UserId)
-	dbLock.Unlock()
 	if err != nil {
 		log.Println(err, "error toggling event attendance")
 	}
 
 	message := map[string]interface{}{
-		"data":    receivedData,
-		"type":    receivedData.Type,
-		"eventId": receivedData.EventId,
-		"userId":  receivedData.UserId,
-		"groupId": receivedData.GroupId,
+		"data": receivedData,
+		"type": receivedData.Type,
 	}
 
+	dbLock.RLock()
 	rows, err := db.Query("SELECT * FROM GroupMember WHERE GroupId = ?", receivedData.GroupId)
 	if err != nil {
 		log.Fatal(err)
@@ -480,15 +523,18 @@ func toggleAttendEvent(receivedData *ToggleAttendEvent) {
 		if err != nil {
 			log.Fatal(err)
 		}
+		connectionLock.RLock()
 		for _, c := range activeConnections[userId] {
 			err := c.WriteJSON(message)
 			if err != nil {
 				log.Fatal(err)
 			}
 		}
+		connectionLock.RUnlock()
 	}
 	err = rows.Err()
 	if err != nil {
 		log.Fatal(err)
 	}
+	dbLock.RUnlock()
 }

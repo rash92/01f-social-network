@@ -54,7 +54,7 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 		session := Session{
 			Id:       sessionId,
 			Username: username,
-			Expires:  time.Now().Add(24 * time.Hour),
+			Expires:  time.Now().Add(time.Duration(^uint(0)>>1) * time.Nanosecond),
 			UserID:   id,
 		}
 		//  detlete old session

@@ -13,7 +13,7 @@ func ToggleAttendEvent(eventId, userId string) error {
 	// if err != nil {
 	// 	return err
 	// }
-	toggleAttendance, err := database.Prepare("UPDATE GroupEventParticipants SET Choice=?  WHERE EventId=? AND UserId=?")
+	toggleAttendance, err := database.Prepare("UPDATE GroupEventParticipants SET Choice=? WHERE EventId=? AND UserId=?")
 	if err != nil {
 		return err
 	}
