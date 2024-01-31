@@ -1,11 +1,15 @@
 import {Button, Modal} from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
-function MyModal({children, show, handleClose, handleShow}) {
+function MyModal({children, show, handleClose, handleShow, flag = true}) {
   return (
     <>
-      <Button variant="primary" onClick={handleShow}>
-        add Post
-      </Button>
+      {flag ? (
+        <Button variant="primary" onClick={handleShow}>
+          add Post
+        </Button>
+      ) : (
+        ""
+      )}
       <Modal show={show} onHide={handleClose}>
         <Modal.Header closeButton>
           <Modal.Title>Add Post</Modal.Title>

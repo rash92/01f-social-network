@@ -1,7 +1,7 @@
 import React from "react";
 import {Image} from "react-bootstrap";
 import classes from "./User.module.css";
-function User({name, isLoggedIn, userName, d}) {
+function User({name, isLoggedIn, userName}) {
   return (
     <div style={{display: "flex", alignItems: "center"}}>
       <div style={{position: "relative", marginRight: "10px"}}>

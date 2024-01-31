@@ -5,7 +5,7 @@ import RoundImage from "./RoundedImg";
 import classes from "./ProfileCard.module.css";
 import Action from "./Action";
 
-const ProfileCard = ({user, toggleAction, postref}) => {
+const ProfileCard = ({user, toggleAction}) => {
   return (
     <Card className={classes.card}>
       <div className={classes.profileContainer}>
@@ -35,17 +35,17 @@ const ProfileCard = ({user, toggleAction, postref}) => {
             )}
             <ul className={`${classes["profile-action"]}   `}>
               <Action
-                numberAction={user.posts}
+                numberAction={user.posts.length}
                 actionName={"Posts"}
                 toggleAction={toggleAction}
               />
               <Action
-                numberAction={user.followers}
+                numberAction={user.followers.length}
                 actionName={"Followers"}
                 toggleAction={toggleAction}
               />
               <Action
-                numberAction={user.following}
+                numberAction={user.following.length}
                 actionName={"Following"}
                 toggleAction={toggleAction}
               />
