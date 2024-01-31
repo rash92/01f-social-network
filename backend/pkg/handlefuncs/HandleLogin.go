@@ -21,8 +21,9 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 			return
 		}
-		
+
 	}
+
 }
 
 func HandleLoginOld(w http.ResponseWriter, r *http.Request) {
