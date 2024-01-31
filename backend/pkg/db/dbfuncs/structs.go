@@ -19,11 +19,11 @@ type User struct {
 	FirstName      string
 	LastName       string
 	Email          string
-	Password       string
+	Password       []byte
 	Profile        string
 	AboutMe        string
 	PrivacySetting string
-	DateOfBirth    string
+	DOB            string
 	CreatedAt      time.Time
 }
 

@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS GroupMessages (
-    Id BLOB NOT NULL PRIMARY KEY,
-    SenderId BLOB NOT NULL,
-    GroupId BLOB NOT NULL,
+    Id TEXT NOT NULL PRIMARY KEY,
+    SenderId TEXT NOT NULL,
+    GroupId TEXT NOT NULL,
     Message TEXT NOT NULL,
     CreatedAt DATETIME NOT NULL,
     FOREIGN KEY (SenderId) REFERENCES Users(Id),

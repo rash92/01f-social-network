@@ -11,7 +11,7 @@ import (
 func Magarate() {
 	// Define the database URL for SQLite3
 	dbURL := "sqlite://./pkg/db/sqlite/sqlite.db"
-  
+
 	// Define the migration source
 	sourceURL := "file://./pkg/db/migrations" // Update with the path to your migrations
 
@@ -22,7 +22,7 @@ func Magarate() {
 	}
 
 	// Apply the migrations
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+	if err := m.Down(); err != nil && err != migrate.ErrNoChange {
 		log.Fatal(err)
 	}
 

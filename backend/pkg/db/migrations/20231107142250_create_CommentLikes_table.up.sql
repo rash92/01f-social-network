@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS  CommentLikes (
-    UserId BLOB,
-    CommentId BLOB,
+    UserId TEXT,
+    CommentId TEXT,
     Liked BOOL,
     Disliked BOOL,
     PRIMARY KEY (UserId,  CommentId),

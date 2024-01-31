@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS PostLikes (
-    UserId BLOB,
-    PostId BLOB,
+    UserId TEXT,
+    PostId TEXT,
     Liked BOOL,
     Disliked BOOL,
     PRIMARY KEY (UserId, PostId),

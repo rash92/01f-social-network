@@ -1,4 +1,4 @@
-package handlefuncs
+package app
 
 import "net/http"
 

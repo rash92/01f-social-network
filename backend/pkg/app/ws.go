@@ -1,4 +1,4 @@
-package ws
+package app
 
 //general notes/ ideas:
 //consider redoing database tables to combine private messages, group messages and various types of notificaitons in one table
@@ -28,7 +28,6 @@ import (
 	"net/http"
 
 	"server/pkg/db/dbfuncs"
-	"server/pkg/handlefuncs"
 	"sync"
 	"time"
 
@@ -53,86 +52,7 @@ var (
 	connectionLock    sync.RWMutex
 )
 
-// this is what the client sends to the server,
-// Body will be reunmarshalled based on type into PrivateMessage, GroupMessage, or Notification etc.
-// as well as ws messages unrelated to database operations
-type WsMessage struct {
-	Type      string    `json:"type"`
-	Body      []byte    `json:"message"`
-	TimeStamp time.Time `json:"time"`
-}
 
-// Consider whether we want to be sending id numbers to the client.
-// We can continue for now as if we are, and modify this later if we
-// decide not to. Be sure to investigate the security implications
-// of sending id numbers to the client. If we decide not to send id
-// numbers, we need to consider the actual threat model, and avoid
-// naively attempting to fix things that don't actually address the
-// real threat.  Matt is sending them and happy that it's not a problem.
-
-// these should match the database fields, check types in database and
-// make them match, also move them to db package eventually
-// Do they need to match the fields in the database? For example,
-// the frontend won't know the id of a message until it's been added
-// to the database. At the moment, signals are being sent to the
-// frontend in the form of a map from string to interface, with
-// whatever key-value pairs are needed for that type of signal.
-type PrivateMessage struct {
-	Id          string    `json:"Id"`
-	SenderId    string    `json:"SenderId"`
-	RecipientId string    `json:"RecipientId"`
-	Message     string    `json:"Message"`
-	CreatedAt   time.Time `json:"CreatedAt"`
-}
-
-type GroupMessage struct {
-	Id        string    `json:"Id"`
-	SenderId  string    `json:"SenderId"`
-	GroupId   string    `json:"GroupId"`
-	Message   string    `json:"Message"`
-	CreatedAt time.Time `json:"CreatedAt"`
-}
-
-type RequestToFollow struct {
-	SenderId    string `json:"SenderId"`
-	RecipientId string `json:"RecipientId"`
-}
-
-// We can just use the Event type for this.
-type ToggleAttendEvent struct {
-	EventId string `json:"EventId"`
-	UserId  string `json:"UserId"`
-	GroupId string `json:"GroupId"`
-	Type    string `json:"Type"`
-}
-
-type Notification struct {
-	Id         string    `json:"Id"`
-	RecieverId string    `json:"RecieverId"`
-	SenderId   string    `json:"SenderId"`
-	Body       string    `json:"Body"`
-	Type       string    `json:"Type"`
-	Seen       bool      `json:"Seen"`
-	CreatedAt  time.Time `json:"CreatedAt"`
-}
-
-type Post struct {
-	//fill in later
-}
-
-type Comment struct {
-	//fill in later
-}
-
-//these may not involve database calls but can still be sent through websockets
-
-// this can be resused for sending WsMessages to other users about a user who has
-// e.g. registered, logged in, logged out, or changed their status
-type BasicUserInfo struct {
-	UserId         string `json:"UserId"`
-	PrivacySetting string `json:"PrivacySetting"` //maybe?
-	//fill in later if more needed
-}
 
 // Be sure to allow possibilty of one of a user's connections being closed
 // while they still have other connections open. Make this distinct from
@@ -220,11 +140,11 @@ eventLoop:
 
 		// Chat:
 		case "privateMessage":
-			var receivedData handlefuncs.Message
+			var receivedData Message
 			unmarshalBody(signal.Body, &receivedData)
 			handlePrivateMessage(receivedData)
 		case "groupMessage":
-			var receivedData handlefuncs.Message
+			var receivedData Message
 			unmarshalBody(signal.Body, &receivedData)
 			handleGroupMessage(receivedData)
 
@@ -252,7 +172,7 @@ eventLoop:
 		// 	//fill in
 		// 	answerInviteToJoinGroup(receivedData)
 		case "createEvent":
-			var receivedData handlefuncs.Event
+			var receivedData Event
 			unmarshalBody(signal.Body, &receivedData)
 			createEvent(receivedData)
 
@@ -341,7 +261,7 @@ func closeConnection(conn *websocket.Conn) {
 // at the front end. Delete the userID from activeConnections. Broadcast
 // the updated user list. The current connection will be closed at the
 // when the event loop breaks.
-// The frontend also needs to trigger handlefuncs.HandleLogOut via http
+// The frontend also needs to trigger HandleLogOut via http
 // as we don't have access to the cookie using websockets.
 func handleLogout(userID string, thisConn *websocket.Conn) {
 	connectionLock.RLock()
@@ -357,7 +277,7 @@ func handleLogout(userID string, thisConn *websocket.Conn) {
 	broadcastUserList()
 }
 
-func handlePrivateMessage(receivedData handlefuncs.Message) {
+func handlePrivateMessage(receivedData Message) {
 	id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
 	if err != nil {
 		log.Println(err, "error adding message to database")
@@ -380,7 +300,7 @@ func handlePrivateMessage(receivedData handlefuncs.Message) {
 
 // I've adapted dbfuncs.AddMessage to handle both private and group
 // messages.
-func handleGroupMessage(receivedData handlefuncs.Message) {
+func handleGroupMessage(receivedData Message) {
 	id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
 	if err != nil {
 		log.Println(err, "error adding message to data base")
@@ -426,14 +346,14 @@ func handleRequestToFollow(receivedData RequestToFollow) {
 }
 
 // Decide if we want to notify the requester of the result.
-func answerRequestToFollow(receivedData handlefuncs.Message) {
+func answerRequestToFollow(receivedData Message) {
 }
 
 // Add a notification to the database and send it to the group creator
 // if they're online. The notification should include the requester and
 // type of notification, the time it was created, and the group ID, in
 // case the recipient has created multiple groups.
-func requestToJoinGroup(receivedData handlefuncs.Message) {
+func requestToJoinGroup(receivedData Message) {
 }
 
 // If the answer is yes, add the requester to the group members list
@@ -444,12 +364,12 @@ func requestToJoinGroup(receivedData handlefuncs.Message) {
 // include which group and whether the answer was yes or no.
 // Also, if YES, add user to GroupEventParticipants with the choice
 // field set to false for all events in that group.
-func answerRequestToJoinGroup(receivedData handlefuncs.Message) {
+func answerRequestToJoinGroup(receivedData Message) {
 }
 
 // Add a notification to the database and send it to the person
 // being invited if they're online.
-func inviteToJoinGroup(receivedData handlefuncs.Message) {
+func inviteToJoinGroup(receivedData Message) {
 }
 
 // If the answer is yes, add the invitee to the group members list
@@ -459,16 +379,16 @@ func inviteToJoinGroup(receivedData handlefuncs.Message) {
 // want to notify the inviter of the result.
 // Also, if YES, add user to GroupEventParticipants with the choice
 // field set to false for all events in that group.
-func answerInviteToJoinGroup(receivedData handlefuncs.Message) {
+func answerInviteToJoinGroup(receivedData Message) {
 }
 
 // Add an event to the database and send it to all group members.
 // Add all groups members to GroupEventParticipants with the choice
 // field set to false. Add notification for each group member.
 
-// In detail: This will now be part of the handlefuncs package.
-// handlefuncs can import dbfuncs, but not the other way around.
-// It will have to convert the handlefuncs.Event to a dbfuncs.Event,
+// In detail: This will now be part of the package.
+// can import dbfuncs, but not the other way around.
+// It will have to convert the Event to a dbfuncs.Event,
 // and then call dbfuncs.AddEvent. It will also have to call
 // dbfuncs.GetGroupMembers to get the list of group members.
 // It will then have to loop through the group members and call
@@ -476,7 +396,7 @@ func answerInviteToJoinGroup(receivedData handlefuncs.Message) {
 // loop through the group members and call dbfuncs.AddGroupEventParticipant
 // for each one. It will also have to loop through the group members
 
-func createEvent(receivedData handlefuncs.Event) {
+func createEvent(receivedData Event) {
 	dbfuncs.AddEvent(receivedData)
 	signal := map[string]interface{}{
 		"data": receivedData,
