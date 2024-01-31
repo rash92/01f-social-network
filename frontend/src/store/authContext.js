@@ -158,11 +158,11 @@ export const AuthContextProvider = (props) => {
   const onRemovePost = (id) => {
     SetPosts(posts.filter((el) => el.id !== id));
   };
-  useEffect(() => {
-    checkSession();
-    getCatogries();
-    getPosts();
-  }, [checkSession, getCatogries, getPosts]);
+  // useEffect(() => {
+  //   checkSession();
+  //   getCatogries();
+  //   getPosts();
+  // }, [checkSession, getCatogries, getPosts]);
   // console.log(selectedPosts)
   return (
     <AuthContext.Provider

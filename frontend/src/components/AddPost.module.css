@@ -1,0 +1,31 @@
+.invalid input {
+  border: 1px solid #b40e0e;
+  background-color: #fddddd;
+}
+.invalid input:focus {
+  border-color: #ff8800;
+  background-color: #fbe8d2;
+}
+.error-text {
+  color: #b40e0e;
+  margin: 1rem 0;
+  font-size: 0.85rem;
+}
+
+.sectionsList {
+  margin: 1rem 0;
+}
+.sectionsList li {
+  cursor: pointer;
+}
+
+.fellowers {
+  margin: 2rem 0;
+}
+
+.chosen {
+  text-decoration: none;
+  margin-right: 1.5rem;
+  display: inline-block;
+  color: #333;
+}

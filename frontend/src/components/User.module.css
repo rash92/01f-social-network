@@ -1,0 +1,9 @@
+.userinfo {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.9rem;
+}
+
+.username {
+  color: #838080;
+}

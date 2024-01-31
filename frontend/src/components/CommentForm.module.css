@@ -1,0 +1,68 @@
+.comment-container{
+  padding:1rem ;
+  
+}
+
+
+.comment{
+background: rgb(236, 236, 236);
+border-radius: 0.4rem;
+margin: 2rem 0;
+box-shadow: rgb(236, 236, 236) 0px 8px 24px;
+padding: 0.5rem 0.7rem;
+}
+
+.comment-header{
+  margin-bottom: 0.5rem ;
+}
+
+.comment-header span{
+  font-size: 0.8rem;
+}
+.comment-body{
+  font-size: 1.1rem;
+color: black;
+  margin-bottom: 1rem;
+}
+
+.react-status{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #b7b7b7;
+  padding-bottom: 0.5rem;
+
+}
+.react-status span{
+ font-size:  0.8rem ;
+}
+
+.comment-reaction{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.comment-reaction button{
+  background: transparent;
+  border: none;
+  outline: none;
+  display: inline-block;
+  margin:  1rem 0;
+  font-size:  0.9rem ;
+}
+
+
+.invalid input {
+  border: 1px solid #b40e0e;
+  background-color: #fddddd;
+}
+.invalid input:focus {
+  border-color: #ff8800;
+  background-color: #fbe8d2;
+}
+.error-text {
+  color: #b40e0e;
+  margin: 1rem 0;
+  font-size: 0.85rem;
+}
