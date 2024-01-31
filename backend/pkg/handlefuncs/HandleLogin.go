@@ -21,7 +21,12 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 			return
 		}
+		var storedPassword string
+
+		err = dbfuncs.db.QueryRow("SELECT Password FROM Users WHERE Email = ?", loginData.Email).Scan(&storedPassword)
+
 	}
+
 }
 
 func HandleLoginOld(w http.ResponseWriter, r *http.Request) {
