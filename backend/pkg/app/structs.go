@@ -108,7 +108,14 @@ type Notification struct {
 }
 
 type Post struct {
-	//fill in later
+	Id           string    `json:"Id"`
+	Title        string    `json:"Title"`
+	Body         string    `json:"Body"`
+	CreatorId    string    `json:"CreatorId"`
+	GroupId      string    `json:"GroupId"`
+	CreatedAt    time.Time `json:"CreatedAt"`
+	Image        string    `json:"Image"`
+	PrivacyLevel string    `json:"PrivacyLevel"`
 }
 
 type Comment struct {

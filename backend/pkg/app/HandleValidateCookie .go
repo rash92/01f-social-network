@@ -20,7 +20,8 @@ func HandleValidateCookie(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "401 Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		if !dbfuncs.ValidateCookie(cookie.Value) {
+		valid, err := dbfuncs.ValidateCookie(cookie.Value)
+		if !valid || err != nil {
 			http.Error(w, "401 Unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -38,7 +39,7 @@ JOIN Users ON Sessions.UserID = Users.Id
 WHERE Sessions.Id = ?
 
 `
-		err = database.QueryRow(query, cookie.Value).Scan(&username, &id, &imgURL)
+		err = db.QueryRow(query, cookie.Value).Scan(&username, &id, &imgURL)
 
 		if err != nil {
 			http.Error(w, `{"error": "something went wrong "}`, http.StatusBadRequest)
