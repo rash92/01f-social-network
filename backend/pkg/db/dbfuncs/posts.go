@@ -27,9 +27,18 @@ func AddPost(post *Post) error {
 	if err != nil {
 		return err
 	}
-	statement.Exec(post.Id, post.Title, post.Body, post.CreatorId, post.GroupId, post.CreatedAt, post.Image, post.PrivacyLevel)
+	_, err = statement.Exec(post.Id, post.Title, post.Body, post.CreatorId, post.GroupId, post.CreatedAt, post.Image, post.PrivacyLevel)
 
-	return nil
+	return err
+}
+
+func DeletePost(PostId string) error {
+	statement, err := db.Prepare("DELETE FROM Posts WHERE PostId=?")
+	if err != nil {
+		return err
+	}
+	_, err = statement.Exec(PostId)
+	return err
 }
 
 func AddPostChosenFollower(postChosenFollower *PostChosenFollower) error {
@@ -37,20 +46,48 @@ func AddPostChosenFollower(postChosenFollower *PostChosenFollower) error {
 	if err != nil {
 		return err
 	}
-	statement.Exec(postChosenFollower.PostId, postChosenFollower.FollowerId)
+	_, err = statement.Exec(postChosenFollower.PostId, postChosenFollower.FollowerId)
 
-	return nil
+	return err
 }
 
-func CountLikesDislikes() {
-
+func CountPostReacts(PostId string) (totalLikes, totalDislikes int, err error) {
+	likes, dislikes, err := GetPostLikes(PostId)
+	if err != nil {
+		return
+	}
+	totalLikes = len(likes)
+	totalDislikes = len(dislikes)
+	return
+}
+func GetPostLikes(PostId string) (likeUserIds, dislikeUserIds []string, err error) {
+	rows, err := db.Query("SELECT UserId, Liked, Disliked FROM CommentLikes WHERE PostId=?", PostId)
+	if err == sql.ErrNoRows {
+		err = nil
+		return
+	} else if err != nil {
+		return
+	}
+	defer rows.Close()
+	var userId string
+	var like bool
+	var dislike bool
+	for rows.Next() {
+		err = rows.Scan(&userId, &like, &dislike)
+		if err != nil {
+			return
+		}
+		if like {
+			likeUserIds = append(likeUserIds, userId)
+		}
+		if dislike {
+			dislikeUserIds = append(dislikeUserIds, userId)
+		}
+	}
+	return
 }
 
 func isSupportedFileType() {
-
-}
-
-func RemovePost() {
 
 }
 
@@ -58,136 +95,51 @@ func SaveImage() {
 
 }
 
-func AddDislikes() {
-
-}
-
-func AddLikes() {
-
-}
-
-func FindLikeUsers() {
-
-}
-
-func FindPostsCatsOld(PostId string) []string {
-	rows, err := database.Query("SELECT CatId FROM PostCat WHERE PostId=?", PostId)
-	if err == sql.ErrNoRows {
-		return nil
-	} else if err != nil {
-		log.Fatal(err)
-	}
-
-	defer rows.Close()
-
-	var AllCats []string
-
-	for rows.Next() {
-		var CatId uuid.UUID
-		err := rows.Scan(&CatId)
-		if err != nil {
-			log.Fatal(err)
-		}
-		name := database.QueryRow("SELECT Name FROM Categories WHERE Id=?", CatId)
-		var cat string
-		err = name.Scan(&cat)
-		if err != nil {
-			log.Fatal(err)
-		}
-		AllCats = append(AllCats, cat)
-	}
-	return AllCats
-}
-
-func FindLikeUsersOld(PostId string) []string {
-	rows, err := database.Query("SELECT UserId FROM Likes WHERE PostId=? AND Liked=1", PostId)
-	if err == sql.ErrNoRows {
-		return nil
-	} else if err != nil {
-		log.Fatal(err)
-	}
-
-	defer rows.Close()
-
-	var AllLikes []string
-
-	for rows.Next() {
-		var UserId uuid.UUID
-		err := rows.Scan(&UserId)
-		if err != nil {
-			log.Fatal(err)
-		}
-		name := database.QueryRow("SELECT Nickname FROM Users WHERE Id=?", UserId)
-		var user string
-		err = name.Scan(&user)
-		if err != nil {
-			log.Fatal(err)
-		}
-		AllLikes = append(AllLikes, user)
-	}
-	return AllLikes
-}
-
-func AddLikesOld(UserID, PostId string) error {
-	newLike, err := database.Prepare("INSERT INTO Likes VALUES (?,?,?,?)")
-	if err != nil {
-		return err
-	}
-	updateLike, err := database.Prepare("UPDATE Likes SET Liked=?, Disliked=? WHERE UserId=? AND PostId=?")
-	if err != nil {
-		return err
-	}
-	row := database.QueryRow("SELECT Liked, Disliked FROM Likes WHERE UserId=? AND PostId=?", UserID, PostId)
-	var like bool
-	var dislike bool
-	err = row.Scan(&like, &dislike)
-
-	if err == sql.ErrNoRows {
-		newLike.Exec(UserID, PostId, true, false)
-	} else if err != nil {
-		log.Fatal(err)
-		return err
-
-	}
-	if like {
-
-		updateLike.Exec(false, false, UserID, PostId)
+// likeOrDislike can only take values "like" or "dislike"
+func LikeDislikePost(UserId, PostId, likeOrDislike string) error {
+	addLike := false
+	addDislike := false
+	if likeOrDislike == "like" {
+		addLike = true
+	} else if likeOrDislike == "dislike" {
+		addDislike = true
 	} else {
-
-		updateLike.Exec(true, false, UserID, PostId)
+		return errors.New("like or dislike are the only options for parameter likeOrDislike")
 	}
 
-	return nil
-}
+	var liked bool
+	var disliked bool
+	err := db.QueryRow("SELECT Liked, Disliked FROM PostLikes WHERE UserId=? AND PostId=?", UserId, PostId).Scan(&liked, &disliked)
 
-func AddDislikesOld(UserID, PostId string) error {
-	newDislike, err := database.Prepare("INSERT INTO Likes VALUES (?,?,?,?)")
-	if err != nil {
-		return err
-	}
-	updateDislike, err := database.Prepare("UPDATE Likes SET Liked=?, Disliked=? WHERE UserId=? AND PostId=?")
-	if err != nil {
-		return err
-	}
-	row := database.QueryRow("SELECT Liked, Disliked FROM Likes WHERE UserId=? AND PostId=?", UserID, PostId)
-	var like bool
-	var dislike bool
-	err = row.Scan(&like, &dislike)
 	if err == sql.ErrNoRows {
-		newDislike.Exec(UserID, PostId, false, true)
-	} else if err != nil {
+		newRow, err := db.Prepare("INSERT INTO PostLikes VALUES (?,?,?,?)")
+		if err != nil {
+			return err
+		}
+		_, err = newRow.Exec(UserId, PostId, addLike, addDislike)
 		return err
-
 	}
-	if dislike {
-
-		updateDislike.Exec(false, false, UserID, PostId)
-	} else {
-
-		updateDislike.Exec(false, true, UserID, PostId)
+	if err != nil {
+		return err
+	}
+	if (liked && addLike) || (disliked && addDislike) {
+		removeRow, err := db.Prepare("DELETE FROM PostLikes WHERE UserId=? AND PostId=?")
+		if err != nil {
+			return err
+		}
+		_, err = removeRow.Exec(UserId, PostId)
+		return err
+	}
+	if (liked && addDislike) || (disliked && addLike) {
+		updateRow, err := db.Prepare("UPDATE PostLikes SET Liked=?, Disliked=? WHERE UserId=? AND PostId=?")
+		if err != nil {
+			return err
+		}
+		_, err = updateRow.Exec(addLike, addDislike, UserId, PostId)
+		return err
 	}
 
-	return nil
+	return errors.New("problem adding like or dislike: how did you get here?")
 }
 
 func SaveImageOld(file multipart.File, header *multipart.FileHeader) (string, error) {
@@ -223,76 +175,77 @@ func SaveImageOld(file multipart.File, header *multipart.FileHeader) (string, er
 	return image, nil
 }
 
-func RemovePostOld(postID string) error {
-	db, err := sql.Open("sqlite3", "./forum.db")
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-	// delete comment likes and dislikes
-	stmtCommentLikesDislikes, err := db.Prepare("DELETE FROM CommentLikes WHERE CommentId IN (SELECT id FROM 	Comments WHERE  PostId = ?)")
-	if err != nil {
-		return err
-	}
-	defer stmtCommentLikesDislikes.Close()
+//should be unnecessary to do it this long way with ON CASCADE DELETE in db tables, but if not can still do it this way
+// func RemovePostOld(postID string) error {
+// 	db, err := sql.Open("sqlite3", "./forum.db")
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer db.Close()
+// 	// delete comment likes and dislikes
+// 	stmtCommentLikesDislikes, err := db.Prepare("DELETE FROM CommentLikes WHERE CommentId IN (SELECT id FROM 	Comments WHERE  PostId = ?)")
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer stmtCommentLikesDislikes.Close()
 
-	_, err = stmtCommentLikesDislikes.Exec(postID)
-	if err != nil {
-		return err
-	}
+// 	_, err = stmtCommentLikesDislikes.Exec(postID)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	// Delete comments
-	stmtComments, err := db.Prepare("DELETE FROM Comments WHERE PostId = ?")
+// 	// Delete comments
+// 	stmtComments, err := db.Prepare("DELETE FROM Comments WHERE PostId = ?")
 
-	if err != nil {
-		return err
-	}
-	defer stmtComments.Close()
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer stmtComments.Close()
 
-	_, err = stmtComments.Exec(postID)
-	if err != nil {
-		return err
-	}
+// 	_, err = stmtComments.Exec(postID)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	// Delete likes
-	stmtLikes, err := db.Prepare("DELETE FROM  Likes WHERE PostId= ?")
-	if err != nil {
-		return err
-	}
-	defer stmtLikes.Close()
+// 	// Delete likes
+// 	stmtLikes, err := db.Prepare("DELETE FROM  Likes WHERE PostId= ?")
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer stmtLikes.Close()
 
-	_, err = stmtLikes.Exec(postID)
-	if err != nil {
-		return err
-	}
+// 	_, err = stmtLikes.Exec(postID)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	//delete cats
+// 	//delete cats
 
-	stmtPostCats, err := db.Prepare("DELETE FROM PostCat WHERE PostId= ?")
-	if err != nil {
-		return err
-	}
-	defer stmtPostCats.Close()
+// 	stmtPostCats, err := db.Prepare("DELETE FROM PostCat WHERE PostId= ?")
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer stmtPostCats.Close()
 
-	_, err = stmtPostCats.Exec(postID)
-	if err != nil {
-		return err
-	}
+// 	_, err = stmtPostCats.Exec(postID)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	// Delete the post
-	stmtPost, err := db.Prepare("DELETE FROM  Posts WHERE Id = ?")
-	if err != nil {
-		return err
-	}
-	defer stmtPost.Close()
+// 	// Delete the post
+// 	stmtPost, err := db.Prepare("DELETE FROM  Posts WHERE Id = ?")
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer stmtPost.Close()
 
-	_, err = stmtPost.Exec(postID)
-	if err != nil {
-		return err
-	}
+// 	_, err = stmtPost.Exec(postID)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func isSupportedFileTypeOld(fileType string) bool {
 
@@ -303,32 +256,4 @@ func isSupportedFileTypeOld(fileType string) bool {
 		"gif":  true,
 	}
 	return supportedTypes[strings.ToLower(fileType)]
-}
-
-func CountLikesDislikesOld(PostId string) (likes, dislikes int) {
-	rows, err := database.Query("SELECT Liked, Disliked FROM Likes WHERE PostId=?", PostId)
-	if err == sql.ErrNoRows {
-		return 0, 0
-	} else if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-	likes = 0
-	dislikes = 0
-	var l bool
-	var d bool
-	for rows.Next() {
-		err := rows.Scan(&l, &d)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if l {
-			likes++
-		}
-		if d {
-			dislikes++
-		}
-	}
-
-	return
 }

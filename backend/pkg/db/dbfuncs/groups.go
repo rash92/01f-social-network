@@ -18,9 +18,9 @@ func AddGroup(group *Group) error {
 	if err != nil {
 		return err
 	}
-	statement.Exec(group.Id, group.Title, group.Description, group.CreatorId, group.CreatedAt)
+	_, err = statement.Exec(group.Id, group.Title, group.Description, group.CreatorId, group.CreatedAt)
 
-	return nil
+	return err
 }
 
 func AddGroupMember(groupmember *GroupMember) error {
@@ -28,9 +28,9 @@ func AddGroupMember(groupmember *GroupMember) error {
 	if err != nil {
 		return err
 	}
-	statement.Exec(groupmember.GroupId, groupmember.UserId, groupmember.Status)
+	_, err = statement.Exec(groupmember.GroupId, groupmember.UserId, groupmember.Status)
 
-	return nil
+	return err
 }
 
 func AddGroupEvent(groupEvent *GroupEvent) error {
@@ -44,9 +44,9 @@ func AddGroupEvent(groupEvent *GroupEvent) error {
 	if err != nil {
 		return err
 	}
-	statement.Exec(groupEvent.Id, groupEvent.GroupId, groupEvent.Title, groupEvent.Description, groupEvent.CreatorId, groupEvent.Time)
+	_, err = statement.Exec(groupEvent.Id, groupEvent.GroupId, groupEvent.Title, groupEvent.Description, groupEvent.CreatorId, groupEvent.Time)
 
-	return nil
+	return err
 }
 
 func AddGroupEventParticipant(groupEventParticipant *GroupEventParticipant) error {
@@ -54,9 +54,9 @@ func AddGroupEventParticipant(groupEventParticipant *GroupEventParticipant) erro
 	if err != nil {
 		return err
 	}
-	statement.Exec(groupEventParticipant.EventId, groupEventParticipant.UserId, groupEventParticipant.GroupId)
+	_, err = statement.Exec(groupEventParticipant.EventId, groupEventParticipant.UserId, groupEventParticipant.GroupId)
 
-	return nil
+	return err
 }
 
 func AddGroupMessage(groupMessage *GroupMessage) error {
@@ -71,7 +71,7 @@ func AddGroupMessage(groupMessage *GroupMessage) error {
 	if err != nil {
 		return err
 	}
-	statement.Exec(groupMessage.Id, groupMessage.SenderId, groupMessage.GroupId, groupMessage.Message, groupMessage.CreatedAt)
+	_, err = statement.Exec(groupMessage.Id, groupMessage.SenderId, groupMessage.GroupId, groupMessage.Message, groupMessage.CreatedAt)
 
-	return nil
+	return err
 }

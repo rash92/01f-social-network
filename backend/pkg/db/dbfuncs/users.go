@@ -18,9 +18,9 @@ func AddUser(user *User) error {
 	if err != nil {
 		return err
 	}
-	statement.Exec(user.Id, user.Nickname, user.FirstName, user.LastName, user.Email, user.Password, user.Profile, user.AboutMe, user.PrivacySetting, user.DOB, user.CreatedAt)
+	_, err = statement.Exec(user.Id, user.Nickname, user.FirstName, user.LastName, user.Email, user.Password, user.Profile, user.AboutMe, user.PrivacySetting, user.DOB, user.CreatedAt)
 
-	return nil
+	return err
 }
 
 func AddSession(userId string) (Session, error) {
@@ -39,9 +39,9 @@ func AddSession(userId string) (Session, error) {
 	if err != nil {
 		return Session{}, err
 	}
-	statement.Exec(session.Id, session.Expires, session.UserId)
+	_, err = statement.Exec(session.Id, session.Expires, session.UserId)
 
-	return session, nil
+	return session, err
 }
 
 func DeleteSession(sessionId string) error {
@@ -50,10 +50,7 @@ func DeleteSession(sessionId string) error {
 		return err
 	}
 	_, err = statement.Exec(sessionId)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func GetUserIdFromCookie(SessionId string) (string, error) {

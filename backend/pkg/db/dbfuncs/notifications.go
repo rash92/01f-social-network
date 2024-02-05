@@ -18,7 +18,7 @@ func AddNotification(notification *Notification) error {
 	if err != nil {
 		return err
 	}
-	statement.Exec(notification.Id, notification.Body, notification.Type, notification.CreatedAt, notification.ReceiverId, notification.SenderId, notification.Seen)
+	_, err = statement.Exec(notification.Id, notification.Body, notification.Type, notification.CreatedAt, notification.ReceiverId, notification.SenderId, notification.Seen)
 
-	return nil
+	return err
 }

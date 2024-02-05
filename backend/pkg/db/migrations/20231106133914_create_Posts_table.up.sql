@@ -7,6 +7,6 @@ GroupId  TEXT,
 CreatedAt DATETIME NOT NULL,
 Image TEXT,
 PrivacyLevel TEXT NOT NULL,
-FOREIGN KEY (CreatorId) REFERENCES Users(Id),
+FOREIGN KEY (CreatorId) REFERENCES Users(Id) ON DELETE CASCADE,
 FOREIGN KEY (GroupId) REFERENCES [Groups](Id)
 );

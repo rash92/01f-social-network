@@ -5,6 +5,6 @@ func AddFollow(follow *Follow) error {
 	if err != nil {
 		return err
 	}
-	statement.Exec(follow.FollowerId, follow.FollowingId, follow.Status)
-	return nil
+	_, err = statement.Exec(follow.FollowerId, follow.FollowingId, follow.Status)
+	return err
 }

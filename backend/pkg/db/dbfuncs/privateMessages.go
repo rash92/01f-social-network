@@ -18,9 +18,9 @@ func AddPrivateMessage(privateMessage *PrivateMessage) error {
 	if err != nil {
 		return err
 	}
-	statement.Exec(privateMessage.Id, privateMessage.SenderId, privateMessage.RecipientId, privateMessage.Message, privateMessage.CreatedAt)
+	_, err = statement.Exec(privateMessage.Id, privateMessage.SenderId, privateMessage.RecipientId, privateMessage.Message, privateMessage.CreatedAt)
 
-	return nil
+	return err
 }
 
 func GetAllUsersSortedByLastMessage() {

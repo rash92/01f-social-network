@@ -2,7 +2,7 @@ package dbfuncs
 
 import (
 	"database/sql"
-	"log"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,36 +21,28 @@ func AddComment(comment *Comment) error {
 	if err != nil {
 		return err
 	}
-	statement.Exec(comment.Id, comment.Body, comment.CreatorId, comment.PostId, comment.CreatedAt, comment.Image)
+	_, err = statement.Exec(comment.Id, comment.Body, comment.CreatorId, comment.PostId, comment.CreatedAt, comment.Image)
 
-	return nil
+	return err
+}
+
+func DeleteComment(commentId string) error {
+	statement, err := db.Prepare("DELETE FROM Comments WHERE CommentId=?")
+	if err != nil {
+		return err
+	}
+	_, err = statement.Exec(commentId)
+	return err
 }
 
 // returns likes, dislikes, error
 func CountCommentReacts(CommentId string) (totalLikes, totalDislikes int, err error) {
-	rows, err := db.Query("SELECT Liked, Disliked FROM CommentLikes WHERE CommentId=?", CommentId)
-	if err == sql.ErrNoRows {
-		err = nil
-		return
-	} else if err != nil {
+	likes, dislikes, err := GetCommentLikes(CommentId)
+	if err != nil {
 		return
 	}
-	defer rows.Close()
-	var like bool
-	var dislike bool
-	for rows.Next() {
-
-		err = rows.Scan(&like, &dislike)
-		if err != nil {
-			return
-		}
-		if like {
-			totalLikes++
-		}
-		if dislike {
-			totalDislikes++
-		}
-	}
+	totalLikes = len(likes)
+	totalDislikes = len(dislikes)
 	return
 }
 
@@ -81,59 +73,49 @@ func GetCommentLikes(CommentId string) (likeUserIds, dislikeUserIds []string, er
 	return
 }
 
-func DislikeComment() {
-
-}
-
-func DislikeCommentOld(UserID, CommentId string) {
-	newDislike, _ := database.Prepare("INSERT INTO CommentLikes VALUES (?,?,?,?)")
-	updateDislike, _ := database.Prepare("UPDATE CommentLikes SET Liked=?, Disliked=? WHERE UserId=? AND CommentId=?")
-	row := database.QueryRow("SELECT Liked, Disliked FROM CommentLikes WHERE UserId=? AND CommentId=?", UserID, CommentId)
-	var like bool
-	var dislike bool
-	err := row.Scan(&like, &dislike)
-	if err == sql.ErrNoRows {
-
-		newDislike.Exec(UserID, CommentId, false, true)
-	} else if err != nil {
-
-		log.Fatal(err)
-
-	}
-	if dislike {
-
-		updateDislike.Exec(false, false, UserID, CommentId)
+// likeOrDislike can only take values "like" or "dislike"
+func LikeDislikeComment(UserId, CommentId, likeOrDislike string) error {
+	addLike := false
+	addDislike := false
+	if likeOrDislike == "like" {
+		addLike = true
+	} else if likeOrDislike == "dislike" {
+		addDislike = true
 	} else {
-
-		updateDislike.Exec(false, true, UserID, CommentId)
+		return errors.New("like or dislike are the only options for parameter likeOrDislike")
 	}
-}
 
-func LikedComment() {
+	var liked bool
+	var disliked bool
+	err := db.QueryRow("SELECT Liked, Disliked FROM CommentLikes WHERE UserId=? AND CommentId=?", UserId, CommentId).Scan(&liked, &disliked)
 
-}
-
-func LikeCommentOld(UserID, CommentId string) {
-	database, _ := sql.Open("sqlite3", "../sever/forum.db")
-	newLike, _ := database.Prepare("INSERT INTO CommentLikes VALUES (?,?,?,?)")
-	updateLike, _ := database.Prepare("UPDATE CommentLikes SET Liked=?, Disliked=? WHERE UserId=? AND CommentId=?")
-	row := database.QueryRow("SELECT Liked, Disliked FROM CommentLikes WHERE UserId=? AND CommentId=?", UserID, CommentId)
-	var like bool
-	var dislike bool
-	err := row.Scan(&like, &dislike)
 	if err == sql.ErrNoRows {
-
-		newLike.Exec(UserID, CommentId, true, false)
-	} else if err != nil {
-
-		log.Fatal(err)
-
+		newRow, err := db.Prepare("INSERT INTO CommentLikes VALUES (?,?,?,?)")
+		if err != nil {
+			return err
+		}
+		_, err = newRow.Exec(UserId, CommentId, addLike, addDislike)
+		return err
 	}
-	if like {
-
-		updateLike.Exec(false, false, UserID, CommentId)
-	} else {
-
-		updateLike.Exec(true, false, UserID, CommentId)
+	if err != nil {
+		return err
 	}
+	if (liked && addLike) || (disliked && addDislike) {
+		removeRow, err := db.Prepare("DELETE FROM CommentLikes WHERE UserId=? AND CommentId=?")
+		if err != nil {
+			return err
+		}
+		_, err = removeRow.Exec(UserId, CommentId)
+		return err
+	}
+	if (liked && addDislike) || (disliked && addLike) {
+		updateRow, err := db.Prepare("UPDATE CommentLikes SET Liked=?, Disliked=? WHERE UserId=? AND CommentId=?")
+		if err != nil {
+			return err
+		}
+		_, err = updateRow.Exec(addLike, addDislike, UserId, CommentId)
+		return err
+	}
+
+	return errors.New("problem adding like or dislike: how did you get here?")
 }
