@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	dbfuncs "server/pkg/db/dbfuncs"
-	// magarate "server/pkg/db/sqlite"
 	handlefuncs "server/pkg/handlefuncs"
 	"sync"
 	"time"
@@ -186,8 +185,9 @@ func broadcastUserList(id string) {
 func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("user_token")
-		
+
 		if err != nil || !dbfuncs.ValidateCookie(cookie.Value) {
+			// fmt.Println("cookie value wrapper function", cookie.Value)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -216,7 +216,7 @@ func main() {
 	http.HandleFunc("/react-Post-like-dislike", handlefuncs.HandlePostLikeDislike)
 	http.HandleFunc("/react-comment-like-dislike", handlefuncs.HandleCommenttLikeDislike)
 	http.HandleFunc("/removePost", handlefuncs.HandleRemovePost)
-	// http.HandleFunc("/fillter", handlefuncs.HandleFilter)
+	http.HandleFunc("/profile", wrapperHandler(handlefuncs.HandleGetProfile))
 	http.HandleFunc("/get-users", handlefuncs.HandleGetUsers)
 	http.HandleFunc("/get-messages", handlefuncs.MessagesHandler)
 	http.Handle("/images/", http.StripPrefix("/images", http.FileServer(http.Dir("./pkg/db/images"))))

@@ -14,6 +14,7 @@ export const getJson = async (endpoint, aptions) => {
   try {
     const res = await fetch(`${Url}${endpoint}`, aptions);
     if (!res.ok) {
+      console.log(res);
       const error = await res.json();
       throw Error(`${error.error} ${res.statusText} ${res.status} `);
     }
@@ -22,5 +23,3 @@ export const getJson = async (endpoint, aptions) => {
     throw error;
   }
 };
-
-

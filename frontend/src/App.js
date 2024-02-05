@@ -2,7 +2,7 @@ import {createBrowserRouter, RouterProvider} from "react-router-dom";
 import Root from "./pages/Root";
 import Home from "./pages/Home";
 import PrivateRoutes from "./components/PrivateRoutes";
-import Profile from "./pages/Profile";
+import Profile, {profileLoader} from "./pages/Profile";
 
 const router = createBrowserRouter([
   {
@@ -25,6 +25,7 @@ const router = createBrowserRouter([
       {
         path: "/profile/:id",
         element: <PrivateRoutes component={Profile} />,
+        // loader: profileLoader,
       },
 
       // {

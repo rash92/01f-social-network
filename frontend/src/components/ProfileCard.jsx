@@ -5,7 +5,7 @@ import RoundImage from "./RoundedImg";
 import classes from "./ProfileCard.module.css";
 import Action from "./Action";
 
-const ProfileCard = ({user, toggleAction}) => {
+const ProfileCard = ({user, toggleAction, toggleProfileVisibility}) => {
   return (
     <Card className={classes.card}>
       <div className={classes.profileContainer}>
@@ -16,7 +16,7 @@ const ProfileCard = ({user, toggleAction}) => {
               id="profileVisibilitySwitch"
               label={`Make Profile ${user.IsPrivate ? "Public" : "Private"}`}
               checked={user.IsPrivate}
-              onChange={user.toggleProfileVisibility}
+              onChange={toggleProfileVisibility}
             />
           </Form>
         ) : (
@@ -40,12 +40,12 @@ const ProfileCard = ({user, toggleAction}) => {
                 toggleAction={toggleAction}
               />
               <Action
-                numberAction={user.followers.length}
+                numberAction={user.numberOfFollowers}
                 actionName={"Followers"}
                 toggleAction={toggleAction}
               />
               <Action
-                numberAction={user.following.length}
+                numberAction={user.numberOfFollowing}
                 actionName={"Following"}
                 toggleAction={toggleAction}
               />

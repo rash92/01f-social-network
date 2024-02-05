@@ -7,29 +7,63 @@ import {Container} from "react-bootstrap";
 import ProfileActions from "../components/ProfileActions";
 import Posts from "../components/Posts";
 import {dummyPosts} from "../store/dummydata";
-
+import {getJson} from "../helpers/helpers";
 const options1 = [
-  {id: 1, username: "abdi2", name: "abdi"},
-  {id: 2, username: "ahmed34", name: "ahmed"},
-  {id: 3, username: "user3", name: "User 3"},
-  {id: 4, username: "user4", name: "User 4"},
-  {id: 5, username: "user5", name: "User 5"},
+  {id: 1, username: "user", name: "User 1"},
+  {id: 2, username: "user", name: "User 2"},
+  {id: 3, username: "user", name: "User 3"},
+  {id: 4, username: "user", name: "User 4"},
+  {id: 5, username: "user", name: "User 5"},
+  {id: 6, username: "user", name: "User 6"},
+  {id: 7, username: "user", name: "User 7"},
+  {id: 8, username: "user", name: "User 8"},
+  {id: 9, username: "user", name: "User 9"},
+  {id: 10, username: "user", name: "User 10"},
 ];
 
 const options2 = [
-  {id: 6, username: "john_doe", name: "John"},
-  {id: 7, username: "jane_smith", name: "Jane"},
-  {id: 8, username: "user8", name: "User 8"},
-  {id: 9, username: "user9", name: "User 9"},
-  {id: 10, username: "user10", name: "User 10"},
+  {id: 1, username: "user", name: "User 1"},
+  {id: 2, username: "user", name: "User 2"},
+  {id: 3, username: "user", name: "User 3"},
+  {id: 4, username: "user", name: "User 4"},
+  {id: 5, username: "user", name: "User 5"},
+  {id: 6, username: "user", name: "User 6"},
+  {id: 7, username: "user", name: "User 7"},
+  {id: 8, username: "user", name: "User 8"},
+  {id: 9, username: "user", name: "User 9"},
+  {id: 10, username: "user", name: "User 10"},
 ];
 
 const Profile = () => {
   const {user} = React.useContext(AuthContext);
+  const dummyUser = {
+    // toggleProfileVisibility,
+    relStatus: "fellow",
+    isOwner: true,
+    Isprivate: true,
+    followers: options1,
+    following: options2,
+    numberOfFollowers: 60,
+    numberOfFollowing: 60,
+    posts: dummyPosts,
+    firstName: "John",
+    lastName: "Doe",
+    dateOfBirth: "1990-01-01",
+    avatar: user.profileImg,
+    nickname: "JD",
+    aboutMe:
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur et tristique libero.",
+  };
+
   const [Isprivate, setIsPrivate] = useState(true);
   const postRef = useRef(null);
   const [show, setShow] = useState(false);
   const [isActive, setIsActive] = useState("");
+
+  const toggleProfileVisibility = () => {
+    setIsPrivate(!Isprivate);
+  };
+
   const toggleActionModel = (active) => {
     setIsActive(active);
   };
@@ -43,44 +77,42 @@ const Profile = () => {
       postRef.current.scrollIntoView({behavior: "smooth"});
       return;
     }
-    setIsActive("clickButton");
-    
+    setIsActive(clickButton.toLowerCase());
+    handleShow();
   };
 
-  const toggleProfileVisibility = () => {
-    setIsPrivate(!Isprivate);
-  };
+  const [data, setData] = useState(dummyUser);
+  const [hasMore, setHasMore] = useState({followers: true, following: true});
 
-  const dummyUser = {
-    toggleProfileVisibility,
-    relStatus: "fellow",
-    isOwner: true,
-    Isprivate: true,
-    followers: options1,
-    following: options2,
-    posts: dummyPosts,
-    firstName: "John",
-    lastName: "Doe",
-    dateOfBirth: "1990-01-01",
-    avatar: user.profileImg,
-    nickname: "JD",
-    aboutMe:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur et tristique libero.",
+  const fetchMoreData = () => {
+    if (data[isActive].length <= 50) {
+      setData((prev) => ({
+        ...prev,
+        [isActive]: [...prev[isActive], ...options1],
+      }));
+    } else {
+      setHasMore((pre) => ({...pre, [isActive]: false}));
+    }
   };
 
   return (
     <Container>
       <div className={classes.profile}>
-        <ProfileCard user={dummyUser} toggleAction={toggleAction} />
-
+        <ProfileCard
+          user={data}
+          toggleAction={toggleAction}
+          toggleProfileVisibility={toggleProfileVisibility}
+        />
         <ProfileActions
-          user={dummyUser}
+          user={data}
           handleClose={handleClose}
           handleShow={handleShow}
           show={show}
           flag={false}
           isActive={isActive}
           toggleAction={toggleActionModel}
+          fetchMoreData={fetchMoreData}
+          hasMore={hasMore}
         />
 
         <div>
@@ -93,5 +125,17 @@ const Profile = () => {
     </Container>
   );
 };
+
+export function profileLoader({request, params}) {
+  // console.log(request, params);
+  return getJson("profile", {
+    method: "POST",
+    mode: "no-cors",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(params.id),
+  });
+}
 
 export default Profile;
