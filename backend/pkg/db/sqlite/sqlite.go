@@ -6,6 +6,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/sqlite"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func Magarate() {
@@ -22,7 +23,7 @@ func Magarate() {
 	}
 
 	// Apply the migrations
-	if err := m.Down(); err != nil && err != migrate.ErrNoChange {
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		log.Fatal(err)
 	}
 

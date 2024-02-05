@@ -58,6 +58,7 @@ type Comment struct {
 type Follow struct {
 	FollowerId  string
 	FollowingId string
+	Status      string
 }
 
 type Group struct {
