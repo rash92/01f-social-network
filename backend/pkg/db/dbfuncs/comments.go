@@ -26,35 +26,58 @@ func AddComment(comment *Comment) error {
 	return nil
 }
 
-func CountCommentReacts() {
-
-}
-
-func CountCommentReactsOld(CommentId string) (likes, dislikes int) {
-	rows, err := database.Query("SELECT Liked, Disliked FROM CommentLikes WHERE CommentId=?", CommentId)
+// returns likes, dislikes, error
+func CountCommentReacts(CommentId string) (totalLikes, totalDislikes int, err error) {
+	rows, err := db.Query("SELECT Liked, Disliked FROM CommentLikes WHERE CommentId=?", CommentId)
 	if err == sql.ErrNoRows {
-		return 0, 0
+		err = nil
+		return
 	} else if err != nil {
-		log.Fatal(err)
+		return
 	}
 	defer rows.Close()
-	likes = 0
-	dislikes = 0
-	var l bool
-	var d bool
+	var like bool
+	var dislike bool
 	for rows.Next() {
-		err := rows.Scan(&l, &d)
+
+		err = rows.Scan(&like, &dislike)
 		if err != nil {
-			log.Fatal(err)
+			return
 		}
-		if l {
-			likes++
+		if like {
+			totalLikes++
 		}
-		if d {
-			dislikes++
+		if dislike {
+			totalDislikes++
 		}
 	}
+	return
+}
 
+func GetCommentLikes(CommentId string) (likeUserIds, dislikeUserIds []string, err error) {
+	rows, err := db.Query("SELECT UserId, Liked, Disliked FROM CommentLikes WHERE CommentId=?", CommentId)
+	if err == sql.ErrNoRows {
+		err = nil
+		return
+	} else if err != nil {
+		return
+	}
+	defer rows.Close()
+	var userId string
+	var like bool
+	var dislike bool
+	for rows.Next() {
+		err = rows.Scan(&userId, &like, &dislike)
+		if err != nil {
+			return
+		}
+		if like {
+			likeUserIds = append(likeUserIds, userId)
+		}
+		if dislike {
+			dislikeUserIds = append(dislikeUserIds, userId)
+		}
+	}
 	return
 }
 
