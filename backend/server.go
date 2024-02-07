@@ -184,11 +184,12 @@ func broadcastUserList(id string) {
 
 func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		handlefuncs.Cors(&w, r)
 		cookie, err := r.Cookie("user_token")
 
 		if err != nil || !dbfuncs.ValidateCookie(cookie.Value) {
 			// fmt.Println("cookie value wrapper function", cookie.Value)
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			http.Error(w, `{"error": "something went to wrong"}`, http.StatusUnauthorized)
 			return
 		}
 		handler(w, r)

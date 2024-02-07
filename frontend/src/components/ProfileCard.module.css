@@ -1,7 +1,8 @@
 .card {
-  margin: 1rem;
+  margin: 1rem 0rem;
   padding: 1rem;
-  background-color: #eeeeee;
+  background-color: #f6f1f1;
+  max-width: 800px;
 }
 
 .image {
@@ -28,4 +29,11 @@
   font-size: 0.8rem;
   margin-left: 3rem;
   font-size: 1rem;
+}
+
+.interact {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3rem;
+  padding: 1rem;
 }

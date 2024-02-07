@@ -43,7 +43,7 @@ type User struct {
 }
 
 func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
-	Cors(&w, r)
+
 	var userId string
 	var ownerId string
 	var profile Profile
@@ -63,6 +63,7 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	profile.Owner, err = GetProfileOwner(ownerId)
+
 	if err != nil {
 		errorMessage := fmt.Sprintf("error getting profile owner: %v", err.Error())
 		fmt.Println(err.Error(), "66")
@@ -74,28 +75,23 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 
 	cookie, _ := r.Cookie("user_token")
 	userId, _ = GetUserIdFromCookie(cookie.Value)
+
 	if userId == ownerId {
 		usersOwnProfile = true
 	}
+	fmt.Println(!usersOwnProfile, "handleProfile:line:78")
+	if !usersOwnProfile && profile.Owner.PrivacySetting == "private" {
 
-	if !usersOwnProfile || profile.Owner.PrivacySetting == "private" {
-		profile.Owner = User{
-			Nickname: profile.Owner.Nickname,
-		}
-
-		response := map[string]interface{}{
-			"Nickname": "bilal",
-		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		fmt.Println(response)
-		if err := json.NewEncoder(w).Encode(response); err != nil {
+
+		if err := json.NewEncoder(w).Encode(profile); err != nil {
 			// Handle JSON encoding error
 			http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
 			fmt.Println("Failed to encode JSON:", err)
 			return
 		}
-		fmt.Println("Response sent successfully:", response)
+
 		return
 	}
 
@@ -132,7 +128,8 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 
 func GetProfileOwner(userId string) (User, error) {
 	profile := User{}
-	err := database.QueryRow("SELECT * FROM users WHERE id = ?", userId).Scan(&profile.Id, &profile.Nickname, &profile.FirstName, &profile.LastName, &profile.Email, &profile.Password, &profile.Avatar, &profile.Aboutme, &profile.PrivacySetting, &profile.DOB, &profile.CreatedAt)
+	err := database.QueryRow("SELECT * FROM Users WHERE id = ?", userId).Scan(&profile.Id, &profile.Nickname, &profile.FirstName, &profile.LastName, &profile.Email, &profile.Password, &profile.Avatar, &profile.Aboutme, &profile.PrivacySetting, &profile.DOB, &profile.CreatedAt)
+
 	if err != nil {
 		return profile, err
 	}

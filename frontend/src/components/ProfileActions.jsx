@@ -16,8 +16,8 @@ const ProfileActions = ({
   flag,
   toggleAction,
   isActive,
-  fetchMoreData,
-  hasMore,
+  fetchMoreFellowers,
+  hasMoreFellowers,
 }) => {
   return (
     <MyModal
@@ -44,8 +44,8 @@ const ProfileActions = ({
         <ul>
           <InfiniteScroll
             dataLength={user[isActive]?.length}
-            next={fetchMoreData}
-            hasMore={hasMore[isActive]}
+            next={fetchMoreFellowers}
+            hasMore={hasMoreFellowers[isActive]}
             loader={<h4>Loading...</h4>}
             height={400}
             endMessage={

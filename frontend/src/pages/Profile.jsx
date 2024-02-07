@@ -8,6 +8,10 @@ import ProfileActions from "../components/ProfileActions";
 import Posts from "../components/Posts";
 import {dummyPosts} from "../store/dummydata";
 import {getJson} from "../helpers/helpers";
+import InfiniteScroll from "react-infinite-scroll-component";
+import PrivateProfile from "../components/PrivateProfile";
+import {useRouteLoaderData, useRouteError} from "react-router";
+
 const options1 = [
   {id: 1, username: "user", name: "User 1"},
   {id: 2, username: "user", name: "User 2"},
@@ -36,8 +40,12 @@ const options2 = [
 
 const Profile = () => {
   const {user} = React.useContext(AuthContext);
+  const userData = useRouteLoaderData();
+  const routeError = useRouteError();
+
+  console.log(routeError, "useRouteError");
   const dummyUser = {
-    // toggleProfileVisibility,
+    id: "4e56t78y98u0ii9i90i",
     relStatus: "fellow",
     isOwner: true,
     Isprivate: true,
@@ -45,6 +53,7 @@ const Profile = () => {
     following: options2,
     numberOfFollowers: 60,
     numberOfFollowing: 60,
+    numberOfPosts: 60,
     posts: dummyPosts,
     firstName: "John",
     lastName: "Doe",
@@ -59,7 +68,12 @@ const Profile = () => {
   const postRef = useRef(null);
   const [show, setShow] = useState(false);
   const [isActive, setIsActive] = useState("");
-
+  const [data, setData] = useState(dummyUser);
+  const [hasMoreFellowers, setHasMoreFellowers] = useState({
+    followers: true,
+    following: true,
+  });
+  const [hasMorePosts, setHasMorePosts] = useState(true);
   const toggleProfileVisibility = () => {
     setIsPrivate(!Isprivate);
   };
@@ -81,56 +95,94 @@ const Profile = () => {
     handleShow();
   };
 
-  const [data, setData] = useState(dummyUser);
-  const [hasMore, setHasMore] = useState({followers: true, following: true});
-
-  const fetchMoreData = () => {
+  const fetchMoreFellowers = () => {
     if (data[isActive].length <= 50) {
       setData((prev) => ({
         ...prev,
         [isActive]: [...prev[isActive], ...options1],
       }));
     } else {
-      setHasMore((pre) => ({...pre, [isActive]: false}));
+      setHasMoreFellowers((pre) => ({...pre, [isActive]: false}));
     }
   };
 
-  return (
+  const fetchMorePosts = () => {
+    if (data.posts.length <= 50) {
+      setData((prev) => ({
+        ...prev,
+        posts: [...prev.posts, ...dummyPosts],
+      }));
+      console.log(data);
+    } else {
+      console.log(data);
+      setHasMorePosts(false);
+    }
+  };
+
+  //  const getUserData = ()=>{
+  //   try{}
+  //  }
+
+  return routeError ? (
+    routeError.message
+  ) : (
     <Container>
       <div className={classes.profile}>
-        <ProfileCard
-          user={data}
-          toggleAction={toggleAction}
-          toggleProfileVisibility={toggleProfileVisibility}
-        />
-        <ProfileActions
-          user={data}
-          handleClose={handleClose}
-          handleShow={handleShow}
-          show={show}
-          flag={false}
-          isActive={isActive}
-          toggleAction={toggleActionModel}
-          fetchMoreData={fetchMoreData}
-          hasMore={hasMore}
-        />
+        {!data.Isprivate &&
+        data.id !== user.id &&
+        data.relStatus === "fellow" ? (
+          <PrivateProfile
+            name={"bilal"}
+            userName={user.username}
+            fellowUserHandler={() => {}}
+          />
+        ) : (
+          <InfiniteScroll
+            dataLength={data.posts?.length}
+            next={fetchMorePosts}
+            hasMore={hasMorePosts}
+            loader={<h4>Loading...</h4>}
+            endMessage={
+              <p style={{textAlign: "center"}}>
+                <b>Yay! You have seen it all</b>
+              </p>
+            }
+          >
+            <ProfileCard
+              user={data}
+              toggleAction={toggleAction}
+              toggleProfileVisibility={toggleProfileVisibility}
+            />
+            <ProfileActions
+              user={data}
+              handleClose={handleClose}
+              handleShow={handleShow}
+              show={show}
+              flag={false}
+              isActive={isActive}
+              toggleAction={toggleActionModel}
+              fetchMoreFellowers={fetchMoreFellowers}
+              hasMoreFellowers={hasMoreFellowers}
+            />
 
-        <div>
-          <section id="posts" ref={postRef}>
-            <h4 style={{textAlign: "center"}}>Posts</h4>
-            {<Posts posts={dummyPosts} postref={postRef} />}
-          </section>
-        </div>
+            <div>
+              <section id="posts" ref={postRef}>
+                {<Posts posts={data.posts} postref={postRef} />}
+              </section>
+            </div>
+          </InfiniteScroll>
+        )}
       </div>
     </Container>
   );
 };
 
-export function profileLoader({request, params}) {
-  // console.log(request, params);
+export async function profileLoader({request, params}) {
+  // console.log(params.id, request);
   return getJson("profile", {
+    // signal: request.signal,/
     method: "POST",
-    mode: "no-cors",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
