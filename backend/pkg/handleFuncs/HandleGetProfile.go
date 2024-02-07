@@ -9,7 +9,8 @@ import (
 
 // I've included whatever structs I needed in this file. They can be replaced
 // with the real ones when they're ready, or if anyone knows where they live
-// now. Likewise helper functions, database functions etc.
+// now. UPDATE: We've moved some of these structs to dbfuncs, along with the
+// helper functions that access the database.
 
 // I just added this to get rid of the red line under *Image. I don't know
 // what Image is really supposed to be.
@@ -90,9 +91,31 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var posts []dbfuncs.Post
-	posts, err = dbfuncs.GetPosts(userId, 1, 10, usersOwnProfile)
-	profile.Posts = posts
+	profile.NumberOfPosts, err = dbfuncs.GetNumberOfById(ownerId, "Posts")
+	if err != nil {
+		errorMessage := fmt.Sprintf("error getting number of posts: %v", err.Error())
+		fmt.Println(err.Error(), "90")
+		http.Error(w, errorMessage, http.StatusInternalServerError)
+		return
+	}
+
+	profile.NumberOfFollowers, err = dbfuncs.GetNumberOfFollowersAndFollowing("FollowingId", ownerId)
+	if err != nil {
+		errorMessage := fmt.Sprintf("error getting number of followers: %v", err.Error())
+		fmt.Println(err.Error())
+		http.Error(w, errorMessage, http.StatusInternalServerError)
+		return
+	}
+
+	profile.NumberOfFollowing, err = dbfuncs.GetNumberOfFollowersAndFollowing("FollowerId", ownerId)
+	if err != nil {
+		fmt.Println(err.Error())
+		errorMessage := fmt.Sprintf("error getting number of following: %v", err.Error())
+		http.Error(w, errorMessage, http.StatusInternalServerError)
+		return
+	}
+
+	profile.Posts, err = dbfuncs.GetPosts(userId, 1, 10, usersOwnProfile)
 	if err != nil {
 		errorMessage := fmt.Sprintf("error getting posts: %v", err.Error())
 		fmt.Println(err.Error(), "90")
