@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"server/pkg/db/dbfuncs"
 
-	// "fmt"
 	"net/http"
 )
 

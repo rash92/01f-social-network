@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type User struct {
+type User_getAllUsers struct {
 	Id              uuid.UUID
 	FirstName       string
 	LastName        string
@@ -21,7 +21,7 @@ type User struct {
 	LastMessageTime time.Time
 }
 
-func GetAllUsersSortedByLastMessage(id string) ([]User, error) {
+func GetAllUsersSortedByLastMessage(id string) ([]User_getAllUsers, error) {
 	query := `
 	SELECT
 			u.Id,
@@ -54,11 +54,11 @@ func GetAllUsersSortedByLastMessage(id string) ([]User, error) {
 	}
 	defer rows.Close()
 
-	var usersWithMessages []User
-	var usersWithoutMessages []User
+	var usersWithMessages []User_getAllUsers
+	var usersWithoutMessages []User_getAllUsers
 
 	for rows.Next() {
-		var user User
+		var user User_getAllUsers
 		var lastMessageTimeString sql.NullString
 
 		err := rows.Scan(
