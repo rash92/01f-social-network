@@ -80,7 +80,18 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 		usersOwnProfile = true
 	}
 	fmt.Println(!usersOwnProfile, "handleProfile:line:78")
-	if !usersOwnProfile && profile.Owner.PrivacySetting == "private" {
+
+	// Check Follows table to see if there's a row with FollowerId = userId and FollowingId = ownerId.
+	var isFollowing bool
+	query := `SELECT EXISTS(SELECT 1 FROM Follows WHERE FollowerId=? AND FollowingId=?)`
+	err = database.QueryRow(query, userId, ownerId).Scan(&isFollowing)
+	if err != nil {
+		fmt.Println("failed to execute query: %v", err)
+		http.Error(w, "Failed to execute query", http.StatusInternalServerError)
+		return
+	}
+
+	if !usersOwnProfile && profile.Owner.PrivacySetting == "private" && !isFollowing {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
