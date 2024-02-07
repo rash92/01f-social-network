@@ -20,10 +20,10 @@ func HandleNewUser(w http.ResponseWriter, r *http.Request) {
 		}
 		email := r.FormValue("email")
 		password := r.FormValue("password")
-		firstName := r.FormValue("firstname")
-		lastName := r.FormValue("lastname")
-		NickName := r.FormValue("username")
-		dob := r.FormValue("dob")
+		firstName := r.FormValue("firstName")
+		lastName := r.FormValue("lastName")
+		NickName := r.FormValue("nickname")
+		dob := r.FormValue("DOB")
 		aboutMe := r.FormValue("aboutMe")
 
 		file, header, err := r.FormFile("image")

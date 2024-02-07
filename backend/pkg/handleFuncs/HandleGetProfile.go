@@ -35,7 +35,7 @@ type User struct {
 	Email          string    `json:"email,omitempty"`
 	Password       string    `json:"password,omitempty"`
 	Avatar         string    `json:"avatar,omitempty"`
-	Aboutme        string    `json:"aboutme,omitempty"`
+	AboutMe        string    `json:"aboutme,omitempty"`
 	PrivacySetting string    `json:"privacySetting,omitempty"`
 	DOB            string    `json:"age,omitempty"`
 	Gender         string    `json:"gender,omitempty"`
@@ -139,7 +139,7 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 
 func GetProfileOwner(userId string) (User, error) {
 	profile := User{}
-	err := database.QueryRow("SELECT * FROM Users WHERE id = ?", userId).Scan(&profile.Id, &profile.Nickname, &profile.FirstName, &profile.LastName, &profile.Email, &profile.Password, &profile.Avatar, &profile.Aboutme, &profile.PrivacySetting, &profile.DOB, &profile.CreatedAt)
+	err := database.QueryRow("SELECT * FROM Users WHERE id = ?", userId).Scan(&profile.Id, &profile.Nickname, &profile.FirstName, &profile.LastName, &profile.Email, &profile.Password, &profile.Avatar, &profile.AboutMe, &profile.PrivacySetting, &profile.DOB, &profile.CreatedAt)
 
 	if err != nil {
 		return profile, err
