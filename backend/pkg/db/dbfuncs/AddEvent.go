@@ -1,6 +1,12 @@
 package dbfuncs
 
-func AddEvent(event Event) (int, error) {
+func AddEvent(event *Event) error {
 	var err error
-	return 0, err
+	return err
+}
+
+func GetEventsById(id string) ([]Event, error) {
+	var events []Event
+	var err error
+	return events, err
 }

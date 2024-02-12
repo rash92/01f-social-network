@@ -1,6 +1,5 @@
 package handlefuncs
 
-//general notes/ideas--some outdated by now ...
 //consider redoing database tables to combine private messages, group messages and various types of
 // notificaitons in one table
 //and differentiate them with a type field, possibly with empty fields for fields that are not needed for that type of message.
@@ -25,7 +24,6 @@ import (
 	"log"
 	"net/http"
 	"server/pkg/db/dbfuncs"
-	"server/pkg/handlefuncs"
 	"sync"
 	"time"
 
@@ -88,13 +86,6 @@ type RequestToFollow struct {
 	RecipientId string `json:"RecipientId"`
 }
 
-// We can just use the Event type for this.
-type ToggleAttendEvent struct {
-	EventId string `json:"EventId"`
-	UserId  string `json:"UserId"`
-	GroupId string `json:"GroupId"`
-	Type    string `json:"Type"`
-}
 type Notification struct {
 	Id         string    `json:"Id"`
 	RecieverId string    `json:"RecieverId"`
@@ -103,12 +94,6 @@ type Notification struct {
 	Type       string    `json:"Type"`
 	Seen       bool      `json:"Seen"`
 	CreatedAt  time.Time `json:"CreatedAt"`
-}
-type Post struct {
-	//fill in later
-}
-type Comment struct {
-	//fill in later
 }
 
 // these may not involve database calls but can still be sent through websockets
@@ -132,16 +117,14 @@ type Event struct {
 // while they still have other connections open. Make this distinct from
 // logging out, although logging out will include closing the current
 // connection.
-// pull some of this stuff out into separate functions to make cleaner
-// can consider channel approach instead of mutex
 func HandleConnection(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("user_token")
-	// Add lines to ValidateCookie to RLock the dblock while validating.
 	valid := dbfuncs.ValidateCookie(cookie.Value)
 	if err != nil || !valid {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Error upgrading to WebSocket:", err)
@@ -150,6 +133,7 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		closeConnection(conn)
 	}()
+
 	userID, err := dbfuncs.GetUserIdFromCookie(cookie.Value)
 	if err != nil {
 		log.Println("Error retrieving userID from database:", err)
@@ -203,11 +187,11 @@ eventLoop:
 			break eventLoop
 		// Chat:
 		case "privateMessage":
-			var receivedData handlefuncs.Message
+			var receivedData Message
 			unmarshalBody(signal.Body, &receivedData)
 			handlePrivateMessage(receivedData)
 		case "groupMessage":
-			var receivedData handlefuncs.Message
+			var receivedData Message
 			unmarshalBody(signal.Body, &receivedData)
 			handleGroupMessage(receivedData)
 		// // Cases that require notofications:
@@ -254,12 +238,12 @@ eventLoop:
 		case "groupLike":
 		// fill in
 		case "toggleAttendEvent":
-			var receivedData ToggleAttendEvent
+			var receivedData Event
 			err = json.Unmarshal(signal.Body, &receivedData)
 			if err != nil {
 				log.Println("Error unmarshalling body of websocket message:", err)
 			}
-			toggleAttendEvent(&receivedData)
+			// toggleAttendEvent(&receivedData)
 			// default:
 			// 	//unexpected type
 			// 	log.Println("Unexpected websocket message type:", receivedData.Type)
@@ -328,7 +312,7 @@ func handleLogout(userID string, thisConn *websocket.Conn) {
 	connectionLock.Unlock()
 	broadcastUserList()
 }
-func handlePrivateMessage(receivedData handlefuncs.Message) {
+func handlePrivateMessage(receivedData Message) {
 	id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
 	if err != nil {
 		log.Println(err, "error adding message to database")
@@ -351,17 +335,26 @@ func handlePrivateMessage(receivedData handlefuncs.Message) {
 
 // I've adapted dbfuncs.AddMessage to handle both private and group
 // messages.
-func handleGroupMessage(receivedData handlefuncs.Message) {
+func handleGroupMessage(receivedData Message) {
 	id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
 	if err != nil {
 		log.Println(err, "error adding message to data base")
 	}
 	receivedData.ID = id.String()
 	receivedData.Created = created.Format(time.RFC3339)
-	message := map[string]interface{}{
-		"data":    receivedData,
-		"type":    receivedData.Type,
-		"groupId": receivedData.RecipientID,
+	// message := map[string]interface{}{
+	// 	"data":    receivedData,
+	// 	"type":    receivedData.Type,
+	// 	"groupId": receivedData.RecipientID,
+	// }
+	message := struct {
+		Data    any    `json:"data"`
+		Type    string `json:"type"`
+		GroupID string `json:"groupId"`
+	}{
+		Data:    receivedData,
+		Type:    receivedData.Type,
+		GroupID: receivedData.RecipientID,
 	}
 	connectionLock.RLock()
 	recipients := dbfuncs.GetGroupMembers(receivedData.RecipientID)
@@ -396,14 +389,14 @@ func handleRequestToFollow(receivedData RequestToFollow) {
 }
 
 // Decide if we want to notify the requester of the result.
-func answerRequestToFollow(receivedData handlefuncs.Message) {
+func answerRequestToFollow(receivedData Message) {
 }
 
 // Add a notification to the database and send it to the group creator
 // if they're online. The notification should include the requester and
 // type of notification, the time it was created, and the group ID, in
 // case the recipient has created multiple groups.
-func requestToJoinGroup(receivedData handlefuncs.Message) {
+func requestToJoinGroup(receivedData Message) {
 }
 
 // If the answer is yes, add the requester to the group members list
@@ -414,12 +407,12 @@ func requestToJoinGroup(receivedData handlefuncs.Message) {
 // include which group and whether the answer was yes or no.
 // Also, if YES, add user to GroupEventParticipants with the choice
 // field set to false for all events in that group.
-func answerRequestToJoinGroup(receivedData handlefuncs.Message) {
+func answerRequestToJoinGroup(receivedData Message) {
 }
 
 // Add a notification to the database and send it to the person
 // being invited if they're online.
-func inviteToJoinGroup(receivedData handlefuncs.Message) {
+func inviteToJoinGroup(receivedData Message) {
 }
 
 // If the answer is yes, add the invitee to the group members list
@@ -429,7 +422,7 @@ func inviteToJoinGroup(receivedData handlefuncs.Message) {
 // want to notify the inviter of the result.
 // Also, if YES, add user to GroupEventParticipants with the choice
 // field set to false for all events in that group.
-func answerInviteToJoinGroup(receivedData handlefuncs.Message) {
+func answerInviteToJoinGroup(receivedData Message) {
 }
 
 // Add an event to the database and send it to all group members.
@@ -446,7 +439,17 @@ func answerInviteToJoinGroup(receivedData handlefuncs.Message) {
 // loop through the group members and call dbfuncs.AddGroupEventParticipant
 // for each one. It will also have to loop through the group members
 func createEvent(receivedData Event) {
-	dbfuncs.AddEvent(receivedData)
+	dbEvent := dbfuncs.Event{
+		EventId:     receivedData.EventId,
+		GroupId:     receivedData.GroupId,
+		Title:       receivedData.Title,
+		Description: receivedData.Description,
+		CreatorId:   receivedData.CreatorId,
+	}
+	err := dbfuncs.AddEvent(&dbEvent)
+	if err != nil {
+		log.Println(err, "error adding event to database")
+	}
 	signal := map[string]interface{}{
 		"data": receivedData,
 		"type": "createEvent",
@@ -464,46 +467,46 @@ func createEvent(receivedData Event) {
 	connectionLock.RUnlock()
 }
 
-// Toggle the user's attendance at the event in the database and
-// broadcast the updated list of attendees to all group members
-// who are online, or just the change in the user's attendance
-// and let the frontend handle the update.
+// // Toggle the user's attendance at the event in the database and
+// // broadcast the updated list of attendees to all group members
+// // who are online, or just the change in the user's attendance
+// // and let the frontend handle the update.
 
-// Review logic here as it will have changed since our discussions.
-// For example, there will be no direct database access from here.
-func toggleAttendEvent(receivedData *ToggleAttendEvent) {
-	err := dbfuncs.ToggleAttendEvent(receivedData.EventId, receivedData.UserId)
-	if err != nil {
-		log.Println(err, "error toggling event attendance")
-	}
-	message := map[string]interface{}{
-		"data": receivedData,
-		"type": receivedData.Type,
-	}
-	dbLock.RLock()
-	rows, err := db.Query("SELECT * FROM GroupMember WHERE GroupId = ?", receivedData.GroupId)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var userId string
-		err = rows.Scan(&userId)
-		if err != nil {
-			log.Fatal(err)
-		}
-		connectionLock.RLock()
-		for _, c := range activeConnections[userId] {
-			err := c.WriteJSON(message)
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
-		connectionLock.RUnlock()
-	}
-	err = rows.Err()
-	if err != nil {
-		log.Fatal(err)
-	}
-	dbLock.RUnlock()
-}
+// // Review logic here as it will have changed since our discussions.
+// // For example, there will be no direct database access from here.
+// func toggleAttendEvent(receivedData *ToggleAttendEvent) {
+// 	err := dbfuncs.ToggleAttendEvent(receivedData.EventId, receivedData.UserId)
+// 	if err != nil {
+// 		log.Println(err, "error toggling event attendance")
+// 	}
+// 	message := map[string]interface{}{
+// 		"data": receivedData,
+// 		"type": receivedData.Type,
+// 	}
+// 	dbLock.RLock()
+// 	rows, err := db.Query("SELECT * FROM GroupMember WHERE GroupId = ?", receivedData.GroupId)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	defer rows.Close()
+// 	for rows.Next() {
+// 		var userId string
+// 		err = rows.Scan(&userId)
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
+// 		connectionLock.RLock()
+// 		for _, c := range activeConnections[userId] {
+// 			err := c.WriteJSON(message)
+// 			if err != nil {
+// 				log.Fatal(err)
+// 			}
+// 		}
+// 		connectionLock.RUnlock()
+// 	}
+// 	err = rows.Err()
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	dbLock.RUnlock()
+// }
