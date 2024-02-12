@@ -7,8 +7,8 @@ import (
 	"log"
 	"net/http"
 
-	dbfuncs "server/pkg/db/dbfuncs"
-	handlefuncs "server/pkg/handlefuncs"
+	"server/pkg/db/dbfuncs"
+	"server/pkg/handlefuncs"
 	"sync"
 	"time"
 
