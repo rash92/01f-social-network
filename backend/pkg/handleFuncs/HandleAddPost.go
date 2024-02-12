@@ -29,8 +29,7 @@ func HandleAddPost(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, `{"error": "something went wrong please login"}`, http.StatusUnauthorized)
 			return
 		}
-		
-	
+
 		if len(newPost.Body) > CharacterLimit {
 
 			http.Error(w, `{"error": "413 Payload Too Large"}`, http.StatusRequestEntityTooLarge)

@@ -33,10 +33,10 @@ func HandleValidateCookie(w http.ResponseWriter, r *http.Request) {
 		//		return
 		//	}
 		userId, profileImage, nickname, err := dbfuncs.GetUserDataFromSession(cookie.Value)
-    
+
 		if err != nil {
-			http.Error(w,`{"error": "`+err.Error()+`"}`,http.StatusInternalServerError)
-			return 
+			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+			return
 		}
 		response := map[string]interface{}{
 			"success":    true,
