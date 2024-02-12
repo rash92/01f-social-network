@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS Notifications(
    Body TEXT NOT NULL,
    Type TEXT NOT NULL,
    CreatedAt DATETIME NOT NULL,
-   RecieverId TEXT NOT NULL,
+   ReceiverId TEXT NOT NULL,
    SenderId TEXT NOT NULL,
    Seen TEXT NOT NULL,
    FOREIGN KEY (RecieverId) REFERENCES Users(Id),
