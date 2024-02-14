@@ -4,12 +4,9 @@ import (
 	"database/sql"
 )
 
-<<<<<<<< HEAD:backend/pkg/db/dbfuncsold/getUserIdFromCokie.go
 // moved
-func GetUserIdFromCokie(sessionId string) (string, error) {
-========
+
 func GetUserIdFromCookie(sessionId string) (string, error) {
->>>>>>>> peter:backend/pkg/db/dbfuncs/getUserIdFromCookie.go
 	var userID string
 	var db *sql.DB
 	db, err := sql.Open("sqlite3", "./forum.db")

@@ -1,6 +1,7 @@
 package dbfuncs
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -72,4 +73,19 @@ func GetCreatorIdFromPostId(postId string) (string, error) {
 	}
 
 	return creatorId, nil
+}
+
+func IsUserPrivate(userId string) (bool, error) {
+	var privacySetting string
+	err := db.QueryRow("SELECT PrivacySetting FROM Users WHERE Id=?", userId).Scan(&privacySetting)
+	if err != nil {
+		return false, err
+	}
+	if privacySetting == "public" {
+		return false, nil
+	}
+	if privacySetting == "private" {
+		return true, nil
+	}
+	return false, errors.New("privacy setting not recognized, should be either 'private' or 'public'")
 }

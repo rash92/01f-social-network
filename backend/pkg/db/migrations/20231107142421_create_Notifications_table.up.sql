@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS Notifications(
    CreatedAt DATETIME NOT NULL,
    ReceiverId TEXT NOT NULL,
    SenderId TEXT NOT NULL,
-   Seen TEXT NOT NULL,
+   Seen BOOLEAN NOT NULL,
    FOREIGN KEY (RecieverId) REFERENCES Users(Id),
    FOREIGN KEY (SenderId) REFERENCES Users(Id)
 );
