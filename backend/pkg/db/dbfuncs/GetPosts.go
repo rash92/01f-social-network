@@ -2,36 +2,7 @@ package dbfuncs
 
 import (
 	"log"
-	"time"
-
-	"github.com/google/uuid"
 )
-
-type Comment struct {
-	ID        string    `json:"id"`
-	Body      string    `json:"body"`
-	UserID    string    `json:"user_id"`
-	PostID    string    `json:"post_id"`
-	CreatedAt time.Time `json:"created_at"`
-	Likes     int       `json:"likes"`
-	Dislikes  int       `json:"dislikes"`
-	Username  string    `json:"username"`
-}
-
-type Post struct {
-	Id           uuid.UUID `json:"id"`
-	UserId       uuid.UUID `json:"userid"`
-	Title        string    `json:"title"`
-	Body         string    `json:"body"`
-	Categories   []string  `json:"categories"`
-	CreatedAt    time.Time `json:"createdAt"`
-	Comments     []Comment `json:"comments"`
-	Likes        int       `json:"likes"`
-	Dislikes     int       `json:"dislikes"`
-	PrivacyLevel string    `json:"privacyLevel"`
-	CreatorId    string    `json:"creatorId "`
-	Image        string    `json:"avatar,omitempty"`
-}
 
 func GetPosts(userId string, page int, batchSize int, usersOwnProfile bool) ([]Post, error) {
 	offset := (page - 1) * batchSize
@@ -64,7 +35,7 @@ func GetPosts(userId string, page int, batchSize int, usersOwnProfile bool) ([]P
 
 		// Skip superprivate posts if the viewer does not have access.
 		if !usersOwnProfile || post.PrivacyLevel == "superprivate" {
-			allowed, err := CheckSuperprivateAccess(post.Id.String(), userId)
+			allowed, err := CheckSuperprivateAccess(post.Id, userId) // Changed from post.Id.String() now that dbfuncs.Post.Id is of type string.
 			if err != nil {
 				log.Println(err)
 				return nil, err

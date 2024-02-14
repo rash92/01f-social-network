@@ -7,6 +7,12 @@ import (
 	"server/pkg/db/dbfuncs"
 )
 
+// At the momemt, we're getting the Owner struct from dbfuncs and sending
+// it to the client. But we need to restrict the information if the profile
+// is private. Different struct, or interface, or just collect the fields we
+// need and construct the struct here, or collect all the info from the
+// database and then set the restricted fields to null values.
+
 // I've included whatever structs I needed in this file. They can be replaced
 // with the real ones when they're ready, or if anyone knows where they live
 // now. UPDATE: We've moved some of these structs to dbfuncs, along with the

@@ -39,13 +39,13 @@ var (
 			return origin == "http://localhost:8000"
 		},
 	}
-	// String is userID. The slice of pointers to websocket.Conn is the connections for that user.
+	// String is userId. The slice of pointers to websocket.Conn is the connections for that user.
 	activeConnections = make(map[string][]*websocket.Conn)
 	connectionLock    sync.RWMutex
 )
 
 // this is what the client sends to the server,
-// Body will be reunmarshalled based on type into PrivateMessage, GroupMessage, or Notification etc.
+// Body will be unmarshalled based on type into PrivateMessage, GroupMessage, or Notification etc.
 // as well as ws messages unrelated to database operations
 type SignalReceived struct {
 	Type string    `json:"type"`
@@ -74,26 +74,27 @@ type PrivateMessage struct {
 	Message     string    `json:"Message"`
 	CreatedAt   time.Time `json:"CreatedAt"`
 }
+
 type GroupMessage struct {
-	Id        string    `json:"Id"`
-	SenderId  string    `json:"SenderId"`
-	GroupId   string    `json:"GroupId"`
-	Message   string    `json:"Message"`
-	CreatedAt time.Time `json:"CreatedAt"`
-}
-type RequestToFollow struct {
-	SenderId    string `json:"SenderId"`
-	RecipientId string `json:"RecipientId"`
+	Id        string `json:"Id"`
+	SenderId  string `json:"SenderId"`
+	GroupId   string `json:"GroupId"`
+	Message   string `json:"Message"`
+	CreatedAt string `json:"CreatedAt"`
 }
 
+// type RequestToFollow struct {
+// 	SenderId    string `json:"SenderId"`
+// 	RecipientId string `json:"RecipientId"`
+// 	Type        string `json:"json"`
+// }
+
 type Notification struct {
-	Id         string    `json:"Id"`
-	RecieverId string    `json:"RecieverId"`
-	SenderId   string    `json:"SenderId"`
-	Body       string    `json:"Body"`
-	Type       string    `json:"Type"`
-	Seen       bool      `json:"Seen"`
-	CreatedAt  time.Time `json:"CreatedAt"`
+	RecipientId string    `json:"RecieverId"`
+	SenderId    string    `json:"SenderId"`
+	Body        string    `json:"Body"`
+	Type        string    `json:"Type"`
+	CreatedAt   time.Time `json:"CreatedAt"`
 }
 
 // these may not involve database calls but can still be sent through websockets
@@ -101,6 +102,9 @@ type Notification struct {
 // e.g. registered, logged in, logged out, or changed their status
 type BasicUserInfo struct {
 	UserId         string `json:"UserId"`
+	FirstName      string `json:"FirstName"`
+	LastName       string `json:"LastName"`
+	Nickname       string `json:"Nickname"`
 	PrivacySetting string `json:"PrivacySetting"` //maybe?
 	//fill in later if more needed
 }
@@ -145,14 +149,17 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 		activeConnections[userID] = append(activeConnections[userID], conn)
 	}
 	connectionLock.Unlock()
+
 	// Make sure this works when the user is newly registered. It should
-	// broadcast a list including the new user. In realtime, we had the map
+	// broadcast a list including the new user, along with their UUID
+	// or whatever unique identifier we have. In realtime, we had the map
 	// activeConnections = make(map[*websocket.Conn]string). Here we have
 	// activeConnections = make(map[string][]*websocket.Conn). There, when
 	// a new user registered, the other users didn't update their lists of
 	// users. We need to make sure there is logic in the frontend to handle
 	// this.
 	broadcastUserList()
+
 eventLoop:
 	for {
 		_, msgBytes, err := conn.ReadMessage()
@@ -183,25 +190,22 @@ eventLoop:
 		// No need. This is covered at the start of handleConnection.
 		// Sign out and register:
 		case "logout":
-			handleLogout(userID, conn)
+			logout(userID, conn)
 			break eventLoop
 		// Chat:
 		case "privateMessage":
 			var receivedData Message
 			unmarshalBody(signal.Body, &receivedData)
-			handlePrivateMessage(receivedData)
+			privateMessage(receivedData)
 		case "groupMessage":
 			var receivedData Message
 			unmarshalBody(signal.Body, &receivedData)
-			handleGroupMessage(receivedData)
+			groupMessage(receivedData)
 		// // Cases that require notofications:
 		case "requestToFollow":
-			// If the request is for a user with a public profile, it should be automatically
-			// accepted. Otherwise, notify that user that you want to follow them.
-			var receivedData RequestToFollow
+			var receivedData Notification
 			unmarshalBody(signal.Body, &receivedData)
-			handleRequestToFollow(receivedData)
-		// 	handleRequestToFollow(receivedData)
+			requestToFollow(receivedData)
 		// case "answerRequestToFollow":
 		// 	answerRequestToFollow(receivedData)
 		// case "requestToJoinGroup":
@@ -239,10 +243,7 @@ eventLoop:
 		// fill in
 		case "toggleAttendEvent":
 			var receivedData Event
-			err = json.Unmarshal(signal.Body, &receivedData)
-			if err != nil {
-				log.Println("Error unmarshalling body of websocket message:", err)
-			}
+			unmarshalBody(signal.Body, &receivedData)
 			// toggleAttendEvent(&receivedData)
 			// default:
 			// 	//unexpected type
@@ -250,13 +251,15 @@ eventLoop:
 		}
 	}
 }
+
 func unmarshalBody[T any](signalBody []byte, receivedData T) {
 	err := json.Unmarshal(signalBody, receivedData)
 	if err != nil {
-		log.Println("Error unmarshalling body of websocket message:", err)
+		log.Println("error unmarshalling body of websocket message:", err)
 		log.Println("type of receivedData:", fmt.Sprintf("%T", receivedData))
 	}
 }
+
 func broadcastUserList() {
 	var userList []string
 	connectionLock.Lock()
@@ -279,6 +282,7 @@ func broadcastUserList() {
 	}
 	connectionLock.RUnlock()
 }
+
 func closeConnection(conn *websocket.Conn) {
 	data := map[string]interface{}{
 		"data": "",
@@ -299,7 +303,7 @@ func closeConnection(conn *websocket.Conn) {
 // when the event loop breaks.
 // The frontend also needs to trigger handlefuncs.HandleLogOut via http
 // as we don't have access to the cookie using websockets.
-func handleLogout(userID string, thisConn *websocket.Conn) {
+func logout(userID string, thisConn *websocket.Conn) {
 	connectionLock.RLock()
 	for _, c := range activeConnections[userID] {
 		if c != thisConn {
@@ -312,7 +316,8 @@ func handleLogout(userID string, thisConn *websocket.Conn) {
 	connectionLock.Unlock()
 	broadcastUserList()
 }
-func handlePrivateMessage(receivedData Message) {
+
+func privateMessage(receivedData Message) {
 	id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
 	if err != nil {
 		log.Println(err, "error adding message to database")
@@ -333,36 +338,31 @@ func handlePrivateMessage(receivedData Message) {
 	connectionLock.RUnlock()
 }
 
-// I've adapted dbfuncs.AddMessage to handle both private and group
-// messages.
-func handleGroupMessage(receivedData Message) {
+// I adapted dbfuncs.AddMessage to handle both private and group
+// messages. In case, anyone wants to look at it, it should be in
+// branch Peter.
+func groupMessage(receivedData Message) {
 	id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
 	if err != nil {
-		log.Println(err, "error adding message to data base")
+		log.Println(err, "error adding message to database")
 	}
 	receivedData.ID = id.String()
 	receivedData.Created = created.Format(time.RFC3339)
-	// message := map[string]interface{}{
-	// 	"data":    receivedData,
-	// 	"type":    receivedData.Type,
-	// 	"groupId": receivedData.RecipientID,
-	// }
-	message := struct {
-		Data    any    `json:"data"`
-		Type    string `json:"type"`
-		GroupID string `json:"groupId"`
-	}{
-		Data:    receivedData,
-		Type:    receivedData.Type,
-		GroupID: receivedData.RecipientID,
+	message := GroupMessage{
+		Id:        "",
+		SenderId:  receivedData.SenderID,
+		GroupId:   receivedData.RecipientID,
+		Message:   receivedData.Message,
+		CreatedAt: receivedData.Created,
 	}
+
 	connectionLock.RLock()
 	recipients := dbfuncs.GetGroupMembers(receivedData.RecipientID)
 	for _, recipient := range recipients {
 		for _, c := range activeConnections[recipient] {
 			err := c.WriteJSON(message)
 			if err != nil {
-				log.Fatal(err)
+				log.Println(err, "error sending group message to recipient")
 			}
 		}
 	}
@@ -372,58 +372,89 @@ func handleGroupMessage(receivedData Message) {
 // If the request is for a user with a public profile, add the requester
 // to their followers list. Otherwise, add a notification to the database
 // and send it to the user with the private profile if they're online.
-// (No longer? Also, set the Unseens field of the private user to true.)
-// The notification should include the requester and recipient's IDs (and
-// maybe usernames), the type of notification, the time it was created, and
-// its status (pending, as opposed to accepted or rejected).
-func handleRequestToFollow(receivedData RequestToFollow) {
-	// // TODO: Write dbfuncs.IsPublic.
-	// // Commented out, for now, to avoid red lines.
-	// public := dbfuncs.IsPublic(receivedData.RecipientId)
-	// if public {
-	// 	// Add the requester to the recipient's followers list.
-	// } else {
-	// 	// Add a notification to the database and send it to the recipient
-	// 	// if they're online.
-	// }
+// The notification should include the requester and recipient's IDs, the
+// type of notification, and nickname of requester, the time it was created, and
+// its status (pending, as opposed to accepted or rejected). Body of the notification
+// should contain the nickname of the requester.
+func requestToFollow(receivedData Notification) {
+	public, err := dbfuncs.IsPublic(receivedData.RecipientId)
+	if err != nil {
+		log.Println(err, "error checking if user is public")
+	}
+	if public {
+		var follow dbfuncs.Follow
+		follow.FollowingId = receivedData.RecipientId
+		follow.FollowerId = receivedData.SenderId
+		err := dbfuncs.AddFollower(&follow)
+		if err != nil {
+			log.Println(err, "error adding follower to database")
+		}
+	} else {
+		notification := dbfuncs.Notification{
+			Id:          "",
+			Body:        receivedData.Body,
+			Type:        "requestToFollow",
+			CreatedAt:   time.Now(), // placeholder; let dbfuncs set time while holding the lock
+			RecipientId: receivedData.RecipientId,
+			SenderId:    receivedData.SenderId,
+			Seen:        false,
+		}
+		err := dbfuncs.AddNotification(&notification)
+		if err != nil {
+			log.Println(err, "error adding notification to database")
+		}
+		// Send the notification to the recipient.
+		// The notification should include the requester and recipient's IDs, the
+		// type of notification, and nickname of requester, the time it was created.
+		// Body of the notification should contain the nickname of the requester.
+
+		connectionLock.RLock()
+		for _, c := range activeConnections[receivedData.RecipientId] {
+			err := c.WriteJSON(notification)
+			if err != nil {
+				log.Println(err, "error sending notification to recipient")
+			}
+		}
+		connectionLock.RUnlock()
+	}
 }
 
-// Decide if we want to notify the requester of the result.
-func answerRequestToFollow(receivedData Message) {
-}
+// // Decide if we want to notify the requester of the result.
+// func answerRequestToFollow(receivedData Message) {
+// }
 
-// Add a notification to the database and send it to the group creator
-// if they're online. The notification should include the requester and
-// type of notification, the time it was created, and the group ID, in
-// case the recipient has created multiple groups.
-func requestToJoinGroup(receivedData Message) {
-}
+// // Add a notification to the database and send it to the group creator
+// // if they're online. The notification should include the requester and
+// // type of notification, the time it was created, and the group ID, in
+// // case the recipient has created multiple groups.
+// func requestToJoinGroup(receivedData Message) {
+// }
 
-// If the answer is yes, add the requester to the group members list
-// and broadcast the updated list to all group members. Either way,
-// decide if we want to notify the requester of the result. If so,
-// and I think we should, add a notification to the database and send
-// it to the requester if they're online. The notification should
-// include which group and whether the answer was yes or no.
-// Also, if YES, add user to GroupEventParticipants with the choice
-// field set to false for all events in that group.
-func answerRequestToJoinGroup(receivedData Message) {
-}
+// // If the answer is yes, add the requester to the group members list
+// // and broadcast the updated list to all group members. Either way,
+// // decide if we want to notify the requester of the result. If so,
+// // and I think we should, add a notification to the database and send
+// // it to the requester if they're online. The notification should
+// // include which group and whether the answer was yes or no.
+// // Also, if YES, add user to GroupEventParticipants with the choice
+// // field set to false for all events in that group.
+// func answerRequestToJoinGroup(receivedData Message) {
+// }
 
-// Add a notification to the database and send it to the person
-// being invited if they're online.
-func inviteToJoinGroup(receivedData Message) {
-}
+// // Add a notification to the database and send it to the person
+// // being invited if they're online.
+// func inviteToJoinGroup(receivedData Message) {
+// }
 
-// If the answer is yes, add the invitee to the group members list
-// in the database and broadcast the updated list to all group members.
-// Either way, update the status of that notification in the database:
-// i.e. change it from pending to accepted or rejected. Decide if we
-// want to notify the inviter of the result.
-// Also, if YES, add user to GroupEventParticipants with the choice
-// field set to false for all events in that group.
-func answerInviteToJoinGroup(receivedData Message) {
-}
+// // If the answer is yes, add the invitee to the group members list
+// // in the database and broadcast the updated list to all group members.
+// // Either way, update the status of that notification in the database:
+// // i.e. change it from pending to accepted or rejected. Decide if we
+// // want to notify the inviter of the result.
+// // Also, if YES, add user to GroupEventParticipants with the choice
+// // field set to false for all events in that group.
+// func answerInviteToJoinGroup(receivedData Message) {
+// }
 
 // Add an event to the database and send it to all group members.
 // Add all groups members to GroupEventParticipants with the choice
