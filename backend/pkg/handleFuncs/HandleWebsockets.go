@@ -161,6 +161,7 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 	// this.
 	broadcastUserList()
 
+camelsBack:
 	for {
 		_, msgBytes, err := conn.ReadMessage()
 		//possibly don't want to immediately delete the connection if there is an error
@@ -177,7 +178,7 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 					log.Println("User", userID, "disconnected, unable to read from websocket, error:", err)
 				}
 				connectionLock.Unlock()
-				break
+				break camelsBack
 			}
 		}
 
@@ -185,12 +186,20 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 		if err.Error() == "logout" {
 			break
 		}
+
+		var finalStraw error
 		if err != nil {
-			notifyClientOfError(err, "error processing websocket message", userID)
+			finalStraw = notifyClientOfError(err, "error processing websocket message", userID)
+		}
+		if finalStraw != nil {
+			log.Println("error sending error message to client:", finalStraw)
+			break camelsBack
 		}
 	}
 }
 
+// Check validity of signal and received data as far as possible. But get
+// a working version first. We can add more checks later.
 func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 	var signal SignalReceived
 	err := json.Unmarshal(msgBytes, &signal)
@@ -332,6 +341,8 @@ func logout(userID string, thisConn *websocket.Conn) {
 	broadcastUserList()
 }
 
+// Change this and groupMessage to separate dbfuncs functions. Pass pointer to
+// the relevant dbfuncs struct and handle error that's returned.
 func privateMessage(receivedData Message) {
 	id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
 	if err != nil {
@@ -384,40 +395,21 @@ func groupMessage(receivedData Message) {
 	connectionLock.RUnlock()
 }
 
-func notifyClientOfError(err error, message string, id string) {
+func notifyClientOfError(err error, message string, id string) error {
 	log.Println(err, message)
 	data := map[string]interface{}{
-		"data": message,
 		"type": "error",
 	}
 	for _, c := range activeConnections[id] {
-		err := c.WriteJSON(data)
+		err = c.WriteJSON(data)
 		if err != nil {
-			log.Println(err, "error sending error message to client")
+			break
 		}
 	}
+	return err
 }
 
-/* In case of error, reply to sender that there was an error, no other info. */
-
-/* We need to decide what to do with all these errors. Any error here should stop the process and notify the user that their request to follow failed. That's another kind of notification to send. */
-
-// If the request is for a user with a public profile, add the requester
-// to their followers list. Otherwise, add a notification to the database
-// and send it to the user with the private profile if they're online.
-// The notification should include the requester and recipient's IDs, the
-// type of notification, and nickname of requester, the time it was created, and
-// its status (pending, as opposed to accepted or rejected). Body of the notification
-// should contain the nickname of the requester.
 func requestToFollow(receivedData Notification) {
-	// TODO: Check that no malicious user is trying to follow themselves
-	// or to follow someone they're already following, etc.
-	// Should each of these functions have its own receivedData validation
-	// function or could we have one general validation function? I'm leaning
-	// towards one general one, but it should still make sure the body matches
-	// the valid possibilities for the type, and that anything referred to
-	// in the database actually exists in the db and is consistent with the
-	// rest of the data.
 	var follow dbfuncs.Follow
 	follow.FollowingId = receivedData.ReceiverId
 	follow.FollowerId = receivedData.SenderId
@@ -430,14 +422,13 @@ func requestToFollow(receivedData Notification) {
 	if private {
 		follow.Status = "pending"
 
-		// We should check the body is a valid value and that the sender
-		// and receiver are valid users.
 		dbNotification := dbfuncs.Notification{
 			Body:       receivedData.Body,
 			Type:       "requestToFollow",
 			ReceiverId: receivedData.ReceiverId,
 			SenderId:   receivedData.SenderId,
 		}
+
 		err = dbfuncs.AddNotification(&dbNotification)
 		if err != nil {
 			log.Println(err, "error adding notification to database")
@@ -453,11 +444,6 @@ func requestToFollow(receivedData Notification) {
 		connectionLock.RUnlock()
 	} else {
 		follow.Status = "accepted"
-		err = dbfuncs.AddFollow(&follow)
-		if err != nil {
-			log.Println(err, "error adding follow to database")
-		}
-
 	}
 
 	err = dbfuncs.AddFollow(&follow)
