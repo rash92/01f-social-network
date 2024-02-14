@@ -62,6 +62,7 @@ type Comment struct {
 type Follow struct {
 	FollowerId  string
 	FollowingId string
+	Status      string
 }
 type Group struct {
 	Id          string
@@ -123,11 +124,11 @@ type GroupMessage struct {
 
 // misspelled in database - fix reciever to receiver
 type Notification struct {
-	Id          string
-	Body        string
-	Type        string
-	CreatedAt   time.Time
-	RecipientId string
-	SenderId    string
-	Seen        bool
+	Id         string
+	Body       string
+	Type       string
+	CreatedAt  time.Time
+	ReceiverId string
+	SenderId   string
+	Seen       bool
 }
