@@ -47,6 +47,15 @@ type SignalReceived struct {
 	Time time.Time `json:"time"`
 }
 
+// Is this superfluous?
+func unmarshalBody[T any](signalBody []byte, receivedData T) {
+	err := json.Unmarshal(signalBody, receivedData)
+	if err != nil {
+		log.Println("error unmarshalling body of websocket message:", err)
+		log.Println("type of receivedData:", fmt.Sprintf("%T", receivedData))
+	}
+}
+
 // Consider whether we want to be sending id numbers to the client.
 // We can continue for now as if we are, and modify this later if we
 // decide not to. Be sure to investigate the security implications
@@ -92,6 +101,7 @@ type Notification struct {
 	CreatedAt  time.Time `json:"CreatedAt"`
 }
 
+// Make methods on this pattern for other app structs.
 func (receivedData Notification) parseForDB() *dbfuncs.Notification {
 	return &dbfuncs.Notification{
 		Body:       receivedData.Body,
@@ -119,6 +129,16 @@ type Event struct {
 	Title       string `json:"Title"`
 	Description string `json:"Description"`
 	CreatorId   string `json:"CreatorId"`
+}
+
+func (receivedData Event) parseForDB() *dbfuncs.Event {
+	return &dbfuncs.Event{
+		EventId:     receivedData.EventId,
+		GroupId:     receivedData.GroupId,
+		Title:       receivedData.Title,
+		Description: receivedData.Description,
+		CreatorId:   receivedData.CreatorId,
+	}
 }
 
 // Be sure to allow possibilty of one of a user's connections being closed
@@ -202,7 +222,8 @@ camelsBack:
 }
 
 // Check validity of signal and received data as far as possible. But get
-// a working version first. We can add more checks later.
+// a working version first. We can add more checks later. Checks could
+// also be called from the parseForDB methods.
 func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 	var signal SignalReceived
 	err := json.Unmarshal(msgBytes, &signal)
@@ -243,6 +264,11 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 		//fill in
 	case "groupLike":
 	// fill in
+	// Events:
+	case "createEvent":
+		var receivedData Event
+		unmarshalBody(signal.Body, &receivedData)
+		err = createEvent(receivedData)
 	case "toggleAttendEvent":
 		var receivedData Event
 		unmarshalBody(signal.Body, &receivedData)
@@ -272,19 +298,9 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 			// case "answerInviteToGroup":
 			// 	//fill in
 			// 	answerInviteToJoinGroup(receivedData)
-		case "createEvent":
-			// createEvent(receivedData)
 		}
 	}
-	return nil
-}
-
-func unmarshalBody[T any](signalBody []byte, receivedData T) {
-	err := json.Unmarshal(signalBody, receivedData)
-	if err != nil {
-		log.Println("error unmarshalling body of websocket message:", err)
-		log.Println("type of receivedData:", fmt.Sprintf("%T", receivedData))
-	}
+	return err
 }
 
 func broadcastUserList() {
@@ -349,7 +365,7 @@ func logout(userID string, thisConn *websocket.Conn) {
 func privateMessage(receivedData Message) {
 	id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
 	if err != nil {
-		log.Println(err, "error adding message to database")
+		log.Println("error adding message to database", err)
 	}
 	receivedData.ID = id.String()
 	receivedData.Created = created.Format(time.RFC3339)
@@ -373,7 +389,7 @@ func privateMessage(receivedData Message) {
 func groupMessage(receivedData Message) {
 	id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
 	if err != nil {
-		log.Println(err, "error adding message to database")
+		log.Println("error adding message to database", err)
 	}
 	receivedData.ID = id.String()
 	receivedData.Created = created.Format(time.RFC3339)
@@ -391,7 +407,7 @@ func groupMessage(receivedData Message) {
 		for _, c := range activeConnections[recipient] {
 			err := c.WriteJSON(message)
 			if err != nil {
-				log.Println(err, "error sending group message to recipient")
+				log.Println("error sending group message to recipient", err)
 			}
 		}
 	}
@@ -421,7 +437,7 @@ func requestToFollow(receivedData Notification) {
 
 	private, err := dbfuncs.IsUserPrivate(receivedData.ReceiverId)
 	if err != nil {
-		log.Println(err, "error checking if user is public")
+		log.Println("error checking if user is public", err)
 	}
 
 	if private {
@@ -429,15 +445,14 @@ func requestToFollow(receivedData Notification) {
 
 		err = dbfuncs.AddNotification(receivedData.parseForDB())
 		if err != nil {
-			log.Println(err, "error adding notification to database:")
-			log.Printf("%s requested to follow %s\n", receivedData.SenderId, receivedData.ReceiverId)
+			log.Println("error adding requestToFollow notification to database", err)
 		}
 
 		connectionLock.RLock()
 		for _, c := range activeConnections[receivedData.ReceiverId] {
 			err := c.WriteJSON(receivedData)
 			if err != nil {
-				log.Println(err, "error sending group message to recipient")
+				log.Println("error sending group message to recipient", err)
 			}
 		}
 		connectionLock.RUnlock()
@@ -447,7 +462,7 @@ func requestToFollow(receivedData Notification) {
 
 	err = dbfuncs.AddFollow(&follow)
 	if err != nil {
-		log.Println(err, "error adding follow to database")
+		log.Println("error adding follow to database", err)
 	}
 }
 
@@ -458,7 +473,7 @@ func answerRequestToFollow(receivedData Notification) error {
 	case "yes":
 		err = dbfuncs.AcceptFollow(receivedData.SenderId, receivedData.ReceiverId)
 		if err != nil {
-			log.Println(err, "database error accepting follow")
+			log.Println("database error accepting follow", err)
 			log.Printf("%s accepted follow request from %s\n",
 				receivedData.SenderId, receivedData.ReceiverId)
 			return err
@@ -466,7 +481,7 @@ func answerRequestToFollow(receivedData Notification) error {
 	case "no":
 		err := dbfuncs.RejectFollow(receivedData.SenderId, receivedData.ReceiverId)
 		if err != nil {
-			log.Println(err, "error rejecting follow")
+			log.Println("error rejecting follow", err)
 			log.Printf("%s rejected follow request from %s\n",
 				receivedData.SenderId, receivedData.ReceiverId)
 		}
@@ -480,7 +495,7 @@ func answerRequestToFollow(receivedData Notification) error {
 
 	err = dbfuncs.AddNotification(receivedData.parseForDB())
 	if err != nil {
-		log.Print(err, "error adding notification to database")
+		log.Print("error adding notification to database", err)
 		log.Printf("%s answered follow request from %s\n",
 			receivedData.SenderId, receivedData.ReceiverId)
 	}
@@ -489,7 +504,7 @@ func answerRequestToFollow(receivedData Notification) error {
 	for _, c := range activeConnections[receivedData.ReceiverId] {
 		err = c.WriteJSON(receivedData)
 		if err != nil {
-			log.Println(err, "error sending group message to recipient")
+			log.Println("error sending group message to recipient", err)
 		}
 	}
 	connectionLock.RUnlock()
@@ -567,35 +582,40 @@ func answerRequestToFollow(receivedData Notification) error {
 // // dbfuncs.AddNotification for each one. It will also have to
 // // loop through the group members and call dbfuncs.AddGroupEventParticipant
 // // for each one. It will also have to loop through the group members
-// func createEvent(receivedData Notification) {
-// 	event := receivedData.Body
-// 	dbEvent := dbfuncs.Event{
-// 		EventId:     event.EventId,
-// 		GroupId:     event.GroupId,
-// 		Title:       event.Title,
-// 		Description: event.Description,
-// 		CreatorId:   event.CreatorId,
-// 	}
-// 	err := dbfuncs.AddEvent(&dbEvent)
-// 	if err != nil {
-// 		log.Println(err, "error adding event to database")
-// 	}
-// 	signal := map[string]interface{}{
-// 		"data": receivedData,
-// 		"type": "createEvent",
-// 	}
-// 	connectionLock.RLock()
-// 	recipients := dbfuncs.GetGroupMembers(receivedData.GroupId)
-// 	for _, recipient := range recipients {
-// 		for _, c := range activeConnections[recipient] {
-// 			err := c.WriteJSON(signal)
-// 			if err != nil {
-// 				log.Fatal(err)
-// 			}
-// 		}
-// 	}
-// 	connectionLock.RUnlock()
-// }
+func createEvent(receivedData Event) error {
+	event := receivedData.parseForDB()
+
+	err, id, createdAt := dbfuncs.AddEvent(event)
+	if err != nil {
+		log.Println("error adding event to database", err)
+	}
+
+	// make a struct literal with title and description
+	body := fmt.Sprintf(`{"Title":%s,"Description":%s}`,
+		receivedData.Title, receivedData.Description)
+
+	notification := Notification{
+		Id:         id,
+		ReceiverId: event.GroupId,
+		SenderId:   event.CreatorId,
+		Body:       body,
+		Type:       "new event",
+		CreatedAt:  createdAt,
+	}
+
+	connectionLock.RLock()
+	recipients := dbfuncs.GetGroupMembers(receivedData.GroupId)
+	for _, recipient := range recipients {
+		for _, c := range activeConnections[recipient] {
+			err := c.WriteJSON(notification)
+			if err != nil {
+				log.Println("error sending new event notification", err)
+			}
+		}
+	}
+	connectionLock.RUnlock()
+	return err
+}
 
 // // Toggle the user's attendance at the event in the database and
 // // broadcast the updated list of attendees to all group members
