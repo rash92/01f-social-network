@@ -42,3 +42,11 @@ func GetNotificationById(id string) (Notification, error) {
 	var notification Notification
 	return notification, nil
 }
+
+func AcceptFollow(followId string, followingId string) error {
+	return nil
+}
+
+func RejectFollow(followId string, followingId string) error {
+	return nil
+}

@@ -1,19 +1,13 @@
 package handlefuncs
 
-//consider redoing database tables to combine private messages, group messages and various types of
-// notificaitons in one table
-//and differentiate them with a type field, possibly with empty fields for fields that are not needed for that type of message.
+// Make these functions all return an error value to the broker function.
 
 // Make sure that we're consistent about capitalization, e.g. "id" vs "Id" vs "ID".
 
-// To read from maps, e.g. activeConnections when looping through active connections,
-// we can use .RLock() and .RUnlock() instead of .Lock() and .Unlock() to avoid
-// blocking other goroutines. I've changes the mutexe types to sync.RWMutex to allow
-// this.
 // We also need to protect the database from concurrent reads and writes. The mattn/go-sqlite3
 // documentation says that it's safe for concurrent reads but not for concurrent writes,
 // so, as for the activeConnections map, we can use a sync.RWMutex instead of a sync.Mutex,
-// as long as we make sure to use .RLock() only when reading from the database and .RLock()
+// as long as we make sure to use .RLock() only when reading from the database and .Lock()
 // when writing to it.
 
 // What happens if a user's cookie expires after they've logged in? We need to make sure
@@ -409,6 +403,15 @@ func notifyClientOfError(err error, message string, id string) error {
 	return err
 }
 
+func dbify(receivedData Notification) *dbfuncs.Notification {
+	return &dbfuncs.Notification{
+		Body:       receivedData.Body,
+		Type:       "requestToFollow",
+		ReceiverId: receivedData.ReceiverId,
+		SenderId:   receivedData.SenderId,
+	}
+}
+
 func requestToFollow(receivedData Notification) {
 	var follow dbfuncs.Follow
 	follow.FollowingId = receivedData.ReceiverId
@@ -422,16 +425,10 @@ func requestToFollow(receivedData Notification) {
 	if private {
 		follow.Status = "pending"
 
-		dbNotification := dbfuncs.Notification{
-			Body:       receivedData.Body,
-			Type:       "requestToFollow",
-			ReceiverId: receivedData.ReceiverId,
-			SenderId:   receivedData.SenderId,
-		}
-
-		err = dbfuncs.AddNotification(&dbNotification)
+		err = dbfuncs.AddNotification(dbify(receivedData))
 		if err != nil {
-			log.Println(err, "error adding notification to database")
+			log.Println(err, "error adding notification to database:")
+			log.Printf("%s requested to follow %s\n", receivedData.SenderId, receivedData.ReceiverId)
 		}
 
 		connectionLock.RLock()
@@ -452,13 +449,39 @@ func requestToFollow(receivedData Notification) {
 	}
 }
 
-// Decide if we want to notify the requester of the result.
-func answerRequestToFollow(receivedData Notification) {
-	/* Get the follow from the database and update its status.
-	If the answer is yes, update the Follows table from pending to accepted.
-	If it's no, delete the row from the database. Finally, send the answer to
-	the recipient. */
-	/* How much of this do we want to do in the database functions? */
+func answerRequestToFollow(receivedData Notification) error {
+	switch receivedData.Body {
+	case "yes":
+		err := dbfuncs.AcceptFollow(receivedData.SenderId, receivedData.ReceiverId)
+		if err != nil {
+			log.Println(err, "database error accepting follow")
+			log.Printf("%s accepted follow request from %s\n",
+				receivedData.SenderId, receivedData.ReceiverId)
+			return err
+		}
+	case "no":
+		err := dbfuncs.RejectFollow(receivedData.SenderId, receivedData.ReceiverId)
+		if err != nil {
+			log.Println(err, "error rejecting follow")
+			log.Printf("%s rejected follow request from %s\n",
+				receivedData.SenderId, receivedData.ReceiverId)
+		}
+		return err
+	default:
+		log.Println("unexpected body in answerRequestToFollow:", receivedData.Body)
+		log.Printf("%s sent unexpected body %s, answering request from %s\n",
+			receivedData.SenderId, receivedData.Body, receivedData.ReceiverId)
+		return fmt.Errorf("unexpected body in answerRequestToFollow")
+	}
+
+	err := dbfuncs.AddNotification(dbify(receivedData))
+	if err != nil {
+		log.Print(err, "error adding notification to database")
+		log.Printf("%s answered follow request from %s\n",
+			receivedData.SenderId, receivedData.ReceiverId)
+	}
+
+	return nil
 }
 
 // // Add a notification to the database and send it to the group creator
