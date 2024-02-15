@@ -92,6 +92,15 @@ type Notification struct {
 	CreatedAt  time.Time `json:"CreatedAt"`
 }
 
+func (receivedData Notification) parseForDB() *dbfuncs.Notification {
+	return &dbfuncs.Notification{
+		Body:       receivedData.Body,
+		Type:       "requestToFollow",
+		ReceiverId: receivedData.ReceiverId,
+		SenderId:   receivedData.SenderId,
+	}
+}
+
 // these may not involve database calls but can still be sent through websockets
 // this can be resused for sending SignalReceiveds to other users about a user who has
 // e.g. registered, logged in, logged out, or changed their status
@@ -394,22 +403,15 @@ func notifyClientOfError(err error, message string, id string) error {
 	data := map[string]interface{}{
 		"type": "error",
 	}
+	connectionLock.RLock()
 	for _, c := range activeConnections[id] {
 		err = c.WriteJSON(data)
 		if err != nil {
 			break
 		}
 	}
+	connectionLock.RUnlock()
 	return err
-}
-
-func dbify(receivedData Notification) *dbfuncs.Notification {
-	return &dbfuncs.Notification{
-		Body:       receivedData.Body,
-		Type:       "requestToFollow",
-		ReceiverId: receivedData.ReceiverId,
-		SenderId:   receivedData.SenderId,
-	}
 }
 
 func requestToFollow(receivedData Notification) {
@@ -425,7 +427,7 @@ func requestToFollow(receivedData Notification) {
 	if private {
 		follow.Status = "pending"
 
-		err = dbfuncs.AddNotification(dbify(receivedData))
+		err = dbfuncs.AddNotification(receivedData.parseForDB())
 		if err != nil {
 			log.Println(err, "error adding notification to database:")
 			log.Printf("%s requested to follow %s\n", receivedData.SenderId, receivedData.ReceiverId)
@@ -450,9 +452,11 @@ func requestToFollow(receivedData Notification) {
 }
 
 func answerRequestToFollow(receivedData Notification) error {
+	var err error
+
 	switch receivedData.Body {
 	case "yes":
-		err := dbfuncs.AcceptFollow(receivedData.SenderId, receivedData.ReceiverId)
+		err = dbfuncs.AcceptFollow(receivedData.SenderId, receivedData.ReceiverId)
 		if err != nil {
 			log.Println(err, "database error accepting follow")
 			log.Printf("%s accepted follow request from %s\n",
@@ -474,14 +478,23 @@ func answerRequestToFollow(receivedData Notification) error {
 		return fmt.Errorf("unexpected body in answerRequestToFollow")
 	}
 
-	err := dbfuncs.AddNotification(dbify(receivedData))
+	err = dbfuncs.AddNotification(receivedData.parseForDB())
 	if err != nil {
 		log.Print(err, "error adding notification to database")
 		log.Printf("%s answered follow request from %s\n",
 			receivedData.SenderId, receivedData.ReceiverId)
 	}
 
-	return nil
+	connectionLock.RLock()
+	for _, c := range activeConnections[receivedData.ReceiverId] {
+		err = c.WriteJSON(receivedData)
+		if err != nil {
+			log.Println(err, "error sending group message to recipient")
+		}
+	}
+	connectionLock.RUnlock()
+
+	return err
 }
 
 // // Add a notification to the database and send it to the group creator
