@@ -9,7 +9,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func AddPost(cookieVal,  PostTitle, PostBody string, categories []string)( string, error) {
+func OldAddPost(cookieVal, PostTitle, PostBody string, categories []string) (string, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return "", err
@@ -23,16 +23,16 @@ func AddPost(cookieVal,  PostTitle, PostBody string, categories []string)( strin
 	var UserId uuid.UUID
 	err = database.QueryRow("SELECT  userId FROM Sessions WHERE  Id=?", cookieVal).Scan(&UserId)
 	if err != nil {
-	return  "",err
+		return "", err
 	}
-	
+
 	statement.Exec(id, PostTitle, PostBody, UserId, created)
 
-	statement, err= database.Prepare("INSERT INTO PostCat VALUES (?,?)")
+	statement, err = database.Prepare("INSERT INTO PostCat VALUES (?,?)")
 	if err != nil {
-		return  "",err
-		}
-      
+		return "", err
+	}
+
 	for _, v := range categories {
 		row := database.QueryRow("SELECT Id FROM Categories WHERE Name = ?", v)
 
@@ -41,7 +41,6 @@ func AddPost(cookieVal,  PostTitle, PostBody string, categories []string)( strin
 		if err != nil {
 			fmt.Println("error of adding linking post with cats")
 			log.Fatal(err)
-		
 
 		}
 		statement.Exec(id, CatId)
