@@ -78,3 +78,12 @@ func AddGroupMember(member *GroupMember) error {
 func GetGroupCreatorFromGroupId(groupId string) (string, error) {
 	return "", nil
 }
+
+func AddComment(comment *Comment) error {
+	return nil
+}
+
+func GetCommentById(id string) (Comment, error) {
+	var comment Comment
+	return comment, nil
+}

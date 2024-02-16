@@ -1,5 +1,11 @@
 package handlefuncs
 
+// Do we generally want to be marshalling dbfuncs structs to JSON to
+// send on to the client? I'm thinking this could be the way to do it,
+// as there's less chance of forwarding unsanitized data to the client.
+// We'll be sure the operation was successful and that the data is in
+// the format we expect.
+
 // Make these functions all return an error value to the broker function.
 
 // Make sure that we're consistent about capitalization, e.g. "id" vs "Id" vs "ID".
@@ -124,6 +130,14 @@ func (receivedData Event) parseForDB() *dbfuncs.Event {
 	}
 }
 
+func (receivedData Comment) parseForDB() *dbfuncs.Comment {
+	return &dbfuncs.Comment{
+		Body:      receivedData.Body,
+		CreatorId: receivedData.UserID,
+		PostId:    receivedData.PostID,
+	}
+}
+
 // Be sure to allow possibilty of one of a user's connections being closed
 // while they still have other connections open. Make this distinct from
 // logging out, although logging out will include closing the current
@@ -241,7 +255,9 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 		unmarshalBody(signal.Body, &receivedData)
 		err = post(receivedData)
 	case "comment":
-		//fill in
+		var receivedData Comment
+		unmarshalBody(signal.Body, &receivedData)
+		err = comment(receivedData)
 	case "like":
 		// fill in
 	// Group business:
@@ -453,6 +469,37 @@ func groupPost(receivedData Post) error {
 		}
 	}
 	connectionLock.RUnlock()
+
+	return err
+}
+
+func comment(receivedData Comment) error {
+	var err error
+	if len(receivedData.Body) > CharacterLimit {
+		err = errors.New("413 Payload Too Large")
+		log.Println(err)
+		return err
+	}
+	if len(receivedData.Body) == 0 {
+		err = errors.New("204 No Content")
+		log.Println(err)
+		return err
+	}
+
+	DBComment := receivedData.parseForDB()
+	err = dbfuncs.AddComment(DBComment)
+	if err != nil {
+		err = errors.New("500 Internal Server Error: error adding comment to database")
+		log.Println(err)
+		return err
+	}
+
+	connectionLock.RLock()
+	for _, usersConnections := range activeConnections {
+		for _, c := range usersConnections {
+			err = c.WriteJSON(comment)
+		}
+	}
 
 	return err
 }
