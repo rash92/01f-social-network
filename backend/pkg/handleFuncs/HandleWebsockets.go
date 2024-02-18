@@ -274,11 +274,11 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 	case "post":
 		var receivedData Post
 		unmarshalBody(signal.Body, &receivedData)
-		err = post(receivedData)
+		err = postOrComment(receivedData)
 	case "comment":
 		var receivedData Comment
 		unmarshalBody(signal.Body, &receivedData)
-		err = comment(receivedData)
+		err = postOrComment(receivedData)
 	case "like":
 		// fill in
 	// Group business:
@@ -287,7 +287,7 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 	case "groupPost":
 		var receivedData Post
 		unmarshalBody(signal.Body, &receivedData)
-		err = groupPost(receivedData)
+		err = postOrComment(receivedData)
 	case "groupComment":
 		//fill in
 	case "groupLike":
@@ -420,16 +420,14 @@ func validadteContent(content string) error {
 	return nil
 }
 
-func post(receivedData Post) error {
-	err := validadteContent(receivedData.Body)
+func postOrComment(receivedData PostOrComment) error {
+	err := validadteContent(receivedData.GetBody())
 	if err != nil {
 		return err
 	}
 
-	receivedData.Id, err = receivedData.addToDB()
+	err = receivedData.SetId()
 	if err != nil {
-		log.Println("error adding content to database", err)
-		notifyClientOfError(err, "error adding content to database", receivedData.CreatorId)
 		return err
 	}
 
@@ -437,44 +435,93 @@ func post(receivedData Post) error {
 	return err
 }
 
-func groupPost(receivedData Post) error {
-	err := validadteContent(receivedData.Body)
-	if err != nil {
-		return err
-	}
+// func groupPost(receivedData Post) error {
+// 	err := validadteContent(receivedData.Body)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	receivedData.Id, err = receivedData.addToDB()
-	if err != nil {
-		log.Println("error adding post to database", err)
-		notifyClientOfError(err, "error adding post to database", receivedData.CreatorId)
-		return err
-	}
+// 	receivedData.Id, err = receivedData.AddToDB()
+// 	if err != nil {
+// 		log.Println("error adding post to database", err)
+// 		notifyClientOfError(err, "error adding post to database", receivedData.CreatorId)
+// 		return err
+// 	}
 
-	err = send(receivedData)
-	return err
-}
+// 	err = send(receivedData)
+// 	return err
+// }
 
-func comment(receivedData Comment) error {
-	err := validadteContent(receivedData.Body)
-	if err != nil {
-		return err
-	}
+// func comment(receivedData Comment) error {
+// 	err := validadteContent(receivedData.Body)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	receivedData.Id, err = receivedData.addToDB()
-	if err != nil {
-		err = errors.New("error adding content to database")
-		log.Println(err)
-		notifyClientOfError(err, "error adding content to database", receivedData.UserId)
-		return err
-	}
+// 	receivedData.Id, err = receivedData.AddToDB()
+// 	if err != nil {
+// 		err = errors.New("error adding content to database")
+// 		log.Println(err)
+// 		notifyClientOfError(err, "error adding content to database", receivedData.UserId)
+// 		return err
+// 	}
 
-	err = send(receivedData)
-	return err
-}
+// 	err = send(receivedData)
+// 	return err
+// }
 
 type PostOrComment interface {
 	GetPrivacyLevel() (string, error)
 	GetPost() (Post, error)
+	GetBody() string
+	GetId() string
+	AddToDB() (string, error)
+	GetCreatorId() string
+	SetId() error
+}
+
+func (receivedData Post) GetBody() string {
+	return receivedData.Body
+}
+
+func (receivedData Comment) GetBody() string {
+	return receivedData.Body
+}
+
+func (receivedData Post) GetCreatorId() string {
+	return receivedData.CreatorId
+}
+
+func (receivedData Comment) GetCreatorId() string {
+	return receivedData.UserId
+}
+
+func (receivedData Post) GetId() string {
+	return receivedData.Id
+}
+
+func (receivedData Comment) GetId() string {
+	return receivedData.Id
+}
+
+func (receivedData Post) SetId() error {
+	var err error
+	receivedData.Id, err = receivedData.AddToDB()
+	if err != nil {
+		log.Println("error adding content to database", err)
+		notifyClientOfError(err, "error adding content to database", receivedData.GetCreatorId())
+	}
+	return err
+}
+
+func (receivedData Comment) SetId() error {
+	var err error
+	receivedData.Id, err = receivedData.AddToDB()
+	if err != nil {
+		log.Println("error adding content to database", err)
+		notifyClientOfError(err, "error adding content to database", receivedData.GetCreatorId())
+	}
+	return err
 }
 
 func (receivedData Post) GetPrivacyLevel() (string, error) {
@@ -601,7 +648,7 @@ func send(receivedData PostOrComment) error {
 	return err
 }
 
-func (receivedData Comment) addToDB() (string, error) {
+func (receivedData Comment) AddToDB() (string, error) {
 	dbStruct := receivedData.parseForDB()
 	err := dbfuncs.AddComment(dbStruct)
 	if err != nil {
@@ -610,7 +657,7 @@ func (receivedData Comment) addToDB() (string, error) {
 	return dbStruct.Id, err
 }
 
-func (receivedData Post) addToDB() (string, error) {
+func (receivedData Post) AddToDB() (string, error) {
 	dbStruct := receivedData.parseForDB()
 	err := dbfuncs.AddPost(dbStruct)
 	if err != nil {
