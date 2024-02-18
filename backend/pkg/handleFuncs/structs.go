@@ -40,8 +40,8 @@ type Categories struct {
 }
 
 type Post struct {
-	Id           uuid.UUID `json:"id"`
-	UserId       uuid.UUID `json:"userid"`
+	Id           string    `json:"id"`
+	UserId       string    `json:"userid"`
 	Title        string    `json:"title"`
 	Body         string    `json:"body"`
 	Categories   []string  `json:"categories"`
@@ -56,15 +56,16 @@ type Post struct {
 }
 
 type Comment struct {
-	ID        string    `json:"id"`
+	Id        string    `json:"id"`
 	Body      string    `json:"body"`
-	UserID    string    `json:"user_id"`
-	PostID    string    `json:"post_id"`
+	UserId    string    `json:"user_id"`
+	PostId    string    `json:"post_id"`
 	CreatedAt time.Time `json:"created_at"`
 	Likes     int       `json:"likes"`
 	Dislikes  int       `json:"dislikes"`
 	Username  string    `json:"username"`
 }
+
 type Session struct {
 	Id       uuid.UUID
 	Username string

@@ -1,18 +1,23 @@
 package handlefuncs
 
-// Switch to remarshaling app structs to forward to the frontend.
+// Switching to remarshaling app structs to forward to the frontend.
+// I'm up to requestToJoinGroup with this.
 
-// Change uuid.UUID to string everywhere.
+// Changing uuid.UUID to string everywhere as I go along.
 
 // Note that notifyClientOfError only notifies the client that there was
 // an error. It doesn't tell the client what the error was. From the
-// POV of the client, it will always be an internal server error.
+// POV of the client, it will always be an internal server error. Nor
+// should it notify a user if someone else failed in some action that
+// would have affected them only if it had succeeded.
 
 // Distinguish between errors that need to be returned from, such as
 // failure to add item to db, versus errors that just need to be logged,
 // such as failure to send message to one of several connections.
 
-// Be consistent about capitalization, e.g. "id" vs "Id" vs "ID".
+// Be consistent about capitalization, e.g. "id" vs "Id" vs "ID". I'm
+// changing app structs to match database column names as I go along,
+// thus "Id" rather than "ID".
 
 // Protect the database from concurrent reads and writes. The mattn/go-sqlite3
 // documentation says that it's safe for concurrent reads but not for concurrent writes,
@@ -32,7 +37,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -81,6 +85,18 @@ type GroupMessage struct {
 	GroupId   string `json:"GroupId"`
 	Message   string `json:"Message"`
 	CreatedAt string `json:"CreatedAt"`
+}
+
+func (receivedData Post) parseForDB() *dbfuncs.Post {
+	return &dbfuncs.Post{
+		Title:        receivedData.Title,
+		Body:         receivedData.Body,
+		CreatorId:    receivedData.CreatorId,
+		GroupId:      receivedData.GroupId,
+		CreatedAt:    receivedData.CreatedAt,
+		Image:        receivedData.Image.Data,
+		PrivacyLevel: receivedData.PrivacyLevel,
+	}
 }
 
 type Notification struct {
@@ -138,8 +154,8 @@ func (receivedData Event) parseForDB() *dbfuncs.Event {
 func (receivedData Comment) parseForDB() *dbfuncs.Comment {
 	return &dbfuncs.Comment{
 		Body:      receivedData.Body,
-		CreatorId: receivedData.UserID,
-		PostId:    receivedData.PostID,
+		CreatorId: receivedData.UserId,
+		PostId:    receivedData.PostId,
 	}
 }
 
@@ -390,18 +406,6 @@ func notificationSeen(seen NotificationSeen, userID string) error {
 	return err
 }
 
-func (receivedData Post) parseForDB() *dbfuncs.Post {
-	return &dbfuncs.Post{
-		Title:        receivedData.Title,
-		Body:         receivedData.Body,
-		CreatorId:    receivedData.CreatorId,
-		GroupId:      receivedData.GroupId,
-		CreatedAt:    receivedData.CreatedAt,
-		Image:        receivedData.Image.Data,
-		PrivacyLevel: receivedData.PrivacyLevel,
-	}
-}
-
 func validadteContent(content string) error {
 	if len(content) > CharacterLimit {
 		err := errors.New("413 Payload Too Large")
@@ -422,16 +426,10 @@ func post(receivedData Post) error {
 		return err
 	}
 
-	id, err := receivedData.addToDB()
+	receivedData.Id, err = receivedData.addToDB()
 	if err != nil {
 		log.Println("error adding content to database", err)
 		notifyClientOfError(err, "error adding content to database", receivedData.CreatorId)
-		return err
-	}
-
-	receivedData.Id, err = uuid.Parse(id)
-	if err != nil {
-		log.Println("error parsing UUID from database", err)
 		return err
 	}
 
@@ -445,16 +443,10 @@ func groupPost(receivedData Post) error {
 		return err
 	}
 
-	id, err := receivedData.addToDB()
+	receivedData.Id, err = receivedData.addToDB()
 	if err != nil {
 		log.Println("error adding post to database", err)
 		notifyClientOfError(err, "error adding post to database", receivedData.CreatorId)
-		return err
-	}
-
-	receivedData.Id, err = uuid.Parse(id)
-	if err != nil {
-		log.Println("error parsing UUID from database", err)
 		return err
 	}
 
@@ -468,11 +460,11 @@ func comment(receivedData Comment) error {
 		return err
 	}
 
-	receivedData.ID, err = receivedData.addToDB()
+	receivedData.Id, err = receivedData.addToDB()
 	if err != nil {
 		err = errors.New("error adding content to database")
 		log.Println(err)
-		notifyClientOfError(err, "error adding content to database", receivedData.UserID)
+		notifyClientOfError(err, "error adding content to database", receivedData.UserId)
 		return err
 	}
 
@@ -494,23 +486,19 @@ func (receivedData Post) GetPost() (Post, error) {
 }
 
 func (receivedData Comment) GetPrivacyLevel() (string, error) {
-	privacyLevel, err := dbfuncs.GetPostPrivacyLevelByCommentId(receivedData.ID)
+	privacyLevel, err := dbfuncs.GetPostPrivacyLevelByCommentId(receivedData.Id)
 	return privacyLevel, err
 }
 
 func (receivedData Comment) GetPost() (Post, error) {
-	dbPost, err := dbfuncs.GetPostByCommentId(receivedData.ID)
+	dbPost, err := dbfuncs.GetPostByCommentId(receivedData.Id)
 	if err != nil {
 		log.Println("error getting post from database", err)
 		return Post{}, err
 	}
-	id, err := uuid.Parse(dbPost.Id)
-	if err != nil {
-		log.Println("error getting post from database", err)
-		return Post{}, err
-	}
+
 	post := Post{
-		Id:           id,
+		Id:           dbPost.Id,
 		Title:        dbPost.Title,
 		Body:         dbPost.Body,
 		CreatorId:    dbPost.CreatorId,
@@ -519,6 +507,7 @@ func (receivedData Comment) GetPost() (Post, error) {
 		Image:        &Image{Data: dbPost.Image},
 		PrivacyLevel: dbPost.PrivacyLevel,
 	}
+
 	return post, err
 }
 
@@ -529,7 +518,19 @@ func send(receivedData PostOrComment) error {
 		return err
 	}
 
+	var privacyLevel string
 	if post.GroupId != "" {
+		privacyLevel = "group"
+	} else {
+		privacyLevel, err = receivedData.GetPrivacyLevel()
+		if err != nil {
+			log.Println("error getting privacy level", err)
+			return err
+		}
+	}
+
+	switch privacyLevel {
+	case "group":
 		connectionLock.RLock()
 		recipients := dbfuncs.GetGroupMembers(post.GroupId)
 		for _, recipient := range recipients {
@@ -543,15 +544,6 @@ func send(receivedData PostOrComment) error {
 		}
 		connectionLock.RUnlock()
 		return err
-	}
-
-	privacyLevel, err := receivedData.GetPrivacyLevel()
-	if err != nil {
-		log.Println("error getting privacy level", err)
-		return err
-
-	}
-	switch privacyLevel {
 	case "public":
 		connectionLock.RLock()
 		for client := range activeConnections {
@@ -585,7 +577,7 @@ func send(receivedData PostOrComment) error {
 			connectionLock.RUnlock()
 		}
 	case "superprivate":
-		chosenFollowers, err := dbfuncs.GetPostChosenFollowersByPostId(post.Id.String())
+		chosenFollowers, err := dbfuncs.GetPostChosenFollowersByPostId(post.Id)
 		if err != nil {
 			log.Println("error getting chosen followers from database", err)
 			notifyClientOfError(err, "error getting chosen followers from database", post.CreatorId)
@@ -682,6 +674,9 @@ func groupMessage(receivedData Message) {
 	connectionLock.RUnlock()
 }
 
+// Only notify a user of an error that occurred while processing an
+// action they attempted. No need to notify someone if someone else
+// failed to follow them, for example.
 func notifyClientOfError(err error, message string, id string) error {
 	log.Println(err, message)
 	data := map[string]interface{}{
@@ -749,16 +744,14 @@ func answerRequestToFollow(receivedData Notification) error {
 		err = dbfuncs.AcceptFollow(receivedData.SenderId, receivedData.ReceiverId)
 		if err != nil {
 			log.Println("database error accepting follow", err)
-			log.Printf("%s accepted follow request from %s\n",
-				receivedData.SenderId, receivedData.ReceiverId)
+			notifyClientOfError(err, "database error accepting follow", receivedData.SenderId)
 			return err
 		}
 	case "no":
 		err := dbfuncs.RejectFollow(receivedData.SenderId, receivedData.ReceiverId)
 		if err != nil {
 			log.Println("error rejecting follow", err)
-			log.Printf("%s rejected follow request from %s\n",
-				receivedData.SenderId, receivedData.ReceiverId)
+			notifyClientOfError(err, "error rejecting follow", receivedData.SenderId)
 		}
 		return err
 	default:
@@ -787,6 +780,8 @@ func answerRequestToFollow(receivedData Notification) error {
 	return err
 }
 
+// I'm up to here in the process of bringing these functions into line
+// with our current procedures.
 func requestToJoinGroup(receivedData Notification) error {
 	notification := dbfuncs.Notification{
 		Body:       receivedData.Body,
@@ -802,7 +797,6 @@ func requestToJoinGroup(receivedData Notification) error {
 		Status:  "pending",
 	}
 
-	// How about if AddNotification returns the notification ID?
 	err := dbfuncs.AddNotification(&notification)
 	if err != nil {
 		log.Println(err, "error adding notification to database")
