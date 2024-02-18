@@ -2,6 +2,12 @@ package handlefuncs
 
 // Switch to remarshaling app structs to forward to the frontend.
 
+// Change uuid.UUID to string everywhere.
+
+// Note that notifyClientOfError only notifies the client that there was
+// an error. It doesn't tell the client what the error was. From the
+// POV of the client, it will always be an internal server error.
+
 // Distinguish between errors that need to be returned from, such as
 // failure to add item to db, versus errors that just need to be logged,
 // such as failure to send message to one of several connections.
@@ -396,34 +402,81 @@ func (receivedData Post) parseForDB() *dbfuncs.Post {
 	}
 }
 
-func post(receivedData Post) error {
-	var err error
-	if len(receivedData.Body) > CharacterLimit {
-		err = errors.New("413 Payload Too Large")
+func validadteContent(content string) error {
+	if len(content) > CharacterLimit {
+		err := errors.New("413 Payload Too Large")
 		log.Println(err)
 		return err
 	}
-	if len(receivedData.Body) == 0 {
-		err = errors.New("204 No Content")
+	if len(content) == 0 {
+		err := errors.New("204 No Content")
+		log.Println(err)
 		return err
 	}
+	return nil
+}
 
-	DBPost := receivedData.parseForDB()
-	err = dbfuncs.AddPost(DBPost)
+func post(receivedData Post) error {
+	err := validadteContent(receivedData.Body)
 	if err != nil {
-		log.Println("error adding post to database", err)
-		notifyClientOfError(err, "error adding post to database", receivedData.CreatorId)
 		return err
 	}
 
-	receivedData.Id, err = uuid.Parse(DBPost.Id)
+	id, err := receivedData.addToDB()
+	if err != nil {
+		log.Println("error adding content to database", err)
+		notifyClientOfError(err, "error adding content to database", receivedData.CreatorId)
+		return err
+	}
+
+	receivedData.Id, err = uuid.Parse(id)
 	if err != nil {
 		log.Println("error parsing UUID from database", err)
 		return err
 	}
 
 	err = send(receivedData)
+	return err
+}
 
+func groupPost(receivedData Post) error {
+	err := validadteContent(receivedData.Body)
+	if err != nil {
+		return err
+	}
+
+	id, err := receivedData.addToDB()
+	if err != nil {
+		log.Println("error adding post to database", err)
+		notifyClientOfError(err, "error adding post to database", receivedData.CreatorId)
+		return err
+	}
+
+	receivedData.Id, err = uuid.Parse(id)
+	if err != nil {
+		log.Println("error parsing UUID from database", err)
+		return err
+	}
+
+	err = send(receivedData)
+	return err
+}
+
+func comment(receivedData Comment) error {
+	err := validadteContent(receivedData.Body)
+	if err != nil {
+		return err
+	}
+
+	receivedData.ID, err = receivedData.addToDB()
+	if err != nil {
+		err = errors.New("error adding content to database")
+		log.Println(err)
+		notifyClientOfError(err, "error adding content to database", receivedData.UserID)
+		return err
+	}
+
+	err = send(receivedData)
 	return err
 }
 
@@ -475,6 +528,23 @@ func send(receivedData PostOrComment) error {
 		log.Println("error getting post", err)
 		return err
 	}
+
+	if post.GroupId != "" {
+		connectionLock.RLock()
+		recipients := dbfuncs.GetGroupMembers(post.GroupId)
+		for _, recipient := range recipients {
+			for _, c := range activeConnections[recipient] {
+				err := c.WriteJSON(receivedData)
+				if err != nil {
+					err = errors.New("error sending group message to recipient")
+					log.Println(err)
+				}
+			}
+		}
+		connectionLock.RUnlock()
+		return err
+	}
+
 	privacyLevel, err := receivedData.GetPrivacyLevel()
 	if err != nil {
 		log.Println("error getting privacy level", err)
@@ -539,73 +609,22 @@ func send(receivedData PostOrComment) error {
 	return err
 }
 
-func groupPost(receivedData Post) error {
-	var err error
-	if len(receivedData.Body) > CharacterLimit {
-		err = errors.New("413 Payload Too Large")
-		log.Println(err)
-		return err
-	}
-	if len(receivedData.Body) == 0 {
-		err = errors.New("204 No Content")
-		return err
-	}
-
-	DBPost := receivedData.parseForDB()
-
-	err = dbfuncs.AddPost(DBPost)
+func (receivedData Comment) addToDB() (string, error) {
+	dbStruct := receivedData.parseForDB()
+	err := dbfuncs.AddComment(dbStruct)
 	if err != nil {
-		log.Println("error adding post to database", err)
-		notifyClientOfError(err, "error adding post to database", receivedData.CreatorId)
-		return err
+		return "", err
 	}
-
-	recipients, err := dbfuncs.GetGroupMembersByGroupId(receivedData.GroupId)
-	if err != nil {
-		log.Println("error getting group members from database", err)
-		notifyClientOfError(err, "error getting group members from database", receivedData.CreatorId)
-		return err
-	}
-
-	connectionLock.RLock()
-	for _, recipient := range recipients {
-		for _, c := range activeConnections[recipient] {
-			err := c.WriteJSON(receivedData)
-			if err != nil {
-				log.Println("error sending group message to recipient", err)
-				log.Println("recipient:", recipient)
-			}
-		}
-	}
-	connectionLock.RUnlock()
-
-	return err
+	return dbStruct.Id, err
 }
 
-func comment(receivedData Comment) error {
-	var err error
-	if len(receivedData.Body) > CharacterLimit {
-		err = errors.New("413 Payload Too Large")
-		log.Println(err)
-		return err
-	}
-	if len(receivedData.Body) == 0 {
-		err = errors.New("204 No Content")
-		log.Println(err)
-		return err
-	}
-
-	DBComment := receivedData.parseForDB()
-	err = dbfuncs.AddComment(DBComment)
+func (receivedData Post) addToDB() (string, error) {
+	dbStruct := receivedData.parseForDB()
+	err := dbfuncs.AddPost(dbStruct)
 	if err != nil {
-		err = errors.New("500 Internal Server Error: error adding comment to database")
-		log.Println(err)
-		return err
+		return "", err
 	}
-
-	err = send(receivedData)
-
-	return err
+	return dbStruct.Id, err
 }
 
 // Change this and groupMessage to separate dbfuncs functions. Pass pointer to
