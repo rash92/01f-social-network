@@ -1,10 +1,6 @@
 package handlefuncs
 
-// Do we generally want to be marshalling dbfuncs structs to JSON to
-// send on to the client? I'm thinking this could be the way to do it,
-// as there's less chance of forwarding unsanitized data to the client.
-// We'll be sure the operation was successful and that the data is in
-// the format we expect.
+// Switch to remarshaling app structs to forward to the frontend.
 
 // Make these functions all return an error value to the broker function.
 
@@ -397,13 +393,6 @@ func (receivedData Post) parseForDB() *dbfuncs.Post {
 	}
 }
 
-// Alice creates a new post. We need to add it to the database and
-// send it to all online users. I replaced the old dbfuncs.AddPost
-// with a placeholder that takes and returns the appropriate types.
-// That has broken the old handlefuncs AddPost function, which expects
-// the old dbfuncs AddPost. We don't need categories any more.
-// I took the input checks from the old handlefuncs AddPost. Need to
-// add such checks for the other types of message too.
 func post(receivedData Post) error {
 	var err error
 	if len(receivedData.Body) > CharacterLimit {
@@ -421,15 +410,62 @@ func post(receivedData Post) error {
 	if err != nil {
 		log.Println("error adding post to database", err)
 		notifyClientOfError(err, "error adding post to database", receivedData.CreatorId)
+		return err
 	}
 
-	connectionLock.RLock()
-	for client := range activeConnections {
-		for _, c := range activeConnections[client] {
-			err := c.WriteJSON(receivedData)
-			if err != nil {
-				fmt.Println("Error sending user list to client:", err)
+	postId := DBPost.Id
+
+	switch receivedData.PrivacyLevel {
+	case "public":
+		connectionLock.RLock()
+		for client := range activeConnections {
+			for _, c := range activeConnections[client] {
+				err := c.WriteJSON(receivedData)
+				if err != nil {
+					fmt.Println("Error sending user list to client:", err)
+					connectionLock.RUnlock()
+					return err
+				}
 			}
+		}
+		connectionLock.RUnlock()
+	case "private":
+		followers, err := dbfuncs.GetFollowersByFollowingId(receivedData.CreatorId)
+		if err != nil {
+			log.Println("error getting followers from database", err)
+			notifyClientOfError(err, "error getting followers from database", receivedData.CreatorId)
+			return err
+		}
+		for _, follower := range followers {
+			connectionLock.RLock()
+			for _, c := range activeConnections[follower] {
+				err := c.WriteJSON(receivedData)
+				if err != nil {
+					fmt.Println("Error sending user list to client:", err)
+				}
+				connectionLock.RUnlock()
+				return err
+			}
+			connectionLock.RUnlock()
+		}
+	case "superprivate":
+		chosenFollowers, err := dbfuncs.GetPostChosenFollowersByPostId(postId)
+		if err != nil {
+			log.Println("error getting chosen followers from database", err)
+			notifyClientOfError(err, "error getting chosen followers from database", receivedData.CreatorId)
+			return err
+		}
+		for _, chosen := range chosenFollowers {
+			connectionLock.RLock()
+			for _, c := range activeConnections[chosen] {
+				err := c.WriteJSON(receivedData)
+				if err != nil {
+					fmt.Println("Error sending user list to client:", err)
+				}
+				connectionLock.RUnlock()
+				return err
+			}
+			connectionLock.RUnlock()
 		}
 	}
 	connectionLock.RUnlock()
@@ -458,13 +494,20 @@ func groupPost(receivedData Post) error {
 		return err
 	}
 
+	recipients, err := dbfuncs.GetGroupMembersByGroupId(receivedData.GroupId)
+	if err != nil {
+		log.Println("error getting group members from database", err)
+		notifyClientOfError(err, "error getting group members from database", receivedData.CreatorId)
+		return err
+	}
+
 	connectionLock.RLock()
-	recipients := dbfuncs.GetGroupMembers(receivedData.GroupId)
 	for _, recipient := range recipients {
 		for _, c := range activeConnections[recipient] {
 			err := c.WriteJSON(receivedData)
 			if err != nil {
 				log.Println("error sending group message to recipient", err)
+				log.Println("recipieent:", recipient)
 			}
 		}
 	}
@@ -494,12 +537,16 @@ func comment(receivedData Comment) error {
 		return err
 	}
 
+	// Need logic for sending comments to the right people.
 	connectionLock.RLock()
 	for _, usersConnections := range activeConnections {
 		for _, c := range usersConnections {
-			err = c.WriteJSON(comment)
+			err = c.WriteJSON(receivedData)
+			log.Println("error sending comment", err)
+			// log.Println("recipient:", recipient)
 		}
 	}
+	connectionLock.RUnlock()
 
 	return err
 }
@@ -587,10 +634,22 @@ func requestToFollow(receivedData Notification) error {
 
 	if private {
 		follow.Status = "pending"
+	} else {
+		follow.Status = "accepted"
+	}
 
+	err = dbfuncs.AddFollow(&follow)
+	if err != nil {
+		log.Println("error adding follow to database", err)
+		notifyClientOfError(err, "error adding follow to database", receivedData.SenderId)
+		return err
+	}
+
+	if private {
 		err = dbfuncs.AddNotification(receivedData.parseForDB())
 		if err != nil {
 			log.Println("error adding requestToFollow notification to database", err)
+			return err
 		}
 
 		connectionLock.RLock()
@@ -601,13 +660,6 @@ func requestToFollow(receivedData Notification) error {
 			}
 		}
 		connectionLock.RUnlock()
-	} else {
-		follow.Status = "accepted"
-	}
-
-	err = dbfuncs.AddFollow(&follow)
-	if err != nil {
-		log.Println("error adding follow to database", err)
 	}
 
 	return err

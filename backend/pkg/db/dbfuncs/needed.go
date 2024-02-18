@@ -87,3 +87,18 @@ func GetCommentById(id string) (Comment, error) {
 	var comment Comment
 	return comment, nil
 }
+
+func GetFollowersByFollowingId(id string) ([]string, error) {
+	var followers []string
+	return followers, nil
+}
+
+func GetPostChosenFollowersByPostId(id string) ([]string, error) {
+	var followers []string
+	return followers, nil
+}
+
+func GetGroupMembersByGroupId(groupId string) ([]string, error) {
+	var members []string
+	return members, nil
+}
