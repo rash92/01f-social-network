@@ -102,3 +102,12 @@ func GetGroupMembersByGroupId(groupId string) ([]string, error) {
 	var members []string
 	return members, nil
 }
+
+func GetPostPrivacyLevelByCommentId(id string) (string, error) {
+	return "", nil
+}
+
+func GetPostByCommentId(id string) (Post, error) {
+	post := Post{}
+	return post, nil
+}

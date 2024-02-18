@@ -2,11 +2,13 @@ package handlefuncs
 
 // Switch to remarshaling app structs to forward to the frontend.
 
-// Make these functions all return an error value to the broker function.
+// Distinguish between errors that need to be returned from, such as
+// failure to add item to db, versus errors that just need to be logged,
+// such as failure to send message to one of several connections.
 
-// Make sure that we're consistent about capitalization, e.g. "id" vs "Id" vs "ID".
+// Be consistent about capitalization, e.g. "id" vs "Id" vs "ID".
 
-// We also need to protect the database from concurrent reads and writes. The mattn/go-sqlite3
+// Protect the database from concurrent reads and writes. The mattn/go-sqlite3
 // documentation says that it's safe for concurrent reads but not for concurrent writes,
 // so, as for the activeConnections map, we can use a sync.RWMutex instead of a sync.Mutex,
 // as long as we make sure to use .RLock() only when reading from the database and .Lock()
@@ -24,6 +26,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -413,9 +416,72 @@ func post(receivedData Post) error {
 		return err
 	}
 
-	postId := DBPost.Id
+	receivedData.Id, err = uuid.Parse(DBPost.Id)
+	if err != nil {
+		log.Println("error parsing UUID from database", err)
+		return err
+	}
 
-	switch receivedData.PrivacyLevel {
+	err = send(receivedData)
+
+	return err
+}
+
+type PostOrComment interface {
+	GetPrivacyLevel() (string, error)
+	GetPost() (Post, error)
+}
+
+func (receivedData Post) GetPrivacyLevel() (string, error) {
+	return receivedData.PrivacyLevel, nil
+}
+
+func (receivedData Post) GetPost() (Post, error) {
+	return receivedData, nil
+}
+
+func (receivedData Comment) GetPrivacyLevel() (string, error) {
+	privacyLevel, err := dbfuncs.GetPostPrivacyLevelByCommentId(receivedData.ID)
+	return privacyLevel, err
+}
+
+func (receivedData Comment) GetPost() (Post, error) {
+	dbPost, err := dbfuncs.GetPostByCommentId(receivedData.ID)
+	if err != nil {
+		log.Println("error getting post from database", err)
+		return Post{}, err
+	}
+	id, err := uuid.Parse(dbPost.Id)
+	if err != nil {
+		log.Println("error getting post from database", err)
+		return Post{}, err
+	}
+	post := Post{
+		Id:           id,
+		Title:        dbPost.Title,
+		Body:         dbPost.Body,
+		CreatorId:    dbPost.CreatorId,
+		GroupId:      dbPost.GroupId,
+		CreatedAt:    dbPost.CreatedAt,
+		Image:        &Image{Data: dbPost.Image},
+		PrivacyLevel: dbPost.PrivacyLevel,
+	}
+	return post, err
+}
+
+func send(receivedData PostOrComment) error {
+	post, err := receivedData.GetPost()
+	if err != nil {
+		log.Println("error getting post", err)
+		return err
+	}
+	privacyLevel, err := receivedData.GetPrivacyLevel()
+	if err != nil {
+		log.Println("error getting privacy level", err)
+		return err
+
+	}
+	switch privacyLevel {
 	case "public":
 		connectionLock.RLock()
 		for client := range activeConnections {
@@ -430,10 +496,10 @@ func post(receivedData Post) error {
 		}
 		connectionLock.RUnlock()
 	case "private":
-		followers, err := dbfuncs.GetFollowersByFollowingId(receivedData.CreatorId)
+		followers, err := dbfuncs.GetFollowersByFollowingId(post.CreatorId)
 		if err != nil {
 			log.Println("error getting followers from database", err)
-			notifyClientOfError(err, "error getting followers from database", receivedData.CreatorId)
+			notifyClientOfError(err, "error getting followers from database", post.CreatorId)
 			return err
 		}
 		for _, follower := range followers {
@@ -449,10 +515,10 @@ func post(receivedData Post) error {
 			connectionLock.RUnlock()
 		}
 	case "superprivate":
-		chosenFollowers, err := dbfuncs.GetPostChosenFollowersByPostId(postId)
+		chosenFollowers, err := dbfuncs.GetPostChosenFollowersByPostId(post.Id.String())
 		if err != nil {
 			log.Println("error getting chosen followers from database", err)
-			notifyClientOfError(err, "error getting chosen followers from database", receivedData.CreatorId)
+			notifyClientOfError(err, "error getting chosen followers from database", post.CreatorId)
 			return err
 		}
 		for _, chosen := range chosenFollowers {
@@ -507,7 +573,7 @@ func groupPost(receivedData Post) error {
 			err := c.WriteJSON(receivedData)
 			if err != nil {
 				log.Println("error sending group message to recipient", err)
-				log.Println("recipieent:", recipient)
+				log.Println("recipient:", recipient)
 			}
 		}
 	}
@@ -537,16 +603,7 @@ func comment(receivedData Comment) error {
 		return err
 	}
 
-	// Need logic for sending comments to the right people.
-	connectionLock.RLock()
-	for _, usersConnections := range activeConnections {
-		for _, c := range usersConnections {
-			err = c.WriteJSON(receivedData)
-			log.Println("error sending comment", err)
-			// log.Println("recipient:", recipient)
-		}
-	}
-	connectionLock.RUnlock()
+	err = send(receivedData)
 
 	return err
 }
