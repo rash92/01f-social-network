@@ -1,13 +1,6 @@
 import {Button, Modal} from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
-function MyModal({
-  children,
-  show,
-  handleClose,
-  handleShow,
-  flag = true,
-  title,
-}) {
+function MyModal({children, show, handleClose, handleShow, flag = true}) {
   return (
     <>
       {flag ? (

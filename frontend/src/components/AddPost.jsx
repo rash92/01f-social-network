@@ -8,14 +8,14 @@ import {getJson} from "../helpers/helpers";
 import User from "./User";
 import {Link} from "react-router-dom";
 
-const AddPost = () => {
+const AddPost = ({show, setShow}) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [chosenFollowers, setChosenFollowers] = useState([]);
   const [isRighprivacy, setIsRighprivacy] = useState(false);
   const [searchInputTouch, setsearchInputTouch] = useState(false);
-  const [show, setShow] = useState(false);
-  const {OnAddPost} = useContext(AuthContext);
+  // const [show, setShow] = useState(false);
+  // const {OnAddPost} = useContext(AuthContext);
   const [errorAddPost, setErrorAddpost] = useState({
     message: "",
     isError: false,
@@ -65,10 +65,10 @@ const AddPost = () => {
   const handlePrivacyChange = (event) => {
     setPrivacy(event.target.value);
   };
-  const handleClose = () => setShow(false);
-  const handleShow = () => {
-    setShow(true);
-  };
+  // const handleClose = () => setShow(false);
+  // const handleShow = () => {
+  //   setShow(true);
+  // };
 
   const {
     isValid: titleIsValid,
@@ -116,7 +116,7 @@ const AddPost = () => {
         setPrivacy("puplic");
         setsearchInputTouch([]);
         chosenFollowers([]);
-        OnAddPost(res.post);
+        // OnAddPost(res.post);
         handleClose();
         setErrorAddpost({message: "", isError: false});
       }
@@ -130,8 +130,12 @@ const AddPost = () => {
   const searchInputClasses =
     chosenFollowers.length < 0 && searchInputTouch ? `${classes.invalid} ` : "";
 
+  const handleClose = () => setShow(false);
+  // const handleShow = () => {
+  //   setShow(true);
+  // };
   return (
-    <MyModal handleClose={handleClose} handleShow={handleShow} show={show}>
+    <MyModal handleClose={handleClose} show={show} flag={false}>
       <Form onSubmit={handleSubmit} className="py-3">
         <Form.Group controlId="formBasicTitle" className={titleInputClasses}>
           <Form.Label className="mt-2">title</Form.Label>

@@ -17,6 +17,8 @@ import (
 // type Image []byte
 
 // This is what will be returned by the handler.
+
+
 type Profile struct {
 	Owner             dbfuncs.User_GetProfileOwner
 	Posts             []dbfuncs.Post
@@ -65,7 +67,6 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 	if userId == ownerId {
 		usersOwnProfile = true
 	}
-	fmt.Println(!usersOwnProfile, "handleProfile:line:78")
 
 	// Check Follows table to see if there's a row with FollowerId = userId and FollowingId = ownerId.
 	query := `SELECT EXISTS(SELECT 1 FROM Follows WHERE FollowerId=? AND FollowingId=?)`
@@ -90,7 +91,7 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
-
+	fmt.Println(ownerId, "")
 	profile.NumberOfPosts, err = dbfuncs.GetNumberOfById(ownerId, "Posts")
 	if err != nil {
 		errorMessage := fmt.Sprintf("error getting number of posts: %v", err.Error())

@@ -10,7 +10,8 @@ import {dummyPosts} from "../store/dummydata";
 import {getJson} from "../helpers/helpers";
 import InfiniteScroll from "react-infinite-scroll-component";
 import PrivateProfile from "../components/PrivateProfile";
-import {useRouteLoaderData, useRouteError} from "react-router";
+import {useLoaderData, useRouteError} from "react-router";
+import PostInput from "../components/PostInput";
 
 const options1 = [
   {id: 1, username: "user", name: "User 1"},
@@ -40,43 +41,41 @@ const options2 = [
 
 const Profile = () => {
   const {user} = React.useContext(AuthContext);
-  const userData = useRouteLoaderData();
+  const userData = useLoaderData();
   const routeError = useRouteError();
-
-  console.log(routeError, "useRouteError");
-  const dummyUser = {
-    id: "4e56t78y98u0ii9i90i",
-    relStatus: "fellow",
-    isOwner: true,
-    Isprivate: true,
-    followers: options1,
-    following: options2,
-    numberOfFollowers: 60,
-    numberOfFollowing: 60,
-    numberOfPosts: 60,
-    posts: dummyPosts,
-    firstName: "John",
-    lastName: "Doe",
-    dateOfBirth: "1990-01-01",
-    avatar: user.profileImg,
-    nickname: "JD",
-    aboutMe:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur et tristique libero.",
-  };
-
-  const [Isprivate, setIsPrivate] = useState(true);
   const postRef = useRef(null);
   const [show, setShow] = useState(false);
   const [isActive, setIsActive] = useState("");
-  const [data, setData] = useState(dummyUser);
+  const [data, setData] = useState(userData);
   const [hasMoreFellowers, setHasMoreFellowers] = useState({
     followers: true,
     following: true,
   });
+
+  // const dummyUser = {
+  //   id: "4e56t78y98u0ii9i90i",
+  //   relStatus: "fellow",
+  //   isOwner: true,
+  //   Isprivate: true,
+  //   followers: options1,
+  //   following: options2,
+  //   numberOfFollowers: 60,
+  //   numberOfFollowing: 60,
+  //   numberOfPosts: 60,
+  //   posts: dummyPosts,
+  //   firstName: "John",
+  //   lastName: "Doe",
+  //   dateOfBirth: "1990-01-01",
+  //   avatar: user.profileImg,
+  //   nickname: "JD",
+  //   aboutMe:
+  //     "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur et tristique libero.",
+  // };
+
+  const isprivate = data.Owner.privacySetting === "private" ? true : false;
+
   const [hasMorePosts, setHasMorePosts] = useState(true);
-  const toggleProfileVisibility = () => {
-    setIsPrivate(!Isprivate);
-  };
+  const toggleProfileVisibility = () => {};
 
   const toggleActionModel = (active) => {
     setIsActive(active);
@@ -92,11 +91,19 @@ const Profile = () => {
       return;
     }
     setIsActive(clickButton.toLowerCase());
-    handleShow();
+    console.log(isActive);
+    if (
+      data[`NumberOf${isActive.charAt(0).toUpperCase()}${isActive.slice(1)}`]
+    ) {
+      handleShow();
+    }
   };
 
   const fetchMoreFellowers = () => {
-    if (data[isActive].length <= 50) {
+    if (
+      data[isActive].length <
+      data[`NumberOf${isActive.charAt(0).toUpperCase()}${isActive.slice(1)}`]
+    ) {
       setData((prev) => ({
         ...prev,
         [isActive]: [...prev[isActive], ...options1],
@@ -119,26 +126,22 @@ const Profile = () => {
     }
   };
 
-  //  const getUserData = ()=>{
-  //   try{}
-  //  }
+  // console.log(d);
 
   return routeError ? (
     routeError.message
   ) : (
     <Container>
       <div className={classes.profile}>
-        {!data.Isprivate &&
-        data.id !== user.id &&
-        data.relStatus === "fellow" ? (
+        {isprivate && data.Owner.id !== user.id && !data.IsFollowed ? (
           <PrivateProfile
             name={"bilal"}
-            userName={user.username}
+            userName={data.Owner.firstName}
             fellowUserHandler={() => {}}
           />
         ) : (
           <InfiniteScroll
-            dataLength={data.posts?.length}
+            dataLength={data.posts?.length || 0}
             next={fetchMorePosts}
             hasMore={hasMorePosts}
             loader={<h4>Loading...</h4>}
@@ -149,9 +152,14 @@ const Profile = () => {
             }
           >
             <ProfileCard
-              user={data}
+              user={data.Owner}
               toggleAction={toggleAction}
               toggleProfileVisibility={toggleProfileVisibility}
+              isPrivate={isprivate}
+              owner={user.id === data.Owner.id}
+              numberOfFollowers={data.NumberOfFollowers}
+              numberOfFollowing={data.NumberOfFollowing}
+              numberOfPosts={data.NumberOfPosts}
             />
             <ProfileActions
               user={data}
@@ -166,8 +174,11 @@ const Profile = () => {
             />
 
             <div>
+              <div style={{width: "50vw", margin: "2rem 0 3rem 0"}}>
+                <PostInput src={user.profileImg} id={user.id} />
+              </div>
               <section id="posts" ref={postRef}>
-                {<Posts posts={data.posts} postref={postRef} />}
+                {<Posts posts={data.Posts} postref={postRef} />}
               </section>
             </div>
           </InfiniteScroll>

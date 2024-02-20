@@ -58,3 +58,8 @@
 .post-reaction-info-reaction span {
   margin-left: 5px;
 }
+
+
+.custom-input-group input:focus {
+  outline: none;
+}

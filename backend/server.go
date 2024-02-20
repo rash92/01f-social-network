@@ -186,7 +186,7 @@ func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		handlefuncs.Cors(&w, r)
 		cookie, err := r.Cookie("user_token")
-
+		fmt.Println(" wrapperHandler 189 ")
 		if err != nil || !dbfuncs.ValidateCookie(cookie.Value) {
 			// fmt.Println("cookie value wrapper function", cookie.Value)
 			http.Error(w, `{"error": "something went to wrong"}`, http.StatusUnauthorized)
@@ -218,7 +218,7 @@ func main() {
 	http.HandleFunc("/react-comment-like-dislike", handlefuncs.HandleCommenttLikeDislike)
 	http.HandleFunc("/removePost", handlefuncs.HandleRemovePost)
 	http.HandleFunc("/profile", wrapperHandler(handlefuncs.HandleGetProfile))
-	http.HandleFunc("/get-users", handlefuncs.HandleGetUsers)
+	http.HandleFunc("/get-users", wrapperHandler(handlefuncs.HandleGetUsers))
 	http.HandleFunc("/get-messages", handlefuncs.MessagesHandler)
 	http.Handle("/images/", http.StripPrefix("/images", http.FileServer(http.Dir("./pkg/db/images"))))
 

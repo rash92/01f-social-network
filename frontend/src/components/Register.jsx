@@ -43,10 +43,11 @@ export default function Register({setShowRegisterForm}) {
     formData.append("image", avatarValue.file);
     formData.append("email", emailValue);
     formData.append("password", passwordValue);
-    formData.append("firstname", firstNameValue);
-    formData.append("lastname", lastNameValue);
-    formData.append("username", usernameValue);
-    formData.append("dob", dateOfBirthValue);
+    formData.append("firstName", firstNameValue);
+    formData.append("lastName", lastNameValue);
+    formData.append("nickname", usernameValue);
+    formData.append("DOB", dateOfBirthValue);
+    formData.append("aboutMe", aboutMeValue);
 
     try {
       const res = await getJson("newUser", {

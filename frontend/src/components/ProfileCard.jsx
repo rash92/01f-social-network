@@ -6,17 +6,27 @@ import classes from "./ProfileCard.module.css";
 import Action from "./Action";
 import {Link} from "react-router-dom";
 
-const ProfileCard = ({user, toggleAction, toggleProfileVisibility}) => {
+const ProfileCard = ({
+  user,
+  toggleAction,
+  toggleProfileVisibility,
+  owner,
+  isPrivate,
+  isFollowed,
+  numberOfFollowers,
+  numberOfFollowing,
+  numberOfPosts,
+}) => {
   return (
     <Card className={classes.card}>
       <div className={classes.profileContainer}>
-        {user.isOwner && (
+        {owner && (
           <Form>
             <Form.Check
               type="switch"
               id="profileVisibilitySwitch"
-              label={`Make Profile ${user.IsPrivate ? "Public" : "Private"}`}
-              checked={user.IsPrivate}
+              label={`Make Profile ${isPrivate ? "Public" : "Private"}`}
+              checked={isPrivate}
               onChange={toggleProfileVisibility}
             />
           </Form>
@@ -30,19 +40,22 @@ const ProfileCard = ({user, toggleAction, toggleProfileVisibility}) => {
                 size={"100px"}
               />
             )}
+
             <ul className={`${classes["profile-action"]}   `}>
               <Action
-                numberAction={user.numberOfPosts}
+                numberAction={numberOfPosts}
                 actionName={"Posts"}
                 toggleAction={toggleAction}
               />
+
               <Action
-                numberAction={user.numberOfFollowers}
+                numberAction={numberOfFollowers}
                 actionName={"Followers"}
                 toggleAction={toggleAction}
               />
+
               <Action
-                numberAction={user.numberOfFollowing}
+                numberAction={numberOfFollowing}
                 actionName={"Following"}
                 toggleAction={toggleAction}
               />
@@ -52,21 +65,20 @@ const ProfileCard = ({user, toggleAction, toggleProfileVisibility}) => {
             <span>{`${user.firstName} ${user.lastName}`}</span>
           </Card.Title>
           <Card.Subtitle className="mb-2 text-muted">
-            Date of Birth: {user.dateOfBirth}
+            Date of Birth: {user.age}
           </Card.Subtitle>
           {user.nickname && <Card.Text>Nickname: {user.nickname}</Card.Text>}
           {user.aboutMe && <Card.Text>About Me: {user.aboutMe}</Card.Text>}
-          <div className={classes.interact}>
-            {/* {!user.isOwner && ( */}
-            <>
-              <Button>{user.relStatus}</Button>
+
+          {!owner && (
+            <div className={classes.interact}>
+              <Button>{isFollowed ? "Ufellow" : "Fellow"}</Button>
 
               <Link to={`/chats/${user.id}`}>
                 <Button> message </Button>
               </Link>
-            </>
-            {/* )} */}
-          </div>
+            </div>
+          )}
         </Card.Body>
       </div>
     </Card>

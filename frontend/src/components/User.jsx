@@ -1,16 +1,18 @@
 import React from "react";
 import {Image} from "react-bootstrap";
 import classes from "./User.module.css";
-function User({name, isLoggedIn, userName}) {
+function User({isOnline, userName, avatar}) {
   return (
     <div style={{display: "flex", alignItems: "center"}}>
       <div style={{position: "relative", marginRight: "10px"}}>
         <Image
-          src="https://via.placeholder.com/50"
+          src={`http://localhost:8000/images/${avatar}`}
           roundedCircle
           style={{marginRight: "5px"}}
+          width={50}
+          height={50}
         />
-        {isLoggedIn && (
+        {isOnline && (
           <div
             style={{
               position: "absolute",
@@ -26,7 +28,6 @@ function User({name, isLoggedIn, userName}) {
         )}
       </div>
       <div className={classes.userinfo}>
-        <span className={classes.name}>{name}</span>
         <span className={classes.username}>{userName} </span>
       </div>
     </div>

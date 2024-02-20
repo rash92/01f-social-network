@@ -3,9 +3,8 @@ import Root from "./pages/Root";
 import Home from "./pages/Home";
 import PrivateRoutes from "./components/PrivateRoutes";
 import Profile, {profileLoader} from "./pages/Profile";
-const FakeComponet = () => {
-  return <div>Fake Component</div>;
-};
+import Group from "./pages/Group";
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -21,8 +20,8 @@ const router = createBrowserRouter([
       },
 
       {
-        path: "/groups",
-        element: <PrivateRoutes component={FakeComponet} />,
+        path: "/groups/:id",
+        element: <PrivateRoutes component={Group} />,
       },
       {
         path: "/profile/:id",

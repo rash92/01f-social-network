@@ -50,11 +50,6 @@ const NavigationBar = () => {
             {user.isLogIn && (
               <>
                 <NavItem>
-                  <Link className={classes.NavLink} to="/groups">
-                    Groups
-                  </Link>
-                </NavItem>
-                <NavItem>
                   <Link className={classes.NavLink} to={`/profile/${user.id}`}>
                     <div className={`${classes["profile-image"]}`}>
                       {user.profileImg ? (
