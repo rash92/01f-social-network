@@ -1,5 +1,13 @@
 package handlefuncs
 
+// Include LastMessageTime in database for users so that we can
+// order them in the chat. And include logic for that here.
+
+// If client receives a signal of type BasicUserInfo, that means they
+// have a (potential) new follower.
+
+// *
+
 // Switching to remarshaling app structs to forward to the frontend.
 // I'm up to requestToJoinGroup with this.
 
@@ -106,13 +114,13 @@ type Notification struct {
 	Body       string    `json:"Body"`
 	Type       string    `json:"Type"`
 	CreatedAt  time.Time `json:"CreatedAt"`
+	Seen       bool      `json:"Seen"`
 }
 
 type NotificationSeen struct {
 	Id string `json:"Id"`
 }
 
-// Make methods on this pattern for other app structs as needed.
 func (receivedData Notification) parseForDB() *dbfuncs.Notification {
 	return &dbfuncs.Notification{
 		Body:       receivedData.Body,
@@ -131,6 +139,12 @@ type BasicUserInfo struct {
 	LastName       string `json:"LastName"`
 	Nickname       string `json:"Nickname"`
 	PrivacySetting string `json:"PrivacySetting"`
+}
+
+type RequestToFollow struct {
+	User   BasicUserInfo `json:"User"`
+	Status string        `json:"Status"`
+	Type   string        `json:"Type"`
 }
 
 type Event struct {
@@ -159,6 +173,12 @@ func (receivedData Comment) parseForDB() *dbfuncs.Comment {
 	}
 }
 
+// When a new user registers, send their basic info to all other users? No,
+// this was my original thought, but that would only be necessary if we
+// displayed a menu of all users to all users, as we did in the realtime
+// chat app. We don't do that here. We only display a list of users who
+// are followers or following.
+
 // Be sure to allow possibilty of one of a user's connections being closed
 // while they still have other connections open. Make this distinct from
 // logging out, although logging out will include closing the current
@@ -184,6 +204,7 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("Error retrieving userID from database:", err)
 	}
+
 	connectionLock.Lock()
 	if _, ok := activeConnections[userID]; !ok {
 		activeConnections[userID] = []*websocket.Conn{conn}
@@ -289,10 +310,13 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 		unmarshalBody(signal.Body, &receivedData)
 		err = postOrComment(receivedData)
 	case "groupComment":
-		//fill in
+		var receivedData Comment
+		unmarshalBody(signal.Body, &receivedData)
+		err = postOrComment(receivedData)
 	case "groupLike":
 	// fill in
 	// Events:
+	// This will probably need redoing to match current practice.
 	case "createEvent":
 		var receivedData Event
 		unmarshalBody(signal.Body, &receivedData)
@@ -315,7 +339,9 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 			err = answerRequestToFollow(receivedData)
 		case "requestToJoinGroup":
 			err = requestToJoinGroup(receivedData)
-			// case "answerRequestToJoinGroup":
+		case "answerRequestToJoinGroup":
+			err = answerRequestToJoinGroup(receivedData)
+
 			// 	//fill in
 			// case "inviteToJoinGroup":
 			// 	//fill in
@@ -480,6 +506,11 @@ type PostOrComment interface {
 	SetId() error
 }
 
+// The following methods are just to satisfy the PostOrComment interface,
+// which I defined so that I could pass Posts and Comments to one
+// postOrComment function. They may seem redundant, but I think they
+// do save some repetition, as they make it possible to have a single
+// postOrComment function that can handle posts, group posts, and comments.
 func (receivedData Post) GetBody() string {
 	return receivedData.Body
 }
@@ -769,20 +800,42 @@ func requestToFollow(receivedData Notification) error {
 			log.Println("error adding requestToFollow notification to database", err)
 			return err
 		}
-
-		connectionLock.RLock()
-		for _, c := range activeConnections[receivedData.ReceiverId] {
-			err := c.WriteJSON(receivedData)
-			if err != nil {
-				log.Println("error sending group message to recipient", err)
-			}
-		}
-		connectionLock.RUnlock()
 	}
+
+	user, err := dbfuncs.GetUserById(receivedData.SenderId)
+	if err != nil {
+		log.Println("error getting user info from database", err)
+		notifyClientOfError(err, "error adding follow to database", receivedData.SenderId)
+		return err
+	}
+
+	newFollower := BasicUserInfo{
+		UserId:         receivedData.SenderId,
+		FirstName:      user.FirstName,
+		LastName:       user.LastName,
+		Nickname:       user.Nickname,
+		PrivacySetting: user.PrivacySetting,
+	}
+
+	request := RequestToFollow{
+		User:   newFollower,
+		Status: follow.Status,
+		Type:   "requestToFollow",
+	}
+
+	connectionLock.RLock()
+	for _, c := range activeConnections[receivedData.ReceiverId] {
+		err = c.WriteJSON(request)
+		if err != nil {
+			log.Println("error sending (potential) new follower info to recipient", err)
+		}
+	}
+	connectionLock.RUnlock()
 
 	return err
 }
 
+// Send User info to to receiver.
 func answerRequestToFollow(receivedData Notification) error {
 	var err error
 
@@ -815,6 +868,8 @@ func answerRequestToFollow(receivedData Notification) error {
 			receivedData.SenderId, receivedData.ReceiverId)
 	}
 
+	receivedData.Seen = false
+
 	connectionLock.RLock()
 	for _, c := range activeConnections[receivedData.ReceiverId] {
 		err = c.WriteJSON(receivedData)
@@ -827,15 +882,12 @@ func answerRequestToFollow(receivedData Notification) error {
 	return err
 }
 
-// I'm up to here in the process of bringing these functions into line
-// with our current procedures.
 func requestToJoinGroup(receivedData Notification) error {
-	notification := dbfuncs.Notification{
-		Body:       receivedData.Body,
-		Type:       "requestToJoinGroup",
-		ReceiverId: receivedData.ReceiverId,
-		SenderId:   receivedData.SenderId,
-		Seen:       false,
+	groupCreator, err := dbfuncs.GetGroupCreatorByGroupId(receivedData.ReceiverId)
+	if err != nil {
+		log.Println("error finding group creator")
+		notifyClientOfError(err, "error finding group creator", receivedData.SenderId)
+		return err
 	}
 
 	member := dbfuncs.GroupMember{
@@ -844,32 +896,35 @@ func requestToJoinGroup(receivedData Notification) error {
 		Status:  "pending",
 	}
 
-	err := dbfuncs.AddNotification(&notification)
-	if err != nil {
-		log.Println(err, "error adding notification to database")
-		return err
-	}
-	notificationId := notification.Id
-	notification, err = dbfuncs.GetNotificationById(notificationId)
-	if err != nil {
-		log.Println(err, "error getting notification from database")
-		return err
-	}
-
 	err = dbfuncs.AddGroupMember(&member)
 	if err != nil {
 		log.Println(err, "error adding group member to database")
+		notifyClientOfError(err, "error finding group creator", receivedData.SenderId)
 		return err
 	}
 
-	creatorId, err := dbfuncs.GetGroupCreatorFromGroupId(receivedData.ReceiverId)
+	dbNotification := dbfuncs.Notification{
+		Type:       "requestToJoinGroup",
+		ReceiverId: groupCreator,
+		SenderId:   receivedData.SenderId,
+	}
+
+	err = dbfuncs.AddNotification(&dbNotification)
 	if err != nil {
-		log.Println(err, "error getting group creator from database")
+		log.Println(err, "error adding notification to database")
+		notifyClientOfError(err, "error finding group creator", receivedData.SenderId)
 		return err
+	}
+
+	notification := Notification{
+		Id:         dbNotification.Id,
+		Type:       "requestToJoinGroup",
+		ReceiverId: groupCreator,
+		SenderId:   receivedData.SenderId,
 	}
 
 	connectionLock.RLock()
-	for _, c := range activeConnections[creatorId] {
+	for _, c := range activeConnections[groupCreator] {
 		err := c.WriteJSON(notification)
 		if err != nil {
 			log.Println(err, "error sending notification to recipient")
@@ -880,37 +935,6 @@ func requestToJoinGroup(receivedData Notification) error {
 	return err
 }
 
-// // Add a notification to the database and send it to the group creator
-// // if they're online. The notification should include the requester and
-// // type of notification, the time it was created, and the group ID, in
-// // case the recipient has created multiple groups.
-// func requestToJoinGroup(receivedData Notification) {
-// 	notification := dbfuncs.Notification{
-// 		Body:       receivedData.Body,
-// 		Type:       "requestToJoinGroup",
-// 		ReceiverId: receivedData.RecipientId,
-// 		SenderId:   receivedData.SenderId,
-// 	}
-// 	err := dbfuncs.AddNotification(&notification)
-// 	id := notification.Id
-// 	if err != nil {
-// 		log.Println(err, "error adding notification to database")
-// 	}
-// 	notification, err = dbfuncs.GetNotificationById(notificationId)
-// 	if err != nil {
-// 		log.Println(err, "error getting notification from database")
-// 	}
-
-// 	connectionLock.RLock()
-// 	for _, c := range activeConnections[receivedData.RecipientId] {
-// 		err := c.WriteJSON(notification)
-// 		if err != nil {
-// 			log.Println(err, "error sending notification to recipient")
-// 		}
-// 	}
-// 	connectionLock.RUnlock()
-// }
-
 // // If the answer is yes, add the requester to the group members list
 // // and broadcast the updated list to all group members. Either way,
 // // decide if we want to notify the requester of the result. If so,
@@ -919,8 +943,9 @@ func requestToJoinGroup(receivedData Notification) error {
 // // include which group and whether the answer was yes or no.
 // // Also, if YES, add user to GroupEventParticipants with the choice
 // // field set to false for all events in that group.
-// func answerRequestToJoinGroup(receivedData Message) {
-// }
+func answerRequestToJoinGroup(receivedData Notification) error {
+	return errors.New("not yet implemented")
+}
 
 // // Add a notification to the database and send it to the person
 // // being invited if they're online.

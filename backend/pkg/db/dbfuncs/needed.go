@@ -111,3 +111,21 @@ func GetPostByCommentId(id string) (Post, error) {
 	post := Post{}
 	return post, nil
 }
+
+func GetUserById(id string) (User, error) {
+	user := User{}
+	return user, nil
+}
+
+func GetCreatedAtByUserId(id string) (time.Time, error) {
+	user, err := GetUserById(id)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return user.CreatedAt, nil
+}
+
+func GetGroupCreatorByGroupId(id string) (string, error) {
+	return "", nil
+}
