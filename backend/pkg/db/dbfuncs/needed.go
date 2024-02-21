@@ -32,4 +32,7 @@ func GetCreatedAtByUserId(id string) (time.Time, error) {
 }
 
 //funcs moved to: users, notifications, groups, comments, posts
-//still move funcs in solo files toggleattendevent and getgroupmembers
+
+//getPostChosenFollowersByPostId renamed to getPostChosenFollowerIdsByPostId
+
+//

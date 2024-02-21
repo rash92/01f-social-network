@@ -100,8 +100,9 @@ func GetSeenNotificationsByRecieverId(recieverId string) ([]Notification, error)
 	return seenNotifications, err
 }
 
-// to do
 func GetNotificationById(id string) (Notification, error) {
 	var notification Notification
-	return notification, nil
+	err := db.QueryRow("SELECT Id, Body, Type, CreatedAt, ReceiverId, SenderId, Seen FROM Notifications WHERE Id=?", id).Scan(&notification.Id, &notification.Body, &notification.Type, &notification.CreatedAt, &notification.ReceiverId, &notification.SenderId, &notification.Seen)
+
+	return notification, err
 }

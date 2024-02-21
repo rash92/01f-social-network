@@ -3,7 +3,6 @@ package dbfuncs
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -80,45 +79,95 @@ func AddGroupMessage(groupMessage *GroupMessage) error {
 }
 
 // to do
-func GetEventsById(id string) ([]Event, error) {
-	var events []Event
-	var err error
-	return events, err
-}
-
-func GetGroupCreatorByGroupId(groupId string) (string, error) {
-	return "", nil
-}
-
-// possibly split into get accepted vs get pending? whatever status means
-func GetGroupMembersByGroupId(groupId string) ([]string, error) {
-	var members []string
-	return members, nil
-}
-
-// old version of above
-func GetGroupMembers(groupId string) []string {
-	var result []string
-	lock.RLock()
-	rows, err := database.Query("SELECT * FROM GroupMembers WHERE GroupId = ?", groupId)
+func GetGroupEventsById(id string) ([]GroupEvent, error) {
+	var GroupEvents []GroupEvent
+	row, err := db.Query("SELECT Id, GroupId, Title, Description, CreatorId, Time FROM GroupEvents WHERE Id=?", id)
+	if err == sql.ErrNoRows {
+		return GroupEvents, nil
+	}
 	if err != nil {
-		log.Fatal(err)
+		return GroupEvents, err
 	}
-	defer func() {
-		rows.Close()
-		lock.RUnlock()
-	}()
-
-	for rows.Next() {
-		var userId string
-		err = rows.Scan(&userId)
+	defer row.Close()
+	for row.Next() {
+		var GroupEvent GroupEvent
+		err = row.Scan(&GroupEvent)
 		if err != nil {
-			log.Fatal(err)
+			return GroupEvents, err
 		}
-		result = append(result, userId)
+		GroupEvents = append(GroupEvents, GroupEvent)
 	}
+	return GroupEvents, err
+}
 
-	return result
+func GetGroupCreatorIdByGroupId(groupId string) (string, error) {
+	var CreatorId string
+	err := db.QueryRow("SELECT CreatorId FROM Groups WHERE Id=?", groupId).Scan(&CreatorId)
+
+	return CreatorId, err
+}
+
+func GetGroupMemberIdsByGroupId(groupId string) ([]string, error) {
+	var GroupMemberIds []string
+	row, err := db.Query("SELECT UserId FROM GroupMembers WHERE GroupId=? AND Status=?", groupId, "accepted")
+	if err == sql.ErrNoRows {
+		return GroupMemberIds, nil
+	}
+	if err != nil {
+		return GroupMemberIds, err
+	}
+	defer row.Close()
+	for row.Next() {
+		var GroupMemberId string
+		err = row.Scan(&GroupMemberId)
+		if err != nil {
+			return GroupMemberIds, err
+		}
+		GroupMemberIds = append(GroupMemberIds, GroupMemberId)
+	}
+	return GroupMemberIds, nil
+}
+
+func GetRequestedGroupMemberIdsByGroupId(groupId string) ([]string, error) {
+	var GroupMemberIds []string
+	row, err := db.Query("SELECT UserId FROM GroupMembers WHERE GroupId=? AND Status=?", groupId, "requested")
+	if err == sql.ErrNoRows {
+		return GroupMemberIds, nil
+	}
+	if err != nil {
+		return GroupMemberIds, err
+	}
+	defer row.Close()
+	for row.Next() {
+		var GroupMemberId string
+		err = row.Scan(&GroupMemberId)
+		if err != nil {
+			return GroupMemberIds, err
+		}
+		GroupMemberIds = append(GroupMemberIds, GroupMemberId)
+	}
+	return GroupMemberIds, nil
+}
+
+func GetInvitedGroupMemberIdsByGroupId(groupId string) ([]string, error) {
+	var GroupMemberIds []string
+	row, err := db.Query("SELECT UserId FROM GroupMembers WHERE GroupId=? AND Status=?", groupId, "invited")
+	if err == sql.ErrNoRows {
+		return GroupMemberIds, nil
+	}
+	if err != nil {
+		return GroupMemberIds, err
+	}
+	defer row.Close()
+	for row.Next() {
+		var GroupMemberId string
+		err = row.Scan(&GroupMemberId)
+		if err != nil {
+			return GroupMemberIds, err
+		}
+		GroupMemberIds = append(GroupMemberIds, GroupMemberId)
+	}
+	return GroupMemberIds, nil
 }
 
 // to do, see if we want choice field or just entry vs not for going vs not going

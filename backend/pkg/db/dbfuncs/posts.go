@@ -258,13 +258,29 @@ func isSupportedFileTypeOld(fileType string) bool {
 	return supportedTypes[strings.ToLower(fileType)]
 }
 
-// to do
-func GetPostChosenFollowersByPostId(id string) ([]string, error) {
-	var followers []string
-	return followers, nil
+func GetPostChosenFollowerIdsByPostId(id string) ([]string, error) {
+	var followerIds []string
+	row, err := db.Query("SELECT FollowerId FROM PostChosenFollowers WHERE PostId=?", id)
+	if err == sql.ErrNoRows {
+		return followerIds, nil
+	}
+	if err != nil {
+		return followerIds, err
+	}
+	defer row.Close()
+	for row.Next() {
+		var followerId string
+		err = row.Scan(&followerId)
+		if err != nil {
+			return followerIds, err
+		}
+		followerIds = append(followerIds, followerId)
+	}
+	return followerIds, err
 }
 
 func GetPostByCommentId(id string) (Post, error) {
-	post := Post{}
-	return post, nil
+	var post Post
+	err := db.QueryRow("SELECT Id, Title, Body, CreatorId, GroupId, CreatedAt, Image, PrivacyLevel FROM Posts WHERE Id=?", id).Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
+	return post, err
 }

@@ -120,8 +120,9 @@ func LikeDislikeComment(UserId, CommentId, likeOrDislike string) error {
 	return errors.New("problem adding like or dislike: how did you get here?")
 }
 
-// to do
 func GetCommentById(id string) (Comment, error) {
 	var comment Comment
-	return comment, nil
+	err := db.QueryRow("SELECT Id, Body, CreatorId, PostId, CreatedAt, Image FROM Comments WHERE Id=?", id).Scan(&comment.Id, &comment.Body, &comment.CreatorId, &comment.PostId, &comment.CreatedAt, &comment.Image)
+
+	return comment, err
 }

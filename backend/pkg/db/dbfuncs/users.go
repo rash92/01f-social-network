@@ -58,21 +58,15 @@ func GetUserIdFromCookie(SessionId string) (string, error) {
 	var userID string
 	//if table has UserId starting lowercase, change table to be consistent.
 	err := db.QueryRow("SELECT UserId FROM Sessions WHERE Id=?", SessionId).Scan(&userID)
-	if err != nil {
-		return "", err
-	}
 
-	return userID, nil
+	return userID, err
 }
 
 func GetCreatorIdFromPostId(postId string) (string, error) {
 	var creatorId string
 	err := db.QueryRow("SELECT CreatorId FROM Posts WHERE Id=?", postId).Scan(&creatorId)
-	if err != nil {
-		return "", err
-	}
 
-	return creatorId, nil
+	return creatorId, err
 }
 
 func IsUserPrivate(userId string) (bool, error) {
@@ -90,9 +84,9 @@ func IsUserPrivate(userId string) (bool, error) {
 	return false, errors.New("privacy setting not recognized, should be either 'private' or 'public'")
 }
 
-// to do
-
 func GetUserById(id string) (User, error) {
-	user := User{}
-	return user, nil
+	var user User
+	err := db.QueryRow("SELECT Id, Nickname, FirstName, LastName, Email, Password, Profile, AboutMe, PrivacySetting, DOB, CreatedAt FROM Users WHERE Id=?", id).Scan(&user.Id, &user.Nickname, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Profile, &user.AboutMe, &user.PrivacySetting, &user.DOB, &user.CreatedAt)
+
+	return user, err
 }
