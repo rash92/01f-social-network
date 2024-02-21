@@ -119,3 +119,9 @@ func LikeDislikeComment(UserId, CommentId, likeOrDislike string) error {
 
 	return errors.New("problem adding like or dislike: how did you get here?")
 }
+
+// to do
+func GetCommentById(id string) (Comment, error) {
+	var comment Comment
+	return comment, nil
+}

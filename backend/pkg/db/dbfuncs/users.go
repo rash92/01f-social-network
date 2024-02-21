@@ -89,3 +89,10 @@ func IsUserPrivate(userId string) (bool, error) {
 	}
 	return false, errors.New("privacy setting not recognized, should be either 'private' or 'public'")
 }
+
+// to do
+
+func GetUserById(id string) (User, error) {
+	user := User{}
+	return user, nil
+}

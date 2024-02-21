@@ -99,3 +99,9 @@ func GetSeenNotificationsByRecieverId(recieverId string) ([]Notification, error)
 	err = rows.Err()
 	return seenNotifications, err
 }
+
+// to do
+func GetNotificationById(id string) (Notification, error) {
+	var notification Notification
+	return notification, nil
+}

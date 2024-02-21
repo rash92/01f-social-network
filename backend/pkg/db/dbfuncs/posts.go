@@ -257,3 +257,14 @@ func isSupportedFileTypeOld(fileType string) bool {
 	}
 	return supportedTypes[strings.ToLower(fileType)]
 }
+
+// to do
+func GetPostChosenFollowersByPostId(id string) ([]string, error) {
+	var followers []string
+	return followers, nil
+}
+
+func GetPostByCommentId(id string) (Post, error) {
+	post := Post{}
+	return post, nil
+}
