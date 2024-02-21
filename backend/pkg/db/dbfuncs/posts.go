@@ -23,7 +23,7 @@ func AddPost(post *Post) error {
 	}
 	post.Id = id.String()
 	post.CreatedAt = time.Now()
-	statement, err := db.Prepare("INSERT INTO groups VALUES (?,?,?,?,?,?,?,?)")
+	statement, err := db.Prepare("INSERT INTO Posts VALUES (?,?,?,?,?,?,?,?)")
 	if err != nil {
 		return err
 	}
@@ -42,7 +42,7 @@ func DeletePost(PostId string) error {
 }
 
 func AddPostChosenFollower(postChosenFollower *PostChosenFollower) error {
-	statement, err := db.Prepare("INSERT INTO groups VALUES (?,?)")
+	statement, err := db.Prepare("INSERT INTO PostChosenFollowers VALUES (?,?)")
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func CountPostReacts(PostId string) (totalLikes, totalDislikes int, err error) {
 	return
 }
 func GetPostLikes(PostId string) (likeUserIds, dislikeUserIds []string, err error) {
-	rows, err := db.Query("SELECT UserId, Liked, Disliked FROM CommentLikes WHERE PostId=?", PostId)
+	rows, err := db.Query("SELECT UserId, Liked, Disliked FROM PostLikes WHERE PostId=?", PostId)
 	if err == sql.ErrNoRows {
 		err = nil
 		return

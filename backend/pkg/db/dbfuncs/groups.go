@@ -87,7 +87,6 @@ func AddGroupMessage(groupMessage *GroupMessage) error {
 	return err
 }
 
-// to do
 func GetGroupEventsById(id string) ([]GroupEvent, error) {
 	var GroupEvents []GroupEvent
 	row, err := db.Query("SELECT Id, GroupId, Title, Description, CreatorId, Time FROM GroupEvents WHERE Id=?", id)

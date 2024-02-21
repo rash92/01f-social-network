@@ -14,7 +14,7 @@ func AddPrivateMessage(privateMessage *PrivateMessage) error {
 	}
 	privateMessage.Id = id.String()
 	privateMessage.CreatedAt = time.Now()
-	statement, err := db.Prepare("INSERT INTO groups VALUES (?,?,?,?,?)")
+	statement, err := db.Prepare("INSERT INTO PrivateMessages VALUES (?,?,?,?,?)")
 	if err != nil {
 		return err
 	}

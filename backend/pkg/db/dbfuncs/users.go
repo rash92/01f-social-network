@@ -8,14 +8,13 @@ import (
 )
 
 func AddUser(user *User) error {
-	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return err
 	}
 	user.Id = id.String()
 	user.CreatedAt = time.Now()
-	statement, err := db.Prepare("INSERT INTO Comments VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+	statement, err := db.Prepare("INSERT INTO Users VALUES (?,?,?,?,?,?,?,?,?,?,?)")
 	if err != nil {
 		return err
 	}
@@ -25,7 +24,6 @@ func AddUser(user *User) error {
 }
 
 func AddSession(userId string) (Session, error) {
-	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return Session{}, err
@@ -36,7 +34,7 @@ func AddSession(userId string) (Session, error) {
 		UserId:  userId,
 	}
 
-	statement, err := db.Prepare("INSERT INTO groups VALUES (?,?,?)")
+	statement, err := db.Prepare("INSERT INTO Sessions VALUES (?,?,?)")
 	if err != nil {
 		return Session{}, err
 	}

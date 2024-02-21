@@ -3,7 +3,7 @@ package dbfuncs
 import "database/sql"
 
 func AddFollow(follow *Follow) error {
-	statement, err := db.Prepare("INSERT INTO Comments VALUES (?,?,?)")
+	statement, err := db.Prepare("INSERT INTO Follows VALUES (?,?,?)")
 	if err != nil {
 		return err
 	}
