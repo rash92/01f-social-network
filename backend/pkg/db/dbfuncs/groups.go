@@ -2,7 +2,6 @@ package dbfuncs
 
 import (
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,7 +15,7 @@ func AddGroup(group *Group) error {
 	}
 	group.Id = id.String()
 	group.CreatedAt = time.Now()
-	statement, err := db.Prepare("INSERT INTO groups VALUES (?,?,?,?,?)")
+	statement, err := db.Prepare("INSERT INTO Groups VALUES (?,?,?,?,?)")
 	if err != nil {
 		return err
 	}
@@ -26,7 +25,7 @@ func AddGroup(group *Group) error {
 }
 
 func AddGroupMember(groupmember *GroupMember) error {
-	statement, err := db.Prepare("INSERT INTO groups VALUES (?,?,?)")
+	statement, err := db.Prepare("INSERT INTO GroupMembers VALUES (?,?,?)")
 	if err != nil {
 		return err
 	}
@@ -42,7 +41,7 @@ func AddGroupEvent(groupEvent *GroupEvent) error {
 		return err
 	}
 	groupEvent.Id = id.String()
-	statement, err := db.Prepare("INSERT INTO groups VALUES (?,?,?,?,?,?)")
+	statement, err := db.Prepare("INSERT INTO GroupEvents VALUES (?,?,?,?,?,?)")
 	if err != nil {
 		return err
 	}
@@ -52,11 +51,21 @@ func AddGroupEvent(groupEvent *GroupEvent) error {
 }
 
 func AddGroupEventParticipant(groupEventParticipant *GroupEventParticipant) error {
-	statement, err := db.Prepare("INSERT INTO groups VALUES (?,?,?)")
+	statement, err := db.Prepare("INSERT INTO GroupEventParticipants VALUES (?,?,?)")
 	if err != nil {
 		return err
 	}
 	_, err = statement.Exec(groupEventParticipant.EventId, groupEventParticipant.UserId, groupEventParticipant.GroupId)
+
+	return err
+}
+
+func DeleteGroupEventParticipant(groupEventParticipantId string) error {
+	statement, err := db.Prepare("DELETE FROM GroupEventParticipants WHERE Id=?")
+	if err != nil {
+		return err
+	}
+	_, err = statement.Exec(groupEventParticipantId)
 
 	return err
 }
@@ -69,7 +78,7 @@ func AddGroupMessage(groupMessage *GroupMessage) error {
 	}
 	groupMessage.Id = id.String()
 	groupMessage.CreatedAt = time.Now()
-	statement, err := db.Prepare("INSERT INTO groups VALUES (?,?,?,?,?)")
+	statement, err := db.Prepare("INSERT INTO GroupMessages VALUES (?,?,?,?,?)")
 	if err != nil {
 		return err
 	}
@@ -168,36 +177,4 @@ func GetInvitedGroupMemberIdsByGroupId(groupId string) ([]string, error) {
 		GroupMemberIds = append(GroupMemberIds, GroupMemberId)
 	}
 	return GroupMemberIds, nil
-}
-
-// to do, see if we want choice field or just entry vs not for going vs not going
-func ToggleAttendEvent(eventId, userId string) error {
-	// Adapt this code for dbfuncs.CreateEvent.
-	// newLike, err := database.Prepare("INSERT INTO GroupEventParticipants VALUES (?,?,?)")
-	// if err != nil {
-	// 	return err
-	// }
-	toggleAttendance, err := database.Prepare("UPDATE GroupEventParticipants SET Choice=? WHERE EventId=? AND UserId=?")
-	if err != nil {
-		return err
-	}
-
-	row := database.QueryRow("SELECT Choice FROM GroupEventParticipants WHERE EventId=? AND UserId=?", eventId, userId)
-	var choice bool
-	err = row.Scan(&choice)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return fmt.Errorf("no matching row found for EventId %s and UserId %s", eventId, userId)
-		} else {
-			return err
-		}
-	}
-
-	if choice {
-		_, err = toggleAttendance.Exec(false, eventId, userId)
-	} else {
-		_, err = toggleAttendance.Exec(true, eventId, userId)
-	}
-
-	return err
 }
