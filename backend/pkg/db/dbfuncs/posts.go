@@ -285,8 +285,8 @@ func GetPostById(id string) (Post, error) {
 	return post, err
 }
 
-func GetPostIdByCommentId(id string) (string, error) {
+func GetPostIdByCommentId(commentId string) (string, error) {
 	var postId string
-	err := db.QueryRow("SELECT PostId FROM Comments WHERE Id=?", id).Scan(&postId)
+	err := db.QueryRow("SELECT PostId FROM Comments WHERE Id=?", commentId).Scan(&postId)
 	return postId, err
 }
