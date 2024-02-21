@@ -1,10 +1,25 @@
 package handlefuncs
 
+// You can only have one cookie per browser, but you can have multiple
+// connections per cookie. This is because the cookie is stored in the
+// browser, and the browser is the client. The connection is stored on
+// the server.
+
 // Include LastMessageTime in database for users so that we can
 // order them in the chat. And include logic for that here.
 
 // If client receives a signal of type BasicUserInfo, that means they
 // have a (potential) new follower.
+
+// cookies, connections, and websockets: multiple cookies per id?
+// In the original forum, we had one cookie per user. When someone
+// logged in, we deleted any existing cookie and gave them a new one.
+// Here we'd like to allow users to be logged in on multiple devices
+// and browsers, as well as just in multiple tabs. To do this, we could
+// just not delete the cookie, or we could delete it only when the user
+// is not already logged in. This means we'd need to allow for the
+// possibility of multiple cookies per user. That's fine. The database
+// already allows for this.
 
 // *
 
@@ -66,9 +81,8 @@ var (
 // Body will be unmarshalled based on type into PrivateMessage, GroupMessage, or Notification etc.
 // as well as ws messages unrelated to database operations
 type SignalReceived struct {
-	Type string    `json:"type"`
-	Body []byte    `json:"message"`
-	Time time.Time `json:"time"`
+	Type string `json:"type"`
+	Body []byte `json:"message"`
 }
 
 func unmarshalBody[T any](signalBody []byte, receivedData T) {
@@ -80,19 +94,19 @@ func unmarshalBody[T any](signalBody []byte, receivedData T) {
 }
 
 type PrivateMessage struct {
-	Id          string    `json:"Id"`
-	SenderId    string    `json:"SenderId"`
-	RecipientId string    `json:"RecipientId"`
-	Message     string    `json:"Message"`
-	CreatedAt   time.Time `json:"CreatedAt"`
+	Id         string    `json:"Id"`
+	SenderId   string    `json:"SenderId"`
+	ReceiverId string    `json:"ReceiverId"`
+	Message    string    `json:"Message"`
+	CreatedAt  time.Time `json:"CreatedAt"`
 }
 
 type GroupMessage struct {
-	Id        string `json:"Id"`
-	SenderId  string `json:"SenderId"`
-	GroupId   string `json:"GroupId"`
-	Message   string `json:"Message"`
-	CreatedAt string `json:"CreatedAt"`
+	Id        string    `json:"Id"`
+	SenderId  string    `json:"SenderId"`
+	GroupId   string    `json:"GroupId"`
+	Message   string    `json:"Message"`
+	CreatedAt time.Time `json:"CreatedAt"`
 }
 
 func (receivedData Post) parseForDB() *dbfuncs.Post {
@@ -191,19 +205,19 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println("Error upgrading to WebSocket:", err)
-		return
-	}
-	defer func() {
-		closeConnection(conn)
-	}()
-
 	userID, err := dbfuncs.GetUserIdFromCookie(cookie.Value)
 	if err != nil {
 		log.Println("Error retrieving userID from database:", err)
 	}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("error upgrading to WebSocket:", err)
+		return
+	}
+	defer func() {
+		conn.Close()
+	}()
 
 	connectionLock.Lock()
 	if _, ok := activeConnections[userID]; !ok {
@@ -227,24 +241,27 @@ camelsBack:
 	for {
 		_, msgBytes, err := conn.ReadMessage()
 		//possibly don't want to immediately delete the connection if there is an error
-		if err != nil {
+		if err != nil && websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+			log.Printf("error: %v", err)
 			myUpdatedConnections := []*websocket.Conn{}
-			for _, c := range activeConnections[userID] {
-				if c != conn {
-					myUpdatedConnections = append(myUpdatedConnections, conn)
+			connectionLock.Lock()
+			_, ok := activeConnections[userID]
+			if ok {
+				for _, c := range activeConnections[userID] {
+					if c != conn {
+						myUpdatedConnections = append(myUpdatedConnections, conn)
+					}
 				}
-				connectionLock.Lock()
-				activeConnections[userID] = myUpdatedConnections
 				if len(myUpdatedConnections) == 0 {
 					delete(activeConnections, userID)
-					log.Println("User", userID, "disconnected, unable to read from websocket, error:", err)
 				}
-				connectionLock.Unlock()
-				break camelsBack
+				activeConnections[userID] = myUpdatedConnections
 			}
+			connectionLock.Unlock()
+			break
 		}
 
-		err = broker(msgBytes, userID, conn)
+		err = broker(msgBytes, userID, conn, w, r)
 		if err.Error() == "logout" {
 			break
 		}
@@ -263,7 +280,7 @@ camelsBack:
 // Check validity of signal and received data as far as possible. But get
 // a working version first. We can add more checks later. Checks could
 // also be called from the parseForDB methods.
-func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
+func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.ResponseWriter, r *http.Request) error {
 	var signal SignalReceived
 	err := json.Unmarshal(msgBytes, &signal)
 	if err != nil {
@@ -277,6 +294,7 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 	case "logout":
 		logout(userID, conn)
 		err = fmt.Errorf("logout")
+		HandleLogout(w, r)
 		return err
 	case "notificationSeen":
 		var receivedData NotificationSeen
@@ -284,13 +302,13 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 		err = notificationSeen(receivedData, userID)
 	// Chat:
 	case "privateMessage":
-		var receivedData Message
+		var receivedData PrivateMessage
 		unmarshalBody(signal.Body, &receivedData)
 		privateMessage(receivedData)
 	case "groupMessage":
 		var receivedData Message
 		unmarshalBody(signal.Body, &receivedData)
-		groupMessage(receivedData)
+		// groupMessage(receivedData)
 	// General posts, comments, and likes:
 	case "post":
 		var receivedData Post
@@ -387,9 +405,6 @@ func closeConnection(conn *websocket.Conn) {
 	if err != nil {
 		fmt.Println("Error sending logout message to client:", err)
 	}
-	if err := conn.Close(); err != nil {
-		fmt.Println("Error closing websocket:", err)
-	}
 }
 
 // Tell other connections associated with userID to close themselves
@@ -397,7 +412,9 @@ func closeConnection(conn *websocket.Conn) {
 // the updated user list. The current connection will be closed at the
 // when the event loop breaks.
 // The frontend also needs to trigger handlefuncs.HandleLogOut via http
-// as we don't have access to the cookie using websockets.
+// as we don't have access to the cookie using websockets. This needs
+// to be done by each open connection, as well as by the one that
+// initiated the logout.
 func logout(userID string, thisConn *websocket.Conn) {
 	connectionLock.RLock()
 	for _, c := range activeConnections[userID] {
@@ -432,7 +449,7 @@ func notificationSeen(seen NotificationSeen, userID string) error {
 	return err
 }
 
-func validadteContent(content string) error {
+func validateContent(content string) error {
 	if len(content) > CharacterLimit {
 		err := errors.New("413 Payload Too Large")
 		log.Println(err)
@@ -447,7 +464,7 @@ func validadteContent(content string) error {
 }
 
 func postOrComment(receivedData PostOrComment) error {
-	err := validadteContent(receivedData.GetBody())
+	err := validateContent(receivedData.GetBody())
 	if err != nil {
 		return err
 	}
@@ -460,41 +477,6 @@ func postOrComment(receivedData PostOrComment) error {
 	err = send(receivedData)
 	return err
 }
-
-// func groupPost(receivedData Post) error {
-// 	err := validadteContent(receivedData.Body)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	receivedData.Id, err = receivedData.AddToDB()
-// 	if err != nil {
-// 		log.Println("error adding post to database", err)
-// 		notifyClientOfError(err, "error adding post to database", receivedData.CreatorId)
-// 		return err
-// 	}
-
-// 	err = send(receivedData)
-// 	return err
-// }
-
-// func comment(receivedData Comment) error {
-// 	err := validadteContent(receivedData.Body)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	receivedData.Id, err = receivedData.AddToDB()
-// 	if err != nil {
-// 		err = errors.New("error adding content to database")
-// 		log.Println(err)
-// 		notifyClientOfError(err, "error adding content to database", receivedData.UserId)
-// 		return err
-// 	}
-
-// 	err = send(receivedData)
-// 	return err
-// }
 
 type PostOrComment interface {
 	GetPrivacyLevel() (string, error)
@@ -699,20 +681,23 @@ func (receivedData Post) AddToDB() (string, error) {
 
 // Change this and groupMessage to separate dbfuncs functions. Pass pointer to
 // the relevant dbfuncs struct and handle error that's returned.
-func privateMessage(receivedData Message) {
-	id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
+func privateMessage(receivedData PrivateMessage) {
+	dbPM := dbfuncs.PrivateMessage{
+		SenderId:   receivedData.SenderId,
+		ReceiverId: receivedData.ReceiverId,
+		Message:    receivedData.Message,
+	}
+
+	err := dbfuncs.AddPrivateMessage(&dbPM)
 	if err != nil {
 		log.Println("error adding message to database", err)
 	}
-	receivedData.ID = id.String()
-	receivedData.Created = created.Format(time.RFC3339)
-	message := map[string]interface{}{
-		"data": receivedData,
-		"type": receivedData.Type,
-	}
+
+	receivedData.Id = dbPM.Id
+	receivedData.CreatedAt = dbPM.CreatedAt
 	connectionLock.RLock()
-	for _, c := range activeConnections[receivedData.RecipientID] {
-		err := c.WriteJSON(message)
+	for _, c := range activeConnections[receivedData.ReceiverId] {
+		err := c.WriteJSON(receivedData)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -720,37 +705,36 @@ func privateMessage(receivedData Message) {
 	connectionLock.RUnlock()
 }
 
-// I adapted dbfuncs.AddMessage to handle both private and group
-// messages. Update: we've decided have seperate dbfuncs functions
-// for private and group messages. TODO: rewrite groupeMessage and
-// privateMessage to take account of this.
-func groupMessage(receivedData Message) {
-	id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
-	if err != nil {
-		log.Println("error adding message to database", err)
-	}
-	receivedData.ID = id.String()
-	receivedData.Created = created.Format(time.RFC3339)
-	message := GroupMessage{
-		Id:        "",
-		SenderId:  receivedData.SenderID,
-		GroupId:   receivedData.RecipientID,
-		Message:   receivedData.Message,
-		CreatedAt: receivedData.Created,
-	}
+// // I adapted dbfuncs.AddMessage to handle both private and group
+// // messages. Update: we've decided have seperate dbfuncs functions
+// // for private and group messages. TODO: rewrite groupeMessage and
+// // privateMessage to take account of this.
+// func groupMessage(receivedData Message) {
+// 	id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
+// 	if err != nil {
+// 		log.Println("error adding message to database", err)
+// 	}
+// 	receivedData.ID = id.String()
+// 	message := GroupMessage{
+// 		Id:        "",
+// 		SenderId:  receivedData.SenderID,
+// 		GroupId:   receivedData.RecipientID,
+// 		Message:   receivedData.Message,
+// 		CreatedAt: created,
+// 	}
 
-	connectionLock.RLock()
-	recipients := dbfuncs.GetGroupMembers(receivedData.RecipientID)
-	for _, recipient := range recipients {
-		for _, c := range activeConnections[recipient] {
-			err := c.WriteJSON(message)
-			if err != nil {
-				log.Println("error sending group message to recipient", err)
-			}
-		}
-	}
-	connectionLock.RUnlock()
-}
+// 	connectionLock.RLock()
+// 	recipients := dbfuncs.GetGroupMembers(receivedData.RecipientID)
+// 	for _, recipient := range recipients {
+// 		for _, c := range activeConnections[recipient] {
+// 			err := c.WriteJSON(message)
+// 			if err != nil {
+// 				log.Println("error sending group message to recipient", err)
+// 			}
+// 		}
+// 	}
+// 	connectionLock.RUnlock()
+// }
 
 // Only notify a user of an error that occurred while processing an
 // action they attempted. No need to notify someone if someone else

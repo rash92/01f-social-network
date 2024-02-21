@@ -129,3 +129,7 @@ func GetCreatedAtByUserId(id string) (time.Time, error) {
 func GetGroupCreatorByGroupId(id string) (string, error) {
 	return "", nil
 }
+
+func AddPrivateMessage(message *PrivateMessage) error {
+	return nil
+}

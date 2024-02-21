@@ -35,11 +35,11 @@ type User struct {
 	CreatedAt      time.Time
 }
 type PrivateMessage struct {
-	Id          string
-	SenderId    string
-	RecipientId string
-	Message     string
-	CreatedAt   time.Time
+	Id         string
+	SenderId   string
+	ReceiverId string
+	Message    string
+	CreatedAt  time.Time
 }
 type Post struct {
 	Id           string
