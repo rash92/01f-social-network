@@ -279,8 +279,14 @@ func GetPostChosenFollowerIdsByPostId(id string) ([]string, error) {
 	return followerIds, err
 }
 
-func GetPostByCommentId(id string) (Post, error) {
+func GetPostById(id string) (Post, error) {
 	var post Post
 	err := db.QueryRow("SELECT Id, Title, Body, CreatorId, GroupId, CreatedAt, Image, PrivacyLevel FROM Posts WHERE Id=?", id).Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
 	return post, err
+}
+
+func GetPostIdByCommentId(id string) (string, error) {
+	var postId string
+	err := db.QueryRow("SELECT PostId FROM Comments WHERE Id=?", id).Scan(&postId)
+	return postId, err
 }
