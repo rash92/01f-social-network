@@ -6,7 +6,19 @@ import (
 	"github.com/google/uuid"
 )
 
-// Assume everything here is a placeholder unless it's clear that it's what you want.
+// Get post from comment id done aaccording to this plan.
+
+/* addEvent has different signature but exists, getFollowersByFollowingIds is split into get accepted vs pending followers, and both follower by following and following by follower, GetPostPrivacyLevelByCommentId and GetCreatedAtByUserId are unnecessary as can just get post and get user and access fields from them, getPostChosenFollowersByPostId renamed to getPostChosenFollowerIdsByPostId, getGroupMembersByGroupId split into getting accepted vs invited vs requested group members
+
+getPostByCommentId split into getPostIdByCommentId and getPostById
+
+AddPost, IsUserPrivate, AddFollow, AddNotification, AcceptFollow, RejectFollow, AddEvent, GetEventsById, NotificationSeen, AddGrouMember, GetGroupCreatorByGroupId, AddComment, GetCommentById, GetUserById all exist and are complete and have same inputs/outputs as placeholder functions
+
+re: above: AddEvent renamed to AddGroupEvent, GetEventsById renamed to GetGroupEventsById
+
+ToggleAttendEvent split into AddGroupEventParticipant and DeleteGroupEventParticipant
+
+*/
 
 func AddPost(post *Post) error {
 	_, err := db.Exec("INSERT INTO posts (Id, Title, Body, CreatorId, GroupId, CreatedAt, Image, PrivacyLevel) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", post.Id, post.Title, post.Body, post.CreatorId, post.GroupId, post.CreatedAt, post.Image, post.PrivacyLevel)
@@ -93,7 +105,7 @@ func GetFollowersByFollowingId(id string) ([]string, error) {
 	return followers, nil
 }
 
-func GetPostChosenFollowersByPostId(id string) ([]string, error) {
+func GetPostChosenFollowerIdsByPostId(id string) ([]string, error) {
 	var followers []string
 	return followers, nil
 }
@@ -107,7 +119,11 @@ func GetPostPrivacyLevelByCommentId(id string) (string, error) {
 	return "", nil
 }
 
-func GetPostByCommentId(id string) (Post, error) {
+func GetPostIdByCommentId(id string) (string, error) {
+	return "", nil
+}
+
+func GetPostById(id string) (Post, error) {
 	post := Post{}
 	return post, nil
 }

@@ -551,7 +551,13 @@ func (receivedData Comment) GetPrivacyLevel() (string, error) {
 }
 
 func (receivedData Comment) GetPost() (Post, error) {
-	dbPost, err := dbfuncs.GetPostByCommentId(receivedData.Id)
+	postId, err := dbfuncs.GetPostIdByCommentId(receivedData.Id)
+	if err != nil {
+		log.Println("error getting post id from database", err)
+		return Post{}, err
+	}
+
+	dbPost, err := dbfuncs.GetPostById(postId)
 	if err != nil {
 		log.Println("error getting post from database", err)
 		return Post{}, err
@@ -637,7 +643,7 @@ func send(receivedData PostOrComment) error {
 			connectionLock.RUnlock()
 		}
 	case "superprivate":
-		chosenFollowers, err := dbfuncs.GetPostChosenFollowersByPostId(post.Id)
+		chosenFollowers, err := dbfuncs.GetPostChosenFollowerIdsByPostId(post.Id)
 		if err != nil {
 			log.Println("error getting chosen followers from database", err)
 			notifyClientOfError(err, "error getting chosen followers from database", post.CreatorId)
