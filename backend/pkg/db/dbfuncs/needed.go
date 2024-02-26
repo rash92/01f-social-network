@@ -2,6 +2,7 @@ package dbfuncs
 
 import (
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,15 +27,6 @@ func AddPost(post *Post) error {
 	return err
 }
 
-func IsUserPrivate(id string) (bool, error) {
-	var privacySetting string
-	err := db.QueryRow("SELECT PrivacySetting FROM Users WHERE id = $1", id).Scan(&privacySetting)
-	if err != nil {
-		return false, err
-	}
-	return privacySetting == "private", nil
-}
-
 func AddNotification(notification *Notification) error {
 	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
@@ -53,7 +45,29 @@ func AddNotification(notification *Notification) error {
 
 func GetNotificationById(id string) (Notification, error) {
 	var notification Notification
-	return notification, nil
+	err := db.QueryRow("SELECT Id, Body, Type, CreatedAt, ReceiverId, SenderId, Seen FROM Notifications WHERE Id=?", id).Scan(&notification.Id, &notification.Body, &notification.Type, &notification.CreatedAt, &notification.ReceiverId, &notification.SenderId, &notification.Seen)
+	return notification, err
+}
+
+func IsUserPrivate(userId string) (bool, error) {
+	var privacySetting string
+	err := db.QueryRow("SELECT PrivacySetting FROM Users WHERE Id=?", userId).Scan(&privacySetting)
+	if err != nil {
+		return false, err
+	}
+	if privacySetting == "public" {
+		return false, nil
+	}
+	if privacySetting == "private" {
+		return true, nil
+	}
+	return false, errors.New("privacy setting not recognized, should be either 'private' or 'public'")
+}
+
+func GetUserById(id string) (User, error) {
+	var user User
+	err := db.QueryRow("SELECT Id, Nickname, FirstName, LastName, Email, Password, Profile, AboutMe, PrivacySetting, DOB, CreatedAt FROM Users WHERE Id=?", id).Scan(&user.Id, &user.Nickname, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Profile, &user.AboutMe, &user.PrivacySetting, &user.DOB, &user.CreatedAt)
+	return user, err
 }
 
 func AddEvent(event *Event) (string, time.Time, error) {
@@ -109,11 +123,6 @@ func GetPostIdByCommentId(id string) (string, error) {
 func GetPostById(id string) (Post, error) {
 	post := Post{}
 	return post, nil
-}
-
-func GetUserById(id string) (User, error) {
-	user := User{}
-	return user, nil
 }
 
 func GetCreatedAtByUserId(id string) (time.Time, error) {
