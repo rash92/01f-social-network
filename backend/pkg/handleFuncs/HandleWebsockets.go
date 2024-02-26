@@ -304,11 +304,11 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 	case "privateMessage":
 		var receivedData PrivateMessage
 		unmarshalBody(signal.Body, &receivedData)
-		privateMessage(receivedData)
+		err = privateMessage(receivedData)
 	case "groupMessage":
-		var receivedData Message
+		var receivedData GroupMessage
 		unmarshalBody(signal.Body, &receivedData)
-		// groupMessage(receivedData)
+		err = groupMessage(receivedData)
 	// General posts, comments, and likes:
 	case "post":
 		var receivedData Post
@@ -685,9 +685,7 @@ func (receivedData Post) AddToDB() (string, error) {
 	return dbStruct.Id, err
 }
 
-// Change this and groupMessage to separate dbfuncs functions. Pass pointer to
-// the relevant dbfuncs struct and handle error that's returned.
-func privateMessage(receivedData PrivateMessage) {
+func privateMessage(receivedData PrivateMessage) error {
 	dbPM := dbfuncs.PrivateMessage{
 		SenderId:   receivedData.SenderId,
 		ReceiverId: receivedData.ReceiverId,
@@ -697,54 +695,70 @@ func privateMessage(receivedData PrivateMessage) {
 	err := dbfuncs.AddPrivateMessage(&dbPM)
 	if err != nil {
 		log.Println("error adding message to database", err)
+		notifyClientOfError(err, "error adding message to database", receivedData.SenderId)
+		return err
 	}
 
 	receivedData.Id = dbPM.Id
 	receivedData.CreatedAt = dbPM.CreatedAt
+
 	connectionLock.RLock()
+	defer connectionLock.RUnlock()
+
 	for _, c := range activeConnections[receivedData.ReceiverId] {
 		err := c.WriteJSON(receivedData)
 		if err != nil {
-			log.Fatal(err)
+			log.Println("error sending private message to recipient", err)
 		}
 	}
-	connectionLock.RUnlock()
+
+	return err
 }
 
-// // I adapted dbfuncs.AddMessage to handle both private and group
-// // messages. Update: we've decided have seperate dbfuncs functions
-// // for private and group messages. TODO: rewrite groupeMessage and
-// // privateMessage to take account of this.
-// func groupMessage(receivedData Message) {
-// 	id, created, err := dbfuncs.AddMessage(receivedData.SenderID, receivedData.RecipientID, receivedData.Message, receivedData.Type)
-// 	if err != nil {
-// 		log.Println("error adding message to database", err)
-// 	}
-// 	receivedData.ID = id.String()
-// 	message := GroupMessage{
-// 		Id:        "",
-// 		SenderId:  receivedData.SenderID,
-// 		GroupId:   receivedData.RecipientID,
-// 		Message:   receivedData.Message,
-// 		CreatedAt: created,
-// 	}
+func groupMessage(receivedData GroupMessage) error {
+	dbGM := dbfuncs.GroupMessage{
+		SenderId: receivedData.SenderId,
+		GroupId:  receivedData.GroupId,
+		Message:  receivedData.Message,
+	}
 
-// 	connectionLock.RLock()
-// 	recipients := dbfuncs.GetGroupMembers(receivedData.RecipientID)
-// 	for _, recipient := range recipients {
-// 		for _, c := range activeConnections[recipient] {
-// 			err := c.WriteJSON(message)
-// 			if err != nil {
-// 				log.Println("error sending group message to recipient", err)
-// 			}
-// 		}
-// 	}
-// 	connectionLock.RUnlock()
-// }
+	err := dbfuncs.AddGroupMessage(&dbGM)
+	if err != nil {
+		log.Println("error adding message to database", err)
+		notifyClientOfError(err, "error adding message to database", receivedData.SenderId)
+	}
+
+	receivedData.Id = dbGM.Id
+	receivedData.CreatedAt = dbGM.CreatedAt
+
+	connectionLock.RLock()
+	defer connectionLock.RUnlock()
+
+	recipients, err := dbfuncs.GetGroupMemberIdsByGroupId(receivedData.GroupId)
+	if err != nil {
+		log.Println("error getting group members from database", err)
+		notifyClientOfError(err, "error getting group members from database", receivedData.SenderId)
+		return err
+	}
+
+	for _, recipient := range recipients {
+		for _, c := range activeConnections[recipient] {
+			err := c.WriteJSON(receivedData)
+			if err != nil {
+				log.Println("error sending group message to recipient", err)
+			}
+		}
+	}
+
+	return err
+}
 
 // Only notify a user of an error that occurred while processing an
 // action they attempted. No need to notify someone if someone else
-// failed to follow them, for example.
+// failed to follow them, for example. I'm thinking, also, only notify
+// user that a message couldn't be added to the db, since that affects
+// them directly. If a message couldn't be sent to one of their connections,
+// we can just log that and deal with it ourselves.
 func notifyClientOfError(err error, message string, id string) error {
 	log.Println(err, message)
 	data := map[string]interface{}{

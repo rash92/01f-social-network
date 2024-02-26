@@ -1,6 +1,7 @@
 package dbfuncs
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -148,4 +149,40 @@ func GetGroupCreatorByGroupId(id string) (string, error) {
 
 func AddPrivateMessage(message *PrivateMessage) error {
 	return nil
+}
+
+func AddGroupMessage(groupMessage *GroupMessage) error {
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return err
+	}
+	groupMessage.Id = id.String()
+	groupMessage.CreatedAt = time.Now()
+	statement, err := db.Prepare("INSERT INTO GroupMessages VALUES (?,?,?,?,?)")
+	if err != nil {
+		return err
+	}
+	_, err = statement.Exec(groupMessage.Id, groupMessage.SenderId, groupMessage.GroupId, groupMessage.Message, groupMessage.CreatedAt)
+	return err
+}
+
+func GetGroupMemberIdsByGroupId(groupId string) ([]string, error) {
+	var GroupMemberIds []string
+	row, err := db.Query("SELECT UserId FROM GroupMembers WHERE GroupId=? AND Status=?", groupId, "accepted")
+	if err == sql.ErrNoRows {
+		return GroupMemberIds, nil
+	}
+	if err != nil {
+		return GroupMemberIds, err
+	}
+	defer row.Close()
+	for row.Next() {
+		var GroupMemberId string
+		err = row.Scan(&GroupMemberId)
+		if err != nil {
+			return GroupMemberIds, err
+		}
+		GroupMemberIds = append(GroupMemberIds, GroupMemberId)
+	}
+	return GroupMemberIds, nil
 }
