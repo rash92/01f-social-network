@@ -624,7 +624,7 @@ func send(receivedData PostOrComment) error {
 		}
 		connectionLock.RUnlock()
 	case "private":
-		followers, err := dbfuncs.GetFollowersByFollowingId(post.CreatorId)
+		followers, err := dbfuncs.GetAcceptedFollowerIdsByFollowingId(post.CreatorId)
 		if err != nil {
 			log.Println("error getting followers from database", err)
 			notifyClientOfError(err, "error getting followers from database", post.CreatorId)
