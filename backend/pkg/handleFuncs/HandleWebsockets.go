@@ -102,6 +102,12 @@ func unmarshalBody[T any](signalBody []byte, receivedData T) {
 	}
 }
 
+type Follow struct {
+	FollowerId  string `json:"FollowrId"`
+	FollowingId string `json:"FollowingId"`
+	Status      string `json:"Status"`
+}
+
 type PrivateMessage struct {
 	Id         string    `json:"Id"`
 	SenderId   string    `json:"SenderId"`
@@ -136,6 +142,12 @@ type Group struct {
 	Title       string    `json:"Name"`
 	Description string    `json:"Description"`
 	CreatedAt   time.Time `json:"CreatedAt"`
+}
+
+type InviteToJoinGroup struct {
+	GroupId  string `json:"GroupId"`
+	UserId   string `json:"UserId"`
+	SenderId string `json:"Sender"`
 }
 
 type Notification struct {
@@ -328,10 +340,18 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		err = fmt.Errorf("logout")
 		HandleLogout(w, r)
 		return err
+	case "requestToFollow":
+		var receivedData Follow
+		unmarshalBody(signal.Body, &receivedData)
+		err = requestToFollow(receivedData)
+	case "answerRequestToFollow":
+		var receivedData Notification
+		err = answerRequestToFollow(receivedData)
 	case "notificationSeen":
 		var receivedData NotificationSeen
 		unmarshalBody(signal.Body, &receivedData)
 		err = notificationSeen(receivedData, userID)
+
 	// Chat:
 	case "privateMessage":
 		var receivedData PrivateMessage
@@ -341,6 +361,7 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		var receivedData GroupMessage
 		unmarshalBody(signal.Body, &receivedData)
 		err = groupMessage(receivedData)
+
 	// General posts, comments, and likes:
 	case "post":
 		var receivedData Post
@@ -352,15 +373,16 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		err = postOrComment(receivedData)
 	case "like":
 		// fill in
-	// Group business:
-	case "answerRequestToJoinGroup":
-		var receivedData AnswerRequestToJoinGroup
-		unmarshalBody(signal.Body, &receivedData)
-		err = answerRequestToJoinGroup(receivedData)
+
+		// Groups:
 	case "createGroup":
 		var receievedData Group
 		unmarshalBody(signal.Body, &receievedData)
 		err = createGroup(receievedData)
+	case "answerRequestToJoinGroup":
+		var receivedData AnswerRequestToJoinGroup
+		unmarshalBody(signal.Body, &receivedData)
+		err = answerRequestToJoinGroup(receivedData)
 	case "groupPost":
 		var receivedData Post
 		unmarshalBody(signal.Body, &receivedData)
@@ -371,8 +393,12 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		err = postOrComment(receivedData)
 	case "groupLike":
 		// fill in
-		// Events:
-		// This will probably need redoing to match current practice.
+
+	// Events:
+	case "requestToJoinGroup":
+		var receivedData GroupMember
+		unmarshalBody(signal.Body, &receivedData)
+		err = requestToJoinGroup(receivedData)
 	case "inviteToJoinGroup":
 		var receivedData InviteToJoinGroup
 		unmarshalBody(signal.Body, &receivedData)
@@ -389,23 +415,7 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		// 	//unexpected type
 		// 	log.Println("Unexpected websocket message type:", receivedData.Type)
 	default:
-		// notifications
-		var receivedData Notification
-		unmarshalBody(signal.Body, &receivedData)
-		switch receivedData.Type {
-		case "requestToFollow":
-			err = requestToFollow(receivedData)
-		case "answerRequestToFollow":
-			err = answerRequestToFollow(receivedData)
-		case "requestToJoinGroup":
-			err = requestToJoinGroup(receivedData)
-			// case "answerRequestToJoinGroup":
-			// err = answerRequestToJoinGroup(receivedData)
-
-			// case "answerInviteToGroup":
-			// 	//fill in
-			// 	answerInviteToJoinGroup(receivedData)
-		}
+		err = errors.New("unexpected websocket message type")
 	}
 	return err
 }
@@ -812,12 +822,12 @@ func notifyClientOfError(err error, message string, id string) error {
 	return err
 }
 
-func requestToFollow(receivedData Notification) error {
+func requestToFollow(receivedData Follow) error {
 	var follow dbfuncs.Follow
-	follow.FollowingId = receivedData.ReceiverId
-	follow.FollowerId = receivedData.SenderId
+	follow.FollowingId = receivedData.FollowingId
+	follow.FollowerId = receivedData.FollowerId
 
-	private, err := dbfuncs.IsUserPrivate(receivedData.ReceiverId)
+	private, err := dbfuncs.IsUserPrivate(receivedData.FollowingId)
 	if err != nil {
 		log.Println("error checking if user is public", err)
 	}
@@ -831,42 +841,35 @@ func requestToFollow(receivedData Notification) error {
 	err = dbfuncs.AddFollow(&follow)
 	if err != nil {
 		log.Println("error adding follow to database", err)
-		notifyClientOfError(err, "error adding follow to database", receivedData.SenderId)
+		notifyClientOfError(err, "error adding follow to database", receivedData.FollowerId)
 		return err
 	}
 
+	follower, err := dbfuncs.GetUserById(receivedData.FollowerId)
+	if err != nil {
+		log.Println("error getting nickname from database", err)
+		notifyClientOfError(err, "error getting nickname from database", receivedData.FollowerId)
+		return err
+	}
+
+	notification := Notification{
+		ReceiverId: receivedData.FollowingId,
+		SenderId:   receivedData.FollowerId,
+		Body:       fmt.Sprintf("%s has requested to follow you", follower.Nickname),
+		Type:       "requestToFollow",
+	}
+
 	if private {
-		err = dbfuncs.AddNotification(receivedData.parseForDB())
+		err = dbfuncs.AddNotification(notification.parseForDB())
 		if err != nil {
 			log.Println("error adding requestToFollow notification to database", err)
 			return err
 		}
 	}
 
-	user, err := dbfuncs.GetUserById(receivedData.SenderId)
-	if err != nil {
-		log.Println("error getting user info from database", err)
-		notifyClientOfError(err, "error adding follow to database", receivedData.SenderId)
-		return err
-	}
-
-	newFollower := BasicUserInfo{
-		UserId:         receivedData.SenderId,
-		FirstName:      user.FirstName,
-		LastName:       user.LastName,
-		Nickname:       user.Nickname,
-		PrivacySetting: user.PrivacySetting,
-	}
-
-	request := RequestToFollow{
-		User:   newFollower,
-		Status: follow.Status,
-		Type:   "requestToFollow",
-	}
-
 	connectionLock.RLock()
-	for _, c := range activeConnections[receivedData.ReceiverId] {
-		err = c.WriteJSON(request)
+	for _, c := range activeConnections[follow.FollowingId] {
+		err = c.WriteJSON(notification)
 		if err != nil {
 			log.Println("error sending (potential) new follower info to recipient", err)
 		}
@@ -876,7 +879,7 @@ func requestToFollow(receivedData Notification) error {
 	return err
 }
 
-// Send User info to to receiver.
+// When received, client should request profile if they're on profile page.
 func answerRequestToFollow(receivedData Notification) error {
 	var err error
 
@@ -889,7 +892,7 @@ func answerRequestToFollow(receivedData Notification) error {
 			return err
 		}
 	case "no":
-		err := dbfuncs.RejectFollow(receivedData.SenderId, receivedData.ReceiverId)
+		err := dbfuncs.DeleteFollow(receivedData.SenderId, receivedData.ReceiverId)
 		if err != nil {
 			log.Println("error rejecting follow", err)
 			notifyClientOfError(err, "error rejecting follow", receivedData.SenderId)
@@ -967,37 +970,37 @@ func createGroup(receivedData Group) error {
 	return err
 }
 
-func requestToJoinGroup(receivedData Notification) error {
-	groupCreator, err := dbfuncs.GetGroupCreatorIdByGroupId(receivedData.ReceiverId)
+func requestToJoinGroup(receivedData GroupMember) error {
+	groupCreator, err := dbfuncs.GetGroupCreatorIdByGroupId(receivedData.GroupId)
 	if err != nil {
 		log.Println("error finding group creator")
-		notifyClientOfError(err, "error finding group creator", receivedData.SenderId)
+		notifyClientOfError(err, "error finding group creator", receivedData.UserId)
 		return err
 	}
 
 	member := dbfuncs.GroupMember{
-		GroupId: receivedData.ReceiverId,
-		UserId:  receivedData.SenderId,
+		GroupId: receivedData.GroupId,
+		UserId:  receivedData.UserId,
 		Status:  "pending",
 	}
 
 	err = dbfuncs.AddGroupMember(&member)
 	if err != nil {
 		log.Println(err, "error adding new group member to database")
-		notifyClientOfError(err, "error adding new group member to database", receivedData.SenderId)
+		notifyClientOfError(err, "error adding new group member to database", receivedData.UserId)
 		return err
 	}
 
 	dbNotification := dbfuncs.Notification{
 		Type:       "requestToJoinGroup",
 		ReceiverId: groupCreator,
-		SenderId:   receivedData.SenderId,
+		SenderId:   receivedData.UserId,
 	}
 
 	err = dbfuncs.AddNotification(&dbNotification)
 	if err != nil {
 		log.Println(err, "error adding notification to database")
-		notifyClientOfError(err, "error adding notification to database", receivedData.SenderId)
+		notifyClientOfError(err, "error adding notification to database", receivedData.UserId)
 		return err
 	}
 
@@ -1005,7 +1008,7 @@ func requestToJoinGroup(receivedData Notification) error {
 		Id:         dbNotification.Id,
 		Type:       "requestToJoinGroup",
 		ReceiverId: groupCreator,
-		SenderId:   receivedData.SenderId,
+		SenderId:   receivedData.UserId,
 	}
 
 	connectionLock.RLock()
@@ -1019,15 +1022,6 @@ func requestToJoinGroup(receivedData Notification) error {
 
 	return err
 }
-
-// // If the answer is yes, add the requester to the group members list
-// // and broadcast the updated list to all group members. Either way,
-// // decide if we want to notify the requester of the result. If so,
-// // and I think we should, add a notification to the database and send
-// // it to the requester if they're online. The notification should
-// // include which group and whether the answer was yes or no.
-// // Also, if YES, add user to GroupEventParticipants with the choice
-// // field set to false for all events in that group.
 
 func answerRequestToJoinGroup(receivedData AnswerRequestToJoinGroup) error {
 	var err error
@@ -1088,12 +1082,6 @@ func answerRequestToJoinGroup(receivedData AnswerRequestToJoinGroup) error {
 	connectionLock.RUnlock()
 
 	return err
-}
-
-type InviteToJoinGroup struct {
-	GroupId  string `json:"GroupId"`
-	UserId   string `json:"UserId"`
-	SenderId string `json:"Sender"`
 }
 
 // Re errors, what is our threat model here? Suppose the pending user
