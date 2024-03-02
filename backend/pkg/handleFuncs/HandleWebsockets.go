@@ -1,5 +1,14 @@
 package handlefuncs
 
+// Separete out Notifications type. I was thinking of taking a short-cut
+// and doing all the notifications as one type, but now I think it's
+// better to separate them.
+
+//
+
+// Some errors sending signals to clients might just be because they've
+// gone offline, and that's fine.
+
 // You can only have one cookie per browser, but you can have multiple
 // connections per cookie. This is because the cookie is stored in the
 // browser, and the browser is the client. The connection is stored on
@@ -121,6 +130,14 @@ func (receivedData Post) parseForDB() *dbfuncs.Post {
 	}
 }
 
+type Group struct {
+	Id          string    `json:"Id"`
+	CreatorId   string    `json:"CreatorId"`
+	Title       string    `json:"Name"`
+	Description string    `json:"Description"`
+	CreatedAt   time.Time `json:"CreatedAt"`
+}
+
 type Notification struct {
 	Id         string    `json:"Id"`
 	ReceiverId string    `json:"RecieverId"`
@@ -135,6 +152,7 @@ type NotificationSeen struct {
 	Id string `json:"Id"`
 }
 
+// Need to keep Notification type general, not just requestToFollow!
 func (receivedData Notification) parseForDB() *dbfuncs.Notification {
 	return &dbfuncs.Notification{
 		Body:       receivedData.Body,
@@ -161,17 +179,31 @@ type RequestToFollow struct {
 	Type   string        `json:"Type"`
 }
 
-type Event struct {
-	EventId     string `json:"EventId"`
-	GroupId     string `json:"GroupId"`
-	Title       string `json:"Title"`
-	Description string `json:"Description"`
-	CreatorId   string `json:"CreatorId"`
+type GroupMember struct {
+	GroupId string `json:"GroupId"`
+	UserId  string `json:"UserId"`
+	Status  string `json:"Status"`
 }
 
-func (receivedData Event) parseForDB() *dbfuncs.Event {
-	return &dbfuncs.Event{
-		EventId:     receivedData.EventId,
+type AnswerRequestToJoinGroup struct {
+	SenderId   string `json:"SenderId"`
+	ReceiverId string `json:"ReceiverId"`
+	GroupId    string `json:"GroupId"`
+	Accept     bool   `json:"Accept"`
+}
+
+type GroupEvent struct {
+	Id          string    `json:"EventId"`
+	GroupId     string    `json:"GroupId"`
+	Title       string    `json:"Title"`
+	Description string    `json:"Description"`
+	CreatorId   string    `json:"CreatorId"`
+	Time        time.Time `json:"Time"`
+}
+
+func (receivedData GroupEvent) parseForDB() *dbfuncs.GroupEvent {
+	return &dbfuncs.GroupEvent{
+		Id:          receivedData.Id,
 		GroupId:     receivedData.GroupId,
 		Title:       receivedData.Title,
 		Description: receivedData.Description,
@@ -321,8 +353,14 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 	case "like":
 		// fill in
 	// Group business:
-	case "groupCreate":
-		//fill in
+	case "answerRequestToJoinGroup":
+		var receivedData AnswerRequestToJoinGroup
+		unmarshalBody(signal.Body, &receivedData)
+		err = answerRequestToJoinGroup(receivedData)
+	case "createGroup":
+		var receievedData Group
+		unmarshalBody(signal.Body, &receievedData)
+		err = createGroup(receievedData)
 	case "groupPost":
 		var receivedData Post
 		unmarshalBody(signal.Body, &receivedData)
@@ -332,15 +370,19 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		unmarshalBody(signal.Body, &receivedData)
 		err = postOrComment(receivedData)
 	case "groupLike":
-	// fill in
-	// Events:
-	// This will probably need redoing to match current practice.
+		// fill in
+		// Events:
+		// This will probably need redoing to match current practice.
+	case "inviteToJoinGroup":
+		var receivedData InviteToJoinGroup
+		unmarshalBody(signal.Body, &receivedData)
+		err = inviteToJoinGroup(receivedData)
 	case "createEvent":
-		var receivedData Event
+		var receivedData GroupEvent
 		unmarshalBody(signal.Body, &receivedData)
 		err = createEvent(receivedData)
 	case "toggleAttendEvent":
-		var receivedData Event
+		var receivedData GroupEvent
 		unmarshalBody(signal.Body, &receivedData)
 		// toggleAttendEvent(&receivedData)
 		// default:
@@ -357,14 +399,9 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 			err = answerRequestToFollow(receivedData)
 		case "requestToJoinGroup":
 			err = requestToJoinGroup(receivedData)
-		case "answerRequestToJoinGroup":
-			err = answerRequestToJoinGroup(receivedData)
+			// case "answerRequestToJoinGroup":
+			// err = answerRequestToJoinGroup(receivedData)
 
-			// 	//fill in
-			// case "inviteToJoinGroup":
-			// 	//fill in
-			// 	// Notify the person you're inviting.
-			// 	inviteToJoinGroup(receivedData)
 			// case "answerInviteToGroup":
 			// 	//fill in
 			// 	answerInviteToJoinGroup(receivedData)
@@ -886,8 +923,52 @@ func answerRequestToFollow(receivedData Notification) error {
 	return err
 }
 
+func createGroup(receivedData Group) error {
+	group := dbfuncs.Group{
+		CreatorId:   receivedData.CreatorId,
+		Title:       receivedData.Title,
+		Description: receivedData.Description,
+	}
+
+	err := dbfuncs.AddGroup(&group)
+	if err != nil {
+		log.Println("error adding group to database", err)
+		notifyClientOfError(err, "error adding group to database", receivedData.CreatorId)
+		return err
+	}
+
+	receivedData.Id = group.Id
+	receivedData.CreatedAt = group.CreatedAt
+
+	member := dbfuncs.GroupMember{
+		GroupId: group.Id,
+		UserId:  receivedData.CreatorId,
+		Status:  "accepted",
+	}
+
+	err = dbfuncs.AddGroupMember(&member)
+	if err != nil {
+		log.Println("error adding group member to database", err)
+		notifyClientOfError(err, "error adding group member to database", receivedData.CreatorId)
+		return err
+	}
+
+	connectionLock.RLock()
+	for user := range activeConnections {
+		for _, c := range activeConnections[user] {
+			err = c.WriteJSON(group)
+			if err != nil {
+				log.Println("error sending new group to client", err)
+			}
+		}
+	}
+	connectionLock.RUnlock()
+
+	return err
+}
+
 func requestToJoinGroup(receivedData Notification) error {
-	groupCreator, err := dbfuncs.GetGroupCreatorByGroupId(receivedData.ReceiverId)
+	groupCreator, err := dbfuncs.GetGroupCreatorIdByGroupId(receivedData.ReceiverId)
 	if err != nil {
 		log.Println("error finding group creator")
 		notifyClientOfError(err, "error finding group creator", receivedData.SenderId)
@@ -902,8 +983,8 @@ func requestToJoinGroup(receivedData Notification) error {
 
 	err = dbfuncs.AddGroupMember(&member)
 	if err != nil {
-		log.Println(err, "error adding group member to database")
-		notifyClientOfError(err, "error finding group creator", receivedData.SenderId)
+		log.Println(err, "error adding new group member to database")
+		notifyClientOfError(err, "error adding new group member to database", receivedData.SenderId)
 		return err
 	}
 
@@ -916,7 +997,7 @@ func requestToJoinGroup(receivedData Notification) error {
 	err = dbfuncs.AddNotification(&dbNotification)
 	if err != nil {
 		log.Println(err, "error adding notification to database")
-		notifyClientOfError(err, "error finding group creator", receivedData.SenderId)
+		notifyClientOfError(err, "error adding notification to database", receivedData.SenderId)
 		return err
 	}
 
@@ -947,14 +1028,140 @@ func requestToJoinGroup(receivedData Notification) error {
 // // include which group and whether the answer was yes or no.
 // // Also, if YES, add user to GroupEventParticipants with the choice
 // // field set to false for all events in that group.
-func answerRequestToJoinGroup(receivedData Notification) error {
-	return errors.New("not yet implemented")
+
+func answerRequestToJoinGroup(receivedData AnswerRequestToJoinGroup) error {
+	var err error
+
+	member := dbfuncs.GroupMember{
+		GroupId: receivedData.GroupId,
+		UserId:  receivedData.ReceiverId,
+		Status:  "accepted",
+	}
+
+	if receivedData.Accept {
+		err = dbfuncs.UpdateGroupMember(&member)
+		if err != nil {
+			log.Println(err, "error updating group member status in database")
+			notifyClientOfError(err, "error updating group member status in database", receivedData.SenderId)
+			return err
+		}
+	} else {
+		err = dbfuncs.DeleteGroupMember(&member)
+		if err != nil {
+			log.Println(err, "error deleting group member from database")
+			notifyClientOfError(err, "error deleting group member from database", receivedData.SenderId)
+			return err
+		}
+	}
+
+	dbNotification := dbfuncs.Notification{
+		Type:       "answerRequestToJoinGroup",
+		ReceiverId: receivedData.ReceiverId,
+		SenderId:   receivedData.SenderId,
+	}
+
+	err = dbfuncs.AddNotification(&dbNotification)
+	if err != nil {
+		log.Println(err, "error adding notification to database")
+	}
+
+	notification := Notification{
+		Id:         dbNotification.Id,
+		Type:       "answerRequestToJoinGroup",
+		ReceiverId: receivedData.ReceiverId,
+		SenderId:   receivedData.SenderId,
+	}
+
+	if receivedData.Accept {
+		notification.Body = "yes"
+	} else {
+		notification.Body = "no"
+	}
+
+	connectionLock.RLock()
+	for _, c := range activeConnections[receivedData.ReceiverId] {
+		err := c.WriteJSON(notification)
+		if err != nil {
+			log.Println(err, "error sending notification to recipient")
+		}
+	}
+	connectionLock.RUnlock()
+
+	return err
 }
 
-// // Add a notification to the database and send it to the person
-// // being invited if they're online.
-// func inviteToJoinGroup(receivedData Message) {
-// }
+type InviteToJoinGroup struct {
+	GroupId  string `json:"GroupId"`
+	UserId   string `json:"UserId"`
+	SenderId string `json:"Sender"`
+}
+
+// Re errors, what is our threat model here? Suppose the pending user
+// is added to the GroupMembers table, but the notification fails to
+// be added to the Notifications table. Should we delete the user from
+// the GroupMembers table and notify the sender that it failer? We can't
+// addd the pending member but not notify them. But then what if the
+// notification of the error fails? The server could have a collection
+// of failed notifications to keep trying to add to the database or
+// to send or whatever. I suppose such measures might catch some errors,
+// if not all. But we also need to finish our project ... There is
+// the danger that the server could be overwhelmed by failed notifications,
+// and the danger that the database could be overwhelmed by attemots to
+// add the same entry again and again, if it's rightly OR WRONGLY
+// identified as a failed attempt! This could get expensive.
+func inviteToJoinGroup(receivedData InviteToJoinGroup) error {
+	member := dbfuncs.GroupMember{
+		GroupId: receivedData.GroupId,
+		UserId:  receivedData.UserId,
+		Status:  "pending",
+	}
+
+	err := dbfuncs.AddGroupMember(&member)
+	if err != nil {
+		log.Println(err, "error adding new group member to database")
+		notifyClientOfError(err, "error adding new group member to database", receivedData.SenderId)
+		return err
+	}
+
+	dbNotification := dbfuncs.Notification{
+		Type:       "inviteToJoinGroup",
+		ReceiverId: receivedData.UserId,
+		SenderId:   receivedData.SenderId,
+	}
+
+	sender, err := dbfuncs.GetUserById(receivedData.SenderId)
+	if err != nil {
+		log.Println(err, "error getting sender info from database")
+		return err
+	}
+
+	dbNotification.Body = fmt.Sprintf("%s invited you to join group %s", sender, receivedData.GroupId)
+
+	err = dbfuncs.AddNotification(&dbNotification)
+	if err != nil {
+		log.Println(err, "error adding notification to database")
+		notifyClientOfError(err, "error adding notification to database", sender.Nickname)
+		return err
+	}
+
+	notification := Notification{
+		Id:         dbNotification.Id,
+		Type:       "inviteToJoinGroup",
+		ReceiverId: receivedData.UserId,
+		SenderId:   receivedData.SenderId,
+	}
+
+	connectionLock.RLock()
+	for _, c := range activeConnections[receivedData.UserId] {
+		err := c.WriteJSON(notification)
+		if err != nil {
+			log.Println(err, "error sending notification to recipient")
+		}
+	}
+	connectionLock.RUnlock()
+
+	return err
+}
 
 // // If the answer is yes, add the invitee to the group members list
 // // in the database and broadcast the updated list to all group members.
@@ -966,94 +1173,46 @@ func answerRequestToJoinGroup(receivedData Notification) error {
 // func answerInviteToJoinGroup(receivedData Message) {
 // }
 
-// // Add an event to the database and send it to all group members.
-// // Add all groups members to GroupEventParticipants with the choice
-// // field set to false. Add notification for each group member.
-// // In detail: This will now be part of the handlefuncs package.
-// // handlefuncs can import dbfuncs, but not the other way around.
-// // It will have to convert the Event to a dbfuncs.Event,
-// // and then call dbfuncs.AddEvent. It will also have to call
-// // dbfuncs.GetGroupMembers to get the list of group members.
-// // I've added placeholders for these.
-// // It will then have to loop through the group members and call
-// // dbfuncs.AddNotification for each one. It will also have to
-// // loop through the group members and call dbfuncs.AddGroupEventParticipant
-// // for each one. It will also have to loop through the group members
-func createEvent(receivedData Event) error {
+// I'm assuming we'll have a notification for each group member.
+// The alternative would be to have one for the group. This way
+// means more notifications, but less logic.
+func createEvent(receivedData GroupEvent) error {
 	event := receivedData.parseForDB()
 
-	id, createdAt, err := dbfuncs.AddEvent(event)
+	err := dbfuncs.AddGroupEvent(event)
 	if err != nil {
 		log.Println("error adding event to database", err)
+		notifyClientOfError(err, "error adding event to database", receivedData.CreatorId)
+		return err
 	}
 
-	// make a struct literal with title and description
 	body := fmt.Sprintf(`{"Title":%s,"Description":%s}`,
 		receivedData.Title, receivedData.Description)
 
-	notification := Notification{
-		Id:         id,
-		ReceiverId: event.GroupId,
-		SenderId:   event.CreatorId,
-		Body:       body,
-		Type:       "new event",
-		CreatedAt:  createdAt,
+	members, err := dbfuncs.GetGroupMembersByGroupId(receivedData.GroupId)
+	if err != nil {
+		log.Println("error getting group members from database", err)
 	}
 
-	connectionLock.RLock()
-	recipients := dbfuncs.GetGroupMembers(receivedData.GroupId)
-	for _, recipient := range recipients {
-		for _, c := range activeConnections[recipient] {
+	for _, member := range members {
+		notification := Notification{
+			ReceiverId: member,
+			SenderId:   receivedData.CreatorId,
+			Body:       body,
+			Type:       "event",
+		}
+		connectionLock.RLock()
+		for _, c := range activeConnections[member] {
 			err := c.WriteJSON(notification)
 			if err != nil {
 				log.Println("error sending new event notification", err)
 			}
 		}
+		connectionLock.RUnlock()
 	}
-	connectionLock.RUnlock()
+
 	return err
 }
 
-// // Toggle the user's attendance at the event in the database and
-// // broadcast the updated list of attendees to all group members
-// // who are online, or just the change in the user's attendance
-// // and let the frontend handle the update.
-
-// // Review logic here as it will have changed since our discussions.
-// // For example, there will be no direct database access from here.
-// func toggleAttendEvent(receivedData *ToggleAttendEvent) {
-// 	err := dbfuncs.ToggleAttendEvent(receivedData.EventId, receivedData.UserId)
-// 	if err != nil {
-// 		log.Println(err, "error toggling event attendance")
-// 	}
-// 	message := map[string]interface{}{
-// 		"data": receivedData,
-// 		"type": receivedData.Type,
-// 	}
-// 	dbLock.RLock()
-// 	rows, err := db.Query("SELECT * FROM GroupMember WHERE GroupId = ?", receivedData.GroupId)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	defer rows.Close()
-// 	for rows.Next() {
-// 		var userId string
-// 		err = rows.Scan(&userId)
-// 		if err != nil {
-// 			log.Fatal(err)
-// 		}
-// 		connectionLock.RLock()
-// 		for _, c := range activeConnections[userId] {
-// 			err := c.WriteJSON(message)
-// 			if err != nil {
-// 				log.Fatal(err)
-// 			}
-// 		}
-// 		connectionLock.RUnlock()
-// 	}
-// 	err = rows.Err()
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	dbLock.RUnlock()
+// func toggleAttendEvent(receivedData GroupEvent) {
 // }

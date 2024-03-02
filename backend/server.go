@@ -212,7 +212,7 @@ func main() {
 	// http.HandleFunc("/add-Comment", handlefuncs.HandleAddComment)
 	http.HandleFunc("/logout", handlefuncs.HandleLogout)
 	http.HandleFunc("/react-Post-like-dislike", handlefuncs.HandlePostLikeDislike)
-	http.HandleFunc("/react-comment-like-dislike", handlefuncs.HandleCommenttLikeDislike)
+	// http.HandleFunc("/react-comment-like-dislike", handlefuncs.HandleCommenttLikeDislike)
 	http.HandleFunc("/removePost", handlefuncs.HandleRemovePost)
 	http.HandleFunc("/profile", wrapperHandler(handlefuncs.HandleGetProfile))
 	http.HandleFunc("/get-users", handlefuncs.HandleGetUsers)
