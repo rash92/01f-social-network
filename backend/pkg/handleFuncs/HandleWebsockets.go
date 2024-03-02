@@ -1,11 +1,5 @@
 package handlefuncs
 
-// Separete out Notifications type. I was thinking of taking a short-cut
-// and doing all the notifications as one type, but now I think it's
-// better to separate them.
-
-//
-
 // Some errors sending signals to clients might just be because they've
 // gone offline, and that's fine.
 
@@ -16,9 +10,6 @@ package handlefuncs
 
 // Include LastMessageTime in database for users so that we can
 // order them in the chat. And include logic for that here.
-
-// If client receives a signal of type BasicUserInfo, that means they
-// have a (potential) new follower.
 
 // cookies, connections, and websockets: multiple cookies per id?
 // In the original forum, we had one cookie per user. When someone
@@ -31,9 +22,6 @@ package handlefuncs
 // already allows for this.
 
 // *
-
-// Switching to remarshaling app structs to forward to the frontend.
-// I'm up to requestToJoinGroup with this.
 
 // Changing uuid.UUID to string everywhere as I go along.
 
@@ -58,7 +46,8 @@ package handlefuncs
 // when writing to it.
 
 // What happens if a user's cookie expires after they've logged in? We need to make sure
-// that we're checking for that and handling it appropriately.
+// that we're checking for that and handling it appropriately. Should we have
+// an analogous timeout for websockets?
 import (
 	"encoding/json"
 	"errors"
@@ -1244,8 +1233,6 @@ func toggleAttendEvent(receivedData GroupEventParticipant) error {
 
 	return err
 }
-
-// LikeDislikePost(UserId, PostId, likeOrDislike string)
 
 type Like struct {
 	UserId        string `json:"UserId"`
