@@ -446,3 +446,50 @@ func DeleteGroupMember(member *GroupMember) error {
 	_, err = statement.Exec(member.GroupId, member.UserId)
 	return err
 }
+
+func LikeDislikePost(UserId, PostId, likeOrDislike string) error {
+	addLike := false
+	addDislike := false
+	if likeOrDislike == "like" {
+		addLike = true
+	} else if likeOrDislike == "dislike" {
+		addDislike = true
+	} else {
+		return errors.New("like or dislike are the only options for parameter likeOrDislike")
+	}
+	var liked bool
+	var disliked bool
+	err := db.QueryRow("SELECT Liked, Disliked FROM PostLikes WHERE UserId=? AND PostId=?", UserId, PostId).Scan(&liked, &disliked)
+	if err == sql.ErrNoRows {
+		newRow, err := db.Prepare("INSERT INTO PostLikes VALUES (?,?,?,?)")
+		if err != nil {
+			return err
+		}
+		_, err = newRow.Exec(UserId, PostId, addLike, addDislike)
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	if (liked && addLike) || (disliked && addDislike) {
+		removeRow, err := db.Prepare("DELETE FROM PostLikes WHERE UserId=? AND PostId=?")
+		if err != nil {
+			return err
+		}
+		_, err = removeRow.Exec(UserId, PostId)
+		return err
+	}
+	if (liked && addDislike) || (disliked && addLike) {
+		updateRow, err := db.Prepare("UPDATE PostLikes SET Liked=?, Disliked=? WHERE UserId=? AND PostId=?")
+		if err != nil {
+			return err
+		}
+		_, err = updateRow.Exec(addLike, addDislike, UserId, PostId)
+		return err
+	}
+	return errors.New("problem adding like or dislike: how did you get here?")
+}
+
+func ToggleAttendEvent(participant *GroupEventParticipant) error {
+	return nil
+}

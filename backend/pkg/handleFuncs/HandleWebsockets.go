@@ -223,6 +223,13 @@ func (receivedData GroupEvent) parseForDB() *dbfuncs.GroupEvent {
 	}
 }
 
+type GroupEventParticipant struct {
+	EventId string `json:"EventId"`
+	UserId  string `json:"UserId"`
+	GroupId string `json:"GroupId"`
+	Choice  string `json:"Choice"`
+}
+
 func (receivedData Comment) parseForDB() *dbfuncs.Comment {
 	return &dbfuncs.Comment{
 		Body:      receivedData.Body,
@@ -372,7 +379,9 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		unmarshalBody(signal.Body, &receivedData)
 		err = postOrComment(receivedData)
 	case "like":
-		// fill in
+		var receievedData Like
+		unmarshalBody(signal.Body, &receievedData)
+		err = like(receievedData)
 
 		// Groups:
 	case "createGroup":
@@ -391,8 +400,6 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		var receivedData Comment
 		unmarshalBody(signal.Body, &receivedData)
 		err = postOrComment(receivedData)
-	case "groupLike":
-		// fill in
 
 	// Events:
 	case "requestToJoinGroup":
@@ -408,12 +415,9 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		unmarshalBody(signal.Body, &receivedData)
 		err = createEvent(receivedData)
 	case "toggleAttendEvent":
-		var receivedData GroupEvent
+		var receivedData GroupEventParticipant
 		unmarshalBody(signal.Body, &receivedData)
-		// toggleAttendEvent(&receivedData)
-		// default:
-		// 	//unexpected type
-		// 	log.Println("Unexpected websocket message type:", receivedData.Type)
+		toggleAttendEvent(receivedData)
 	default:
 		err = errors.New("unexpected websocket message type")
 	}
@@ -1202,5 +1206,58 @@ func createEvent(receivedData GroupEvent) error {
 	return err
 }
 
-// func toggleAttendEvent(receivedData GroupEvent) {
-// }
+func (receivedData GroupEventParticipant) parseForDB() dbfuncs.GroupEventParticipant {
+	return dbfuncs.GroupEventParticipant{
+		EventId: receivedData.EventId,
+		UserId:  receivedData.UserId,
+		GroupId: receivedData.GroupId,
+		Choice:  receivedData.Choice,
+	}
+}
+
+func toggleAttendEvent(receivedData GroupEventParticipant) error {
+	participant := receivedData.parseForDB()
+
+	err := dbfuncs.ToggleAttendEvent(&participant)
+	if err != nil {
+		log.Println("error toggling event attendance in database", err)
+		notifyClientOfError(err, "error toggling event attendance in database", receivedData.UserId)
+		return err
+	}
+
+	members, err := dbfuncs.GetGroupMemberIdsByGroupId(receivedData.GroupId)
+	if err != nil {
+		log.Println("error getting group members from database", err)
+		return err
+	}
+
+	for _, member := range members {
+		connectionLock.RLock()
+		for _, c := range activeConnections[member] {
+			err := c.WriteJSON(receivedData)
+			if err != nil {
+				log.Println("error sending event attendance update to client", err)
+			}
+		}
+		connectionLock.RUnlock()
+	}
+
+	return err
+}
+
+// LikeDislikePost(UserId, PostId, likeOrDislike string)
+
+type Like struct {
+	UserId        string `json:"UserId"`
+	PostId        string `json:"PostId"`
+	LikeOrDislike string `json:"LikeOrDislike"`
+}
+
+func like(receivedData Like) error {
+	err := dbfuncs.LikeDislikePost(receivedData.UserId, receivedData.PostId, receivedData.LikeOrDislike)
+
+	// Get privacy level of post or comment by analogy, then send to
+	// appropriate recipients by analogy with send().
+
+	return err
+}

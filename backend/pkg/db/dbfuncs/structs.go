@@ -92,6 +92,7 @@ type GroupEventParticipant struct {
 	EventId string
 	UserId  string
 	GroupId string
+	Choice  string
 }
 type Session struct {
 	Id      string
