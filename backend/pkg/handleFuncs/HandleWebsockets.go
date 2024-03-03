@@ -528,6 +528,16 @@ type PostOrComment interface {
 	SetId() error
 }
 
+// It might be simpler to just specify the interface as
+// type PostOrComment interface {
+// 	Post | Comment
+// }
+
+// ... or make the send an inherently generic function with a type
+// parameter, or indeed to just have separate functions for posts and
+// comments. Sometimes it feels like just a choice of where to hide
+// the complexity.
+
 // The following methods are just to satisfy the PostOrComment interface,
 // which I defined so that I could pass Posts and Comments to one
 // postOrComment function. They may seem redundant, but I think they
