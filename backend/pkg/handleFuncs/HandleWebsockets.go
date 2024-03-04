@@ -367,10 +367,14 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		var receivedData Comment
 		unmarshalBody(signal.Body, &receivedData)
 		err = postOrComment(receivedData)
-	case "like":
-		var receievedData Like
+	case "likeOrDislikePost":
+		var receievedData Reaction
 		unmarshalBody(signal.Body, &receievedData)
-		err = like(receievedData)
+		err = likeOrDislike(receievedData)
+	case "likeOrDislikeComment":
+		var receievedData Reaction
+		unmarshalBody(signal.Body, &receievedData)
+		err = likeOrDislike(receievedData)
 
 		// Groups:
 	case "createGroup":
@@ -528,10 +532,12 @@ type PostOrComment interface {
 	SetId() error
 }
 
-// It might be simpler to just specify the interface as
+// Could we just specify the interface as
 // type PostOrComment interface {
 // 	Post | Comment
 // }
+// Apparently not if we do it this way, but maybe there is
+// a way.
 
 // ... or make the send an inherently generic function with a type
 // parameter, or indeed to just have separate functions for posts and
@@ -598,6 +604,13 @@ func (receivedData Post) GetPost() (Post, error) {
 func (receivedData Comment) GetPrivacyLevel() (string, error) {
 	privacyLevel, err := dbfuncs.GetPostPrivacyLevelByCommentId(receivedData.Id)
 	return privacyLevel, err
+}
+
+type Reaction struct {
+	PostOrCommentId string `json:"Id"`
+	UserId          string `json:"UserId"`
+	LikeOrDislike   string `json:"LikeOrDislike"`
+	IsForPost       bool   `json:"IsForPost"`
 }
 
 func (receivedData Comment) GetPost() (Post, error) {
@@ -1180,7 +1193,7 @@ func createEvent(receivedData GroupEvent) error {
 	body := fmt.Sprintf(`{"Title":%s,"Description":%s}`,
 		receivedData.Title, receivedData.Description)
 
-	members, err := dbfuncs.GetGroupMembersByGroupId(receivedData.GroupId)
+	members, err := dbfuncs.GetGroupMemberIdsByGroupId(receivedData.GroupId)
 	if err != nil {
 		log.Println("error getting group members from database", err)
 	}
@@ -1244,17 +1257,97 @@ func toggleAttendEvent(receivedData GroupEventParticipant) error {
 	return err
 }
 
-type Like struct {
-	UserId        string `json:"UserId"`
-	PostId        string `json:"PostId"`
-	LikeOrDislike string `json:"LikeOrDislike"`
+func (receivedData Reaction) GetPost() (dbfuncs.Post, error) {
+	var err error
+	var post dbfuncs.Post
+
+	if receivedData.IsForPost {
+		post, err = dbfuncs.GetPostById(receivedData.PostOrCommentId)
+		if err != nil {
+			log.Println("error getting post from database", err)
+			return dbfuncs.Post{}, err
+		}
+	} else {
+		comment, err := dbfuncs.GetCommentById(receivedData.PostOrCommentId)
+		if err != nil {
+			log.Println("error getting comment from database", err)
+			return dbfuncs.Post{}, err
+		}
+		post, err = dbfuncs.GetPostById(comment.PostId)
+		if err != nil {
+			log.Println("error getting post from database", err)
+			return dbfuncs.Post{}, err
+		}
+	}
+
+	return post, err
 }
 
-func like(receivedData Like) error {
-	err := dbfuncs.LikeDislikePost(receivedData.UserId, receivedData.PostId, receivedData.LikeOrDislike)
+func likeOrDislike(receivedData Reaction) error {
+	var err error
 
-	// Get privacy level of post or comment by analogy, then send to
-	// appropriate recipients by analogy with send().
+	if receivedData.IsForPost {
+		err = dbfuncs.LikeDislikePost(receivedData.UserId, receivedData.PostOrCommentId, receivedData.LikeOrDislike)
+	} else {
+		err = dbfuncs.LikeDislikeComment(receivedData.UserId, receivedData.PostOrCommentId, receivedData.LikeOrDislike)
+	}
+
+	if err != nil {
+		log.Println("error liking or disliking post in database", err)
+		notifyClientOfError(err, "error liking or disliking post in database", receivedData.UserId)
+	}
+
+	post, err := receivedData.GetPost()
+	if err != nil {
+		log.Println("error getting post", err)
+		return err
+	}
+
+	if post.PrivacyLevel == "public" {
+		connectionLock.RLock()
+		for client := range activeConnections {
+			for _, c := range activeConnections[client] {
+				err = c.WriteJSON(receivedData)
+				if err != nil {
+					log.Println("error sending like or dislike to recipient", err)
+				}
+			}
+		}
+		connectionLock.RUnlock()
+		return err
+	}
+
+	var recipients []string
+
+	if post.GroupId != "" {
+		recipients, err = dbfuncs.GetGroupMemberIdsByGroupId(post.GroupId)
+		if err != nil {
+			log.Println("error getting group members from database", err)
+			return err
+		}
+	}
+
+	switch post.PrivacyLevel {
+	case "private":
+		recipients, err = dbfuncs.GetAcceptedFollowerIdsByFollowingId(post.CreatorId)
+	case "superprivate":
+		recipients, err = dbfuncs.GetPostChosenFollowerIdsByPostId(post.Id)
+	}
+	if err != nil {
+		log.Println("error getting recipients from database", err)
+		return err
+	}
+
+	connectionLock.RLock()
+	for _, recipient := range recipients {
+		for _, c := range activeConnections[recipient] {
+			err = c.WriteJSON(receivedData)
+			if err != nil {
+				log.Println("error sending like or dislike to recipient", err)
+			}
+		}
+	}
+	connectionLock.RUnlock()
 
 	return err
 }

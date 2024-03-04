@@ -98,11 +98,6 @@ func GetPostChosenFollowerIdsByPostId(id string) ([]string, error) {
 	return followers, nil
 }
 
-func GetGroupMembersByGroupId(groupId string) ([]string, error) {
-	var members []string
-	return members, nil
-}
-
 func GetPostPrivacyLevelByCommentId(id string) (string, error) {
 	return "", nil
 }
@@ -492,4 +487,48 @@ func LikeDislikePost(UserId, PostId, likeOrDislike string) error {
 
 func ToggleAttendEvent(participant *GroupEventParticipant) error {
 	return nil
+}
+
+// likeOrDislike can only take values "like" or "dislike"
+func LikeDislikeComment(UserId, CommentId, likeOrDislike string) error {
+	addLike := false
+	addDislike := false
+	if likeOrDislike == "like" {
+		addLike = true
+	} else if likeOrDislike == "dislike" {
+		addDislike = true
+	} else {
+		return errors.New("like or dislike are the only options for parameter likeOrDislike")
+	}
+	var liked bool
+	var disliked bool
+	err := db.QueryRow("SELECT Liked, Disliked FROM CommentLikes WHERE UserId=? AND CommentId=?", UserId, CommentId).Scan(&liked, &disliked)
+	if err == sql.ErrNoRows {
+		newRow, err := db.Prepare("INSERT INTO CommentLikes VALUES (?,?,?,?)")
+		if err != nil {
+			return err
+		}
+		_, err = newRow.Exec(UserId, CommentId, addLike, addDislike)
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	if (liked && addLike) || (disliked && addDislike) {
+		removeRow, err := db.Prepare("DELETE FROM CommentLikes WHERE UserId=? AND CommentId=?")
+		if err != nil {
+			return err
+		}
+		_, err = removeRow.Exec(UserId, CommentId)
+		return err
+	}
+	if (liked && addDislike) || (disliked && addLike) {
+		updateRow, err := db.Prepare("UPDATE CommentLikes SET Liked=?, Disliked=? WHERE UserId=? AND CommentId=?")
+		if err != nil {
+			return err
+		}
+		_, err = updateRow.Exec(addLike, addDislike, UserId, CommentId)
+		return err
+	}
+	return errors.New("problem adding like or dislike: how did you get here?")
 }
