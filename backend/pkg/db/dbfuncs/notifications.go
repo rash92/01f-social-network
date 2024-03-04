@@ -106,3 +106,5 @@ func GetNotificationById(id string) (Notification, error) {
 
 	return notification, err
 }
+
+//TO DO: get 10 at a time? decide if doing it through SQL or get all and do in handlefunc
