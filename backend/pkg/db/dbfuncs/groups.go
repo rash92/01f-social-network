@@ -8,7 +8,6 @@ import (
 )
 
 func AddGroup(group *Group) error {
-	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return err
@@ -24,18 +23,37 @@ func AddGroup(group *Group) error {
 	return err
 }
 
-func AddGroupMember(groupmember *GroupMember) error {
+func AddGroupMember(groupMember *GroupMember) error {
 	statement, err := db.Prepare("INSERT INTO GroupMembers VALUES (?,?,?)")
 	if err != nil {
 		return err
 	}
-	_, err = statement.Exec(groupmember.GroupId, groupmember.UserId, groupmember.Status)
+	_, err = statement.Exec(groupMember.GroupId, groupMember.UserId, groupMember.Status)
+
+	return err
+}
+
+func UpdateGroupMember(groupMember *GroupMember) error {
+	statement, err := db.Prepare("UPDATE GroupMembers SET Status=? WHERE GroupId=? AND UserId=?")
+	if err != nil {
+		return err
+	}
+	_, err = statement.Exec(groupMember.Status, groupMember.GroupId, groupMember.UserId)
+
+	return err
+}
+
+func DeleteGroupMember(groupMember *GroupMember) error {
+	statement, err := db.Prepare("DELETE FROM GroupMembers WHERE GroupId=? AND UserId=?")
+	if err != nil {
+		return err
+	}
+	_, err = statement.Exec(groupMember.GroupId, groupMember.UserId)
 
 	return err
 }
 
 func AddGroupEvent(groupEvent *GroupEvent) error {
-	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return err
@@ -46,6 +64,16 @@ func AddGroupEvent(groupEvent *GroupEvent) error {
 		return err
 	}
 	_, err = statement.Exec(groupEvent.Id, groupEvent.GroupId, groupEvent.Title, groupEvent.Description, groupEvent.CreatorId, groupEvent.Time)
+
+	return err
+}
+
+func DeleteGroupEvent(groupEventId string) error {
+	statement, err := db.Prepare("DELETE FROM GroupEvents WHERE Id=?")
+	if err != nil {
+		return err
+	}
+	_, err = statement.Exec(groupEventId)
 
 	return err
 }
@@ -71,7 +99,6 @@ func DeleteGroupEventParticipant(groupEventParticipantId string) error {
 }
 
 func AddGroupMessage(groupMessage *GroupMessage) error {
-	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return err
@@ -87,9 +114,9 @@ func AddGroupMessage(groupMessage *GroupMessage) error {
 	return err
 }
 
-func GetGroupEventsById(id string) ([]GroupEvent, error) {
+func GetGroupEventsByGroupId(groupId string) ([]GroupEvent, error) {
 	var GroupEvents []GroupEvent
-	row, err := db.Query("SELECT Id, GroupId, Title, Description, CreatorId, Time FROM GroupEvents WHERE Id=?", id)
+	row, err := db.Query("SELECT Id, GroupId, Title, Description, CreatorId, Time FROM GroupEvents WHERE GroupId=?", groupId)
 	if err == sql.ErrNoRows {
 		return GroupEvents, nil
 	}
@@ -99,7 +126,7 @@ func GetGroupEventsById(id string) ([]GroupEvent, error) {
 	defer row.Close()
 	for row.Next() {
 		var GroupEvent GroupEvent
-		err = row.Scan(&GroupEvent)
+		err = row.Scan(&GroupEvent.Id, &GroupEvent.GroupId, &GroupEvent.Title, &GroupEvent.Description, &GroupEvent.CreatorId, &GroupEvent.Time)
 		if err != nil {
 			return GroupEvents, err
 		}

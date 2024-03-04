@@ -3,12 +3,6 @@ package dbfuncs
 import (
 	"database/sql"
 	"errors"
-	"fmt"
-	"io"
-	"log"
-	"mime/multipart"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -51,6 +45,16 @@ func AddPostChosenFollower(postChosenFollower *PostChosenFollower) error {
 	return err
 }
 
+func DeletePostChosenFollower(postChosenFollower *PostChosenFollower) error {
+	statement, err := db.Prepare("DELETE FROM PostChosenFollowers WHERE PostId=? AND FollowerId=?")
+	if err != nil {
+		return err
+	}
+	_, err = statement.Exec(postChosenFollower.PostId, postChosenFollower.FollowerId)
+
+	return err
+}
+
 func CountPostReacts(PostId string) (totalLikes, totalDislikes int, err error) {
 	likes, dislikes, err := GetPostLikes(PostId)
 	if err != nil {
@@ -85,14 +89,6 @@ func GetPostLikes(PostId string) (likeUserIds, dislikeUserIds []string, err erro
 		}
 	}
 	return
-}
-
-func isSupportedFileType() {
-
-}
-
-func SaveImage() {
-
 }
 
 // likeOrDislike can only take values "like" or "dislike"
@@ -142,122 +138,6 @@ func LikeDislikePost(UserId, PostId, likeOrDislike string) error {
 	return errors.New("problem adding like or dislike: how did you get here?")
 }
 
-func SaveImageOld(file multipart.File, header *multipart.FileHeader) (string, error) {
-	// generate new uuid for image name
-	uniqueId := uuid.New()
-	// remove "- from imageName"
-	filename := strings.Replace(uniqueId.String(), "-", "", -1)
-	// extract image extension from original file filename
-	fileExt := strings.Split(header.Filename, ".")[len(strings.Split(header.Filename, "."))-1]
-	supported := isSupportedFileType(fileExt)
-
-	if !supported {
-		// rereturn "",error message to the user that this type of file is not supported
-		return "", errors.New("this file type  is not supported")
-	}
-
-	// generate image from filename and extension
-	image := fmt.Sprintf("%s.%s", filename, fileExt)
-	// create a new file in the "uploads" folder
-	dst, err := os.Create(fmt.Sprintf("pkg/db/images/%s", image))
-	if err != nil {
-		log.Println("unable to create file --> ", err)
-		// http.Error(w, err.Error(), http.StatusInternalServerError)
-		return "", err
-	}
-	defer dst.Close()
-
-	if _, err := io.Copy(dst, file); err != nil {
-		// http.Error(w, err.Error(), http.StatusInternalServerError)
-		return "", err
-	}
-
-	return image, nil
-}
-
-//should be unnecessary to do it this long way with ON CASCADE DELETE in db tables, but if not can still do it this way
-// func RemovePostOld(postID string) error {
-// 	db, err := sql.Open("sqlite3", "./forum.db")
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer db.Close()
-// 	// delete comment likes and dislikes
-// 	stmtCommentLikesDislikes, err := db.Prepare("DELETE FROM CommentLikes WHERE CommentId IN (SELECT id FROM 	Comments WHERE  PostId = ?)")
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer stmtCommentLikesDislikes.Close()
-
-// 	_, err = stmtCommentLikesDislikes.Exec(postID)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// Delete comments
-// 	stmtComments, err := db.Prepare("DELETE FROM Comments WHERE PostId = ?")
-
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer stmtComments.Close()
-
-// 	_, err = stmtComments.Exec(postID)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// Delete likes
-// 	stmtLikes, err := db.Prepare("DELETE FROM  Likes WHERE PostId= ?")
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer stmtLikes.Close()
-
-// 	_, err = stmtLikes.Exec(postID)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	//delete cats
-
-// 	stmtPostCats, err := db.Prepare("DELETE FROM PostCat WHERE PostId= ?")
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer stmtPostCats.Close()
-
-// 	_, err = stmtPostCats.Exec(postID)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// Delete the post
-// 	stmtPost, err := db.Prepare("DELETE FROM  Posts WHERE Id = ?")
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer stmtPost.Close()
-
-// 	_, err = stmtPost.Exec(postID)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }
-
-func isSupportedFileTypeOld(fileType string) bool {
-
-	supportedTypes := map[string]bool{
-		"jpeg": true,
-		"jpg":  true,
-		"png":  true,
-		"gif":  true,
-	}
-	return supportedTypes[strings.ToLower(fileType)]
-}
-
 func GetPostChosenFollowerIdsByPostId(id string) ([]string, error) {
 	var followerIds []string
 	row, err := db.Query("SELECT FollowerId FROM PostChosenFollowers WHERE PostId=?", id)
@@ -290,3 +170,27 @@ func GetPostIdByCommentId(commentId string) (string, error) {
 	err := db.QueryRow("SELECT PostId FROM Comments WHERE Id=?", commentId).Scan(&postId)
 	return postId, err
 }
+
+func GetPostsByCreatorId(creatorId string) ([]Post, error) {
+	var posts []Post
+	rows, err := db.Query("SELECT * FROM Posts WHERE CreatorId=?", creatorId)
+	if err == sql.ErrNoRows {
+		return posts, nil
+	}
+	if err != nil {
+		return posts, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var post Post
+		err = rows.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
+		if err != nil {
+			return posts, err
+		}
+		posts = append(posts, post)
+	}
+
+	return posts, err
+}
+
+//TO DO: get 10 at a time? decide if doing it through SQL or get all and do in handlefunc
