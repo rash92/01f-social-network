@@ -4,4 +4,4 @@ package dbfuncs
 //do this for posts, comments, follows, followers, groups, group messages, private messages, notifications
 //i.e. basically everything
 
-//privateMessages has unfinished funcs
+//privateMessages has unfinished funcs, groups has unfinished funcs to do with groupmessages, add function descriptions

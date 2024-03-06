@@ -114,6 +114,14 @@ func AddGroupMessage(groupMessage *GroupMessage) error {
 	return err
 }
 
+func GetAllGroupMessagesByGroupId(userId string) ([]GroupMessage, error) {
+	return []GroupMessage{}, nil
+}
+
+func GetRecentGroupMessagesByGroupId(userId string, numberOfMessages, offset int) ([]GroupMessage, error) {
+	return []GroupMessage{}, nil
+}
+
 func GetGroupEventsByGroupId(groupId string) ([]GroupEvent, error) {
 	var GroupEvents []GroupEvent
 	row, err := db.Query("SELECT Id, GroupId, Title, Description, CreatorId, Time FROM GroupEvents WHERE GroupId=?", groupId)
