@@ -1,6 +1,13 @@
 import {Button, Modal} from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
-function MyModal({children, show, handleClose, handleShow, flag = true}) {
+function MyModal({
+  children,
+  show,
+  handleClose,
+  handleShow,
+  flag = true,
+  title,
+}) {
   return (
     <>
       {flag ? (
@@ -11,9 +18,8 @@ function MyModal({children, show, handleClose, handleShow, flag = true}) {
         ""
       )}
       <Modal show={show} onHide={handleClose}>
-        <Modal.Header closeButton>
-          <Modal.Title>Add Post</Modal.Title>
-        </Modal.Header>
+        {/* <Modal.Header closeButton></Modal.Header> */}
+        {flag && <Modal.Title>Add Post</Modal.Title>}
         <Modal.Body>{children}</Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={handleClose}>

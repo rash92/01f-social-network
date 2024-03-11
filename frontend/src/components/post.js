@@ -73,21 +73,15 @@ const Post = ({
         </div>
 
         <div className={classes["post-title"]}>
-          <h4> {title}</h4>
+          <h4>
+            {" "}
+            {title} post {id}
+          </h4>
         </div>
 
         <div className={classes["post-body"]}>
           <p> {body}</p>
         </div>
-
-        {/* <div className={classes["post-categories"]}>
-          <span>categories</span>{" "}
-          {categories.map((el) => (
-            <span key={el} className={classes.cat}>
-              {el}
-            </span>
-          ))}
-        </div> */}
 
         <div
           className={`${classes["post-reaction-info"]} d-flex justify-content-between`}

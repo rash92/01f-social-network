@@ -25,7 +25,7 @@ func FindPostsComments(PostId string) ([]Comment, error) {
 	var userId string
 	for rows.Next() {
 		var one Comment
-		err = rows.Scan(&one.ID, &one.Body, &userId, &one.PostID, &one.CreatedAt)
+		err = rows.Scan(&one.Id, &one.Body, &userId, &one.PostId, &one.CreatedAt)
 		if err != nil {
 			fmt.Println(err.Error())
 			return []Comment{}, err
@@ -37,7 +37,7 @@ func FindPostsComments(PostId string) ([]Comment, error) {
 			log.Fatal(err, "what")
 			return []Comment{}, err
 		}
-		one.Likes, one.Dislikes = dbfuncs.CountCommentReacts(one.ID)
+		one.Likes, one.Dislikes = dbfuncs.CountCommentReacts(one.Id)
 		AllComments = append(AllComments, one)
 	}
 

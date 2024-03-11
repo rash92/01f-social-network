@@ -8,7 +8,6 @@ import (
 func HandleCatogries(w http.ResponseWriter, r *http.Request) {
 	Cors(&w, r)
 
-
 	if r.Method == http.MethodGet {
 
 		Categories, err := FindAllCats()

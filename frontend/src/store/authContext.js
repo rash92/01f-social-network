@@ -1,5 +1,6 @@
 import React, {useState, useEffect, useCallback} from "react";
 import {getJson} from "../helpers/helpers";
+
 const userObj = {
   id: "",
   isLogIn: false,
@@ -21,7 +22,7 @@ const AuthContext = React.createContext({
 
 export const AuthContextProvider = (props) => {
   const [user, setUser] = useState(userObj);
-  const [username, setUserName] = useState("");
+
   const [catogaries, SetCatogaries] = useState([]);
   const [posts, SetPosts] = useState([]);
   const [selectedPosts, setSelectedPosts] = useState([]);
@@ -32,25 +33,20 @@ export const AuthContextProvider = (props) => {
     setUser(userObj);
   };
   const checkSession = useCallback(async () => {
-    const headers = new Headers();
-    headers.append("user_token", document.cookie);
     try {
-      const response = await fetch("http://localhost:8000/checksession", {
+      const res = await getJson("checksession", {
         method: "GET",
-        headers: headers,
         credentials: "include",
       });
-      if (!response.ok) {
-        throw Error("something went wrong");
+
+      if (!res.success || res.status === 401) {
+        logintHandler(user);
+        throw new Error("something went wrong presist login");
       }
-      const data = await response.json();
-      if (data.success) {
-        // setIsLoggedIn(true);
-        setUserName(data.username);
-      }
-    } catch (error) {
-      console.error(error);
-      // setIsLoggedIn(false);
+
+      logintHandler(res);
+    } catch (err) {
+      console.log("error", err);
     }
   }, []);
   const getCatogries = useCallback(async () => {
@@ -158,11 +154,12 @@ export const AuthContextProvider = (props) => {
   const onRemovePost = (id) => {
     SetPosts(posts.filter((el) => el.id !== id));
   };
-  // useEffect(() => {
-  //   checkSession();
-  //   getCatogries();
-  //   getPosts();
-  // }, [checkSession, getCatogries, getPosts]);
+  useEffect(() => {
+    checkSession();
+    // getCatogries();
+    // getPosts();
+    checkSession();
+  }, [checkSession]);
   // console.log(selectedPosts)
   return (
     <AuthContext.Provider
@@ -170,7 +167,6 @@ export const AuthContextProvider = (props) => {
         user,
         OnLogin: logintHandler,
         onLogout: logoutHandler,
-        username,
         catogaries: catogaries,
         posts: posts,
         selectedPosts,

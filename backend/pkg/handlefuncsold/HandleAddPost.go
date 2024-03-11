@@ -45,7 +45,7 @@ func HandleAddPost(w http.ResponseWriter, r *http.Request) {
 		PostBody := newPost.Body
 		Categories := newPost.Categories
 
-		id, err := dbfuncs.AddPost(cookie.Value, PostTitle, PostBody, Categories)
+		id, err := dbfuncs.OldAddPost(cookie.Value, PostTitle, PostBody, Categories)
 
 		if err != nil {
 			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)

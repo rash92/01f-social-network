@@ -16,6 +16,7 @@ export default function Login({setShowRegisterForm}) {
       const res = await getJson("login", {
         method: "POST",
         credentials: "include",
+        // mode: "no-cors",
         headers: {
           "Content-Type": "application/json",
         },

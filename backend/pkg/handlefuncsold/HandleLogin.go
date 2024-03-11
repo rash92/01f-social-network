@@ -57,10 +57,13 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 			Expires:  time.Now().Add(time.Duration(^uint(0)>>1) * time.Nanosecond),
 			UserID:   id,
 		}
+
+		// fmt.Println(session)
+
 		//  detlete old session
 		dbfuncs.DeleteSessionColumn("userId", id)
 		// add new session
-		dbfuncs.AddSession(session.Id, session.Username, session.UserID, session.Expires)
+		dbfuncs.AddSession(session.Id, session.UserID, session.Expires)
 
 		http.SetCookie(w, &http.Cookie{
 			Name:     "user_token",
@@ -76,9 +79,9 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 			"profileImg": imgUrl,
 			"id":         session.UserID,
 		}
+		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(response)
 
-		// w.WriteHeader(http.StatusOK)
 	} else {
 		http.Error(w, `{"error": "405 Method Not Allowed"}`, http.StatusMethodNotAllowed)
 		return
