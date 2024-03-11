@@ -1,5 +1,5 @@
 // import { Link } from "react-router-dom";
-import {Link} from "react-router-dom";
+import {Link, json} from "react-router-dom";
 // import AuthContext from "../store/authContext";
 // import  React, { useContext } from "react";
 import {Nav, Navbar, NavItem, Container} from "react-bootstrap";
@@ -7,7 +7,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 // import { getJson, Url } from "../helpers/helpers";
 import classes from "./NavBar.module.css";
 import AuthContext from "../store/authContext";
-import {useContext} from "react";
+import {useContext, useEffect} from "react";
 
 const NavigationBar = () => {
   // const {isLoggedIn, username, onLogout} = useContext(AuthContext)
@@ -28,8 +28,11 @@ const NavigationBar = () => {
   //   }
   // }
 
-  const {user} = useContext(AuthContext);
+  const {user, onLogout} = useContext(AuthContext);
 
+  const logoutHandler = () => {
+    onLogout();
+  };
   return (
     <Navbar bg="dark" expand="lg" style={{fontSize: "1em"}}>
       <Container>
@@ -68,7 +71,7 @@ const NavigationBar = () => {
                 </NavItem>
                 <NavItem>
                   <button
-                    // onClick={logoutHandler}
+                    onClick={logoutHandler}
                     className={classes.NavLink}
                     style={{color: "white", background: "none", border: "none"}}
                   >

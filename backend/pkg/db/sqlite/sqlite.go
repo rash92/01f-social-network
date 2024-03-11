@@ -11,7 +11,7 @@ import (
 func Magarate() {
 	// Define the database URL for SQLite3
 	dbURL := "sqlite://./pkg/db/sqlite/sqlite.db"
-  
+
 	// Define the migration source
 	sourceURL := "file://./pkg/db/migrations" // Update with the path to your migrations
 

@@ -1,25 +1,24 @@
-import React, {useState, useContext, useEffect} from "react";
+import React, {useState, useEffect} from "react";
 import MyModal from "./Modal";
 import {Form, Button} from "react-bootstrap";
 import useInput from "../hooks/use-input";
 import classes from "./AddPost.module.css";
-import AuthContext from "../store/authContext";
 import {getJson} from "../helpers/helpers";
 import User from "./User";
 import {Link} from "react-router-dom";
+import FormGroup from "./FormGroup";
 
 const AddPost = ({show, setShow}) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [chosenFollowers, setChosenFollowers] = useState([]);
-  const [isRighprivacy, setIsRighprivacy] = useState(false);
   const [searchInputTouch, setsearchInputTouch] = useState(false);
-  // const [show, setShow] = useState(false);
-  // const {OnAddPost} = useContext(AuthContext);
   const [errorAddPost, setErrorAddpost] = useState({
     message: "",
     isError: false,
   });
+
+  const [postImgValue, setPostImgValue] = useState({value: "", file: null});
 
   const [privacy, setPrivacy] = useState("public");
 
@@ -28,22 +27,14 @@ const AddPost = ({show, setShow}) => {
   };
 
   const followerClickHandler = (user, e) => {
-    e.preventDefault();
     if (chosenFollowers.some((el) => el.id === user.id)) {
       return;
     }
 
     setChosenFollowers((prev) => [...prev, user]);
+    setSearchTerm("");
+    setSuggestions([]);
   };
-
-  useEffect(() => {
-    // Check if form is valid whenever privacy or suggestions change
-    if (privacy === "almost" && suggestions.length < 1) {
-      setIsRighprivacy(false);
-    } else {
-      setIsRighprivacy(true);
-    }
-  }, [privacy, suggestions]);
 
   const options = [
     {id: 1, username: "abdi2", name: "abdi"},
@@ -88,8 +79,9 @@ const AddPost = ({show, setShow}) => {
     reset: resetPostInput,
   } = useInput((value) => value.trim() !== "");
 
-  const formIsValid =
-    titleIsValid && enterePostIsValid && isRighprivacy ? true : false;
+  let formIsValid = titleIsValid && enterePostIsValid ? true : false;
+  formIsValid =
+    privacy === "almost" && chosenFollowers.length === 0 ? false : formIsValid;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -112,7 +104,6 @@ const AddPost = ({show, setShow}) => {
       if (res.success) {
         resetTitleInput();
         resetPostInput();
-        setIsRighprivacy(false);
         setPrivacy("puplic");
         setsearchInputTouch([]);
         chosenFollowers([]);
@@ -131,9 +122,7 @@ const AddPost = ({show, setShow}) => {
     chosenFollowers.length < 0 && searchInputTouch ? `${classes.invalid} ` : "";
 
   const handleClose = () => setShow(false);
-  // const handleShow = () => {
-  //   setShow(true);
-  // };
+
   return (
     <MyModal handleClose={handleClose} show={show} flag={false}>
       <Form onSubmit={handleSubmit} className="py-3">
@@ -182,6 +171,17 @@ const AddPost = ({show, setShow}) => {
             <option value="almost">Almost private</option>
           </Form.Select>
         </Form.Group>
+
+        <div style={{margin: "1rem 0rem"}}>
+          <FormGroup
+            value={postImgValue}
+            setValue={setPostImgValue}
+            type="file"
+            accept="image/*"
+            Label="add photo"
+            Text="JPG, PNG, GIF."
+          />
+        </div>
         {privacy === "almost" && (
           <>
             <Form.Group

@@ -8,9 +8,11 @@ import Dashboard from "../components/Dashboard";
 import Chat from "../components/Chat";
 import {getJson} from "../helpers/helpers";
 function Home() {
-  const {user} = useContext(AuthContext);
+  const {user, isWsReady, wsVal, onLogout} = useContext(AuthContext);
   const [showRegisterForm, setShowRegisterForm] = useState(false);
+
   const [users, setUsers] = useState([]);
+
   const getAllUsers = useCallback(async () => {
     try {
       const res = await getJson("get-users", {
@@ -32,7 +34,6 @@ function Home() {
     getAllUsers();
   }, [getAllUsers]);
 
-  console.log(users);
   return (
     <Container>
       <div

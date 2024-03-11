@@ -26,16 +26,17 @@ export default function Register({setShowRegisterForm}) {
 
   const registerHandler = async (e) => {
     e.preventDefault();
-    // const isVatarValid = avatarValue.file != null && avatarValue.file.size
 
     const formIsValid =
       validateEmail(emailValue) &&
       isPasswordStrong(passwordValue) &&
       isNotEmty(firstNameValue) &&
       isNotEmty(lastNameValue) &&
-      isNotEmty(dateOfBirthValue);
+      isNotEmty(dateOfBirthValue); 
 
-    if (!formIsValid) {
+    
+
+    if (  !formIsValid) {
       alert("Please fill all fields");
       return;
     }
@@ -57,7 +58,6 @@ export default function Register({setShowRegisterForm}) {
 
       setShowRegisterForm(false);
     } catch (err) {
-      // console.log(err);
       setError({isError: true, message: err.message});
     }
   };
