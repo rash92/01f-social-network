@@ -28,13 +28,13 @@ const ProfileActions = ({
     >
       <ul className={classes.actions}>
         <Action
-          numberAction={user.numberOfFollowers}
+          numberAction={user.NumberOfFollowers}
           actionName={"followers"}
           toggleAction={toggleAction}
           active={isActive}
         />
         <Action
-          numberAction={user.numberOfFollowing}
+          numberAction={user.NumberOfFollowing}
           actionName={"following"}
           toggleAction={toggleAction}
           active={isActive}
@@ -43,7 +43,13 @@ const ProfileActions = ({
       <div>
         <ul>
           <InfiniteScroll
-            dataLength={user[isActive]?.length}
+            dataLength={
+              user[
+                `NumberOf${isActive.charAt(0).toUpperCase()}${isActive.slice(
+                  1
+                )}`
+              ] || 0
+            }
             next={fetchMoreFellowers}
             hasMore={hasMoreFellowers[isActive]}
             loader={<h4>Loading...</h4>}

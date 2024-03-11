@@ -5,5 +5,7 @@
 }
 
 .username {
-  color: #838080;
+  color: #363535;
+  text-transform: capitalize;
+  font-weight: bold;
 }

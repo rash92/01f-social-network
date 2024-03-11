@@ -8,9 +8,6 @@ import (
 )
 
 func HandleLogout(w http.ResponseWriter, r *http.Request) {
-
-	Cors(&w, r)
-
 	if r.Method == http.MethodPost {
 		cookie, err := r.Cookie("user_token")
 		if err != nil {

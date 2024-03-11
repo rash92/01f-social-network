@@ -1,6 +1,6 @@
 import {Button} from "react-bootstrap";
 import User from "./User";
-const PrivateProfile = ({name, userName, fellowUserHandler}) => {
+const PrivateProfile = ({userName, fellowUserHandler}) => {
   return (
     <div
       style={{
@@ -8,9 +8,9 @@ const PrivateProfile = ({name, userName, fellowUserHandler}) => {
         textAlign: "center",
       }}
     >
-      <p>{name}'s profile is Private . Please Fellow.</p>
+      <p>{userName}'s profile is Private . Please Fellow.</p>
       <div style={{display: "flex", gap: "3rem"}}>
-        <User userName={userName} isLoggedIn={true} name={name} />
+        <User userName={userName} isLoggedIn={true} />
         <Button onClick={fellowUserHandler}>Follow</Button>
       </div>
     </div>

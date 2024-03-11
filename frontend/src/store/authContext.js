@@ -1,37 +1,65 @@
-import React, {useState, useEffect, useCallback} from "react";
+import React, {useState, useEffect, useCallback, useRef} from "react";
 import {getJson} from "../helpers/helpers";
-
 const userObj = {
   id: "",
   isLogIn: false,
   username: "",
   profileImg: "",
 };
+
+// const logoutHandler = useCallback(() => {
+//   setUser(userObj);
+//   if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+//     ws.current.send(JSON.stringify({ type: "logout", message: "" }));
+//     ws.current.close();
+//   }
+// }, []);
 const AuthContext = React.createContext({
   user: userObj,
   OnLogin: () => {},
   onLogout: () => {},
-  OnAddCommentToPost: () => {},
-  posts: [],
-  catogaries: [],
-  username: "",
-  selectedPosts: [],
-  setSelectedPosts: () => {},
-  OnAddPost: () => {},
+  isWsReady: false,
+  wsVal: null,
+  wsMsgToServer: (msg) => {},
+  showChat: false,
+  openChat: () => {},
+  closeChat: () => {},
+  openChatDetails: {},
+
+  // OnAddCommentToPost: () => {},
+  // posts: [],
+  // catogaries: [],
+  // username: "",
+  // selectedPosts: [],
+  // setSelectedPosts: () => {},
+  // OnAddPost: () => {},
 });
 
 export const AuthContextProvider = (props) => {
   const [user, setUser] = useState(userObj);
 
-  const [catogaries, SetCatogaries] = useState([]);
-  const [posts, SetPosts] = useState([]);
   const [selectedPosts, setSelectedPosts] = useState([]);
   const logintHandler = (user) => {
     setUser({...user, isLogIn: true});
   };
-  const logoutHandler = () => {
-    setUser(userObj);
+  const [onlineUsers, setOnlineUsers] = useState([]);
+
+  const [showChat, setShowChat] = useState(false);
+  const [openChatDetails, setOpenChatDetails] = useState({});
+  const openChat = (data) => {
+    setOpenChatDetails(data);
+    setShowChat(true);
   };
+
+  const closeChat = () => {
+    setShowChat(false);
+  };
+
+  // web socket states
+  const [isWsReady, setIsWsReady] = useState(false);
+  const [wsVal, setWsVal] = useState(null);
+  const ws = useRef(null);
+
   const checkSession = useCallback(async () => {
     try {
       const res = await getJson("checksession", {
@@ -48,134 +76,79 @@ export const AuthContextProvider = (props) => {
     } catch (err) {
       console.log("error", err);
     }
+  }, [user]);
+
+  const logoutHandler = useCallback((flag = true) => {
+    setUser(userObj);
+
+    if (flag) {
+      ws.current?.send.bind(ws.current)(
+        JSON.stringify({type: "logout", message: ""})
+      );
+    }
+    ws.current?.close.bind(ws.current)();
   }, []);
-  const getCatogries = useCallback(async () => {
-    try {
-      const res = await getJson("get-catogries");
-      SetCatogaries(res);
-    } catch (error) {
-      console.log(error.message);
-    }
-  }, []);
-  const getPosts = useCallback(async () => {
-    try {
-      const res = await getJson("get-posts");
-      SetPosts(res);
-      setSelectedPosts(res);
-    } catch (error) {
-      console.log(error.message);
-    }
-  }, []);
-  const OnAddCommentToPost = (postId, Comment) => {
-    const {comments, ...rest} = posts.find((el) => el.id === postId);
-    if (comments === null) {
-      SetPosts(
-        posts.map((el) =>
-          el.id === postId
-            ? {
-                comments: [Comment],
-                ...rest,
-              }
-            : el
-        )
-      );
-    } else {
-      SetPosts(
-        posts.map((el) =>
-          el.id === postId
-            ? {
-                comments: [Comment, ...comments],
-                ...rest,
-              }
-            : el
-        )
-      );
-    }
-  };
-  const OnAddPost = (post) => {
-    if (post.length === 0) {
-      SetPosts([post]);
-    } else {
-      SetPosts([post, ...posts]);
-    }
-  };
-  const onAddLikeDislikePost = (id, data, quary) => {
-    if (quary === "like") {
-      const {likes, dislikes, userlikes, ...rest} = posts.find(
-        (el) => el.id === id
-      );
-      SetPosts(
-        posts.map((el) =>
-          el.id === id
-            ? {
-                likes: data.likes,
-                dislikes: data.dislikes,
-                userlikes: data.userlikes,
-                ...rest,
-              }
-            : el
-        )
-      );
-    } else {
-      const {likes, dislikes, userlikes, ...rest} = posts.find(
-        (el) => el.id === id
-      );
-      SetPosts(
-        posts.map((el) =>
-          el.id === id
-            ? {
-                likes: data.likes,
-                dislikes: data.dislikes,
-                userlikes: data.userlikes,
-                ...rest,
-              }
-            : el
-        )
-      );
-    }
-  };
-  const onAddLikeDislikeComment = ({commentId, postId}, data, quary) => {
-    // console.log(data, 'data likes')
-    if (quary === "like" || "dislike") {
-      const {comments, ...rest} = posts.find((el) => el.id === postId);
-      const upDatedComments = comments.map((el) => {
-        const {likes, dislikes, ...all} = el;
-        return el.id === commentId
-          ? {likes: data.likes, dislikes: data.dislikes, ...all}
-          : el;
-      });
-      SetPosts(
-        posts.map((el) =>
-          el.id === postId ? {comments: upDatedComments, ...rest} : el
-        )
-      );
-    }
-  };
-  const onRemovePost = (id) => {
-    SetPosts(posts.filter((el) => el.id !== id));
-  };
   useEffect(() => {
+    // Check session only when the component mounts
     checkSession();
-    // getCatogries();
-    // getPosts();
-    checkSession();
-  }, [checkSession]);
-  // console.log(selectedPosts)
+  }, []); // Empty dependency array ensures useEffect runs only once on mount
+
+  useEffect(() => {
+    if (user.isLogIn) {
+      const socket = new WebSocket("ws://localhost:8000/ws");
+      socket.onopen = () => setIsWsReady(true);
+      socket.onclose = () => setIsWsReady(false);
+      socket.onmessage = (event) => setWsVal(event.data);
+
+      ws.current = socket;
+
+      return () => {
+        if (isWsReady) {
+          socket.close();
+        }
+      };
+    }
+
+    // Clean up WebSocket connection
+  }, [isWsReady, user.isLogIn]);
+
+  useEffect(() => {
+    if (isWsReady) {
+      const data = JSON.parse(wsVal);
+      console.log(data);
+      if (data?.type === "logout") {
+        console.log("logout");
+        logoutHandler(false);
+      }
+
+      if (data?.type === "online") {
+        setOnlineUsers(data);
+      }
+    }
+  }, [isWsReady, wsVal, logoutHandler]);
   return (
     <AuthContext.Provider
       value={{
         user,
         OnLogin: logintHandler,
         onLogout: logoutHandler,
-        catogaries: catogaries,
-        posts: posts,
+        isWsReady,
+        wsVal,
+        wsMsgToServer: ws.current?.send.bind(ws.current),
+
+        // catogaries: catogaries,
+        // posts: posts,
         selectedPosts,
         setSelectedPosts,
-        OnAddCommentToPost: OnAddCommentToPost,
-        OnAddPost,
-        onAddLikeDislikePost,
-        onAddLikeDislikeComment,
-        onRemovePost,
+        // OnAddCommentToPost: OnAddCommentToPost,
+        // OnAddPost,
+        // onAddLikeDislikePost,
+        // onAddLikeDislikeComment,
+        // onRemovePost,
+        closeChat,
+        showChat,
+        openChat,
+        openChatDetails,
       }}
     >
       {props.children}

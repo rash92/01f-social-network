@@ -26,16 +26,17 @@ export default function Register({setShowRegisterForm}) {
 
   const registerHandler = async (e) => {
     e.preventDefault();
-    // const isVatarValid = avatarValue.file != null && avatarValue.file.size
 
     const formIsValid =
       validateEmail(emailValue) &&
       isPasswordStrong(passwordValue) &&
       isNotEmty(firstNameValue) &&
       isNotEmty(lastNameValue) &&
-      isNotEmty(dateOfBirthValue);
+      isNotEmty(dateOfBirthValue); 
 
-    if (!formIsValid) {
+    
+
+    if (  !formIsValid) {
       alert("Please fill all fields");
       return;
     }
@@ -43,10 +44,11 @@ export default function Register({setShowRegisterForm}) {
     formData.append("image", avatarValue.file);
     formData.append("email", emailValue);
     formData.append("password", passwordValue);
-    formData.append("firstname", firstNameValue);
-    formData.append("lastname", lastNameValue);
-    formData.append("username", usernameValue);
-    formData.append("dob", dateOfBirthValue);
+    formData.append("firstName", firstNameValue);
+    formData.append("lastName", lastNameValue);
+    formData.append("nickname", usernameValue);
+    formData.append("DOB", dateOfBirthValue);
+    formData.append("aboutMe", aboutMeValue);
 
     try {
       const res = await getJson("newUser", {
@@ -56,7 +58,6 @@ export default function Register({setShowRegisterForm}) {
 
       setShowRegisterForm(false);
     } catch (err) {
-      // console.log(err);
       setError({isError: true, message: err.message});
     }
   };

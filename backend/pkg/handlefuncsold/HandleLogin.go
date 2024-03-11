@@ -61,7 +61,7 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 		// fmt.Println(session)
 
 		//  detlete old session
-		dbfuncs.DeleteSessionColumn("userId", id)
+		// dbfuncs.DeleteSessionColumn("userId", id)
 		// add new session
 		dbfuncs.AddSession(session.Id, session.UserID, session.Expires)
 
