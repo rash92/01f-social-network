@@ -1,12 +1,38 @@
-import React, {useState} from "react";
+import React, {useCallback, useContext, useEffect, useState} from "react";
 import {Row, Col, Nav} from "react-bootstrap";
 import Posts from "./Posts";
 import {dummyPosts, groups} from "../store/dummydata";
 import Groups from "./Groups";
 import Chats from "./ChatLists";
-
+import {getJson} from "../helpers/helpers";
+import AuthContext from "../store/authContext";
 function Dashboard() {
   const [activeSection, setActiveSection] = useState("posts");
+  const [dashBoardData, setDashBoardData] = useState({});
+  const {user} = useContext(AuthContext);
+  const fetchDashboard = useCallback(async () => {
+    try {
+      const res = await getJson("dashboard", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          user_token: document.cookie,
+        },
+        credentials: "include",
+        body: JSON.stringify(user.id),
+      });
+
+      const data = await res.json();
+      setDashBoardData(data);
+    } catch (err) {
+      console.log(err);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
+
   const handleSectionClick = (section) => {
     setActiveSection(section);
   };
@@ -59,7 +85,7 @@ function Dashboard() {
       >
         <Col>
           {activeSection === "posts" && <Posts posts={dummyPosts} />}
-          {activeSection === "chats" && <Chats />}
+          {activeSection === "chats" && <Chats chats={dashBoardData.chats} />}
           {activeSection === "groups" && <Groups groups={groups} />}
         </Col>
       </Row>

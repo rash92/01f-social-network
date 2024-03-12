@@ -32,12 +32,12 @@ export default function Chats({
           <User avatar={avatar} userName={username} isOnline={isOnline} />
         </div>
 
-        <div className="d-flex justify-content-between gap-4 ">
+        {/* <div className="d-flex justify-content-between gap-4 ">
           <span style={{color: "#6e6e6e"}}>{message}</span>
           <span style={{color: "#6e6e6e", fontSize: "0.8rem"}}>
             {formattedTime}
           </span>
-        </div>
+        </div> */}
       </Button>
     </ListGroup.Item>
   );
