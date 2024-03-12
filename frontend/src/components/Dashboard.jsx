@@ -85,7 +85,7 @@ function Dashboard() {
       >
         <Col>
           {activeSection === "posts" && <Posts posts={dummyPosts} />}
-          {activeSection === "chats" && <Chats chats={dashBoardData.chats} />}
+          {activeSection === "chats" && <Chats chats={dashBoardData?.chats} />}
           {activeSection === "groups" && <Groups groups={groups} />}
         </Col>
       </Row>

@@ -1,25 +1,25 @@
 package handlefuncs
 
-import (
-	"encoding/json"
-	"net/http"
-)
+// import (
+// 	"encoding/json"
+// 	"net/http"
+// )
 
-func HandleGetPosts(w http.ResponseWriter, r *http.Request) {
+// func HandleGetPosts(w http.ResponseWriter, r *http.Request) {
 
-	if r.Method == http.MethodGet {
+// 	if r.Method == http.MethodGet {
 
-		posts, err := FindAllPosts()
+// 		posts, err := FindAllPosts()
 
-		if err != nil {
-			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
-		}
+// 		if err != nil {
+// 			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+// 		}
 
-		json.NewEncoder(w).Encode(posts)
+// 		json.NewEncoder(w).Encode(posts)
 
-	} else {
+// 	} else {
 
-		http.Error(w, "405 Method Not Allowed", http.StatusMethodNotAllowed)
-	}
+// 		http.Error(w, "405 Method Not Allowed", http.StatusMethodNotAllowed)
+// 	}
 
-}
+// }

@@ -3,7 +3,6 @@ package handlefuncs
 import (
 	"database/sql"
 	"fmt"
-	dbfuncs "server/pkg/db/dbfuncs"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -34,6 +33,6 @@ func FindPostsComment(id string) (Comment, error) {
 		}
 
 	}
-	one.Likes, one.Dislikes = dbfuncs.CountCommentReacts(one.ID)
+	// one.Likes, one.Dislikes = dbfuncs.CountCommentReacts(one.ID)
 	return one, nil
 }

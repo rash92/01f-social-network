@@ -183,7 +183,7 @@ func unmarshalBody[T any](signalBody []byte, receivedData T) {
 // connection.
 func HandleConnection(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("user_token")
-	valid := dbfuncs.ValidateCookie(cookie.Value)
+	valid, err := dbfuncs.ValidateCookie(cookie.Value)
 	if err != nil || !valid {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

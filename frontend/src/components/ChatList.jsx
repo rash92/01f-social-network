@@ -5,7 +5,7 @@ import User from "./User";
 
 export default function Chats({
   avatar,
-  username,
+  nickname,
   message,
   timeSent,
   isOnline,
@@ -19,7 +19,7 @@ export default function Chats({
   });
   const openChatHandler = (e) => {
     e.preventDefault();
-    opeChat({type, avatar, username, isOnline});
+    opeChat({type, avatar, nickname, isOnline});
   };
 
   return (
@@ -29,7 +29,7 @@ export default function Chats({
         style={{background: "none", border: "none"}}
       >
         <div style={{padding: "1rem"}}>
-          <User avatar={avatar} userName={username} isOnline={isOnline} />
+          <User avatar={avatar} username={nickname} isOnline={isOnline} />
         </div>
 
         {/* <div className="d-flex justify-content-between gap-4 ">
