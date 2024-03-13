@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS Users (
     Password BLOB NOT NULL,
     Profile TEXT,
     AboutMe TEXT,
-    Privacy_setting TEXT NOT NULL,
+    PrivacySetting TEXT NOT NULL,
     DOB  TEXT  NOT NULL,
     CreatedAt DATETIME NOT NULL
 );

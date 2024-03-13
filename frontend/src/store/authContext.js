@@ -1,10 +1,17 @@
 import React, {useState, useEffect, useCallback, useRef} from "react";
 import {getJson} from "../helpers/helpers";
 const userObj = {
-  id: "",
+  Id: "",
   isLogIn: false,
-  username: "",
-  profileImg: "",
+  Nickname: "",
+  Email: "",
+  FirstName: "",
+  LastName: "",
+  Profile: "",
+  DOB: "",
+  Privicy_setting: "",
+  CreatedAt: "",
+  AboutMe: "",
 };
 
 // const logoutHandler = useCallback(() => {
@@ -40,7 +47,7 @@ export const AuthContextProvider = (props) => {
 
   const [selectedPosts, setSelectedPosts] = useState([]);
   const logintHandler = (user) => {
-    setUser({...user, isLogIn: true});
+    setUser({...user.user, isLogIn: true});
   };
   const [onlineUsers, setOnlineUsers] = useState([]);
 

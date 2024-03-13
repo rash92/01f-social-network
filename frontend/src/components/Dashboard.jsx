@@ -19,7 +19,7 @@ function Dashboard() {
           user_token: document.cookie,
         },
         credentials: "include",
-        body: JSON.stringify(user.id),
+        body: JSON.stringify(user.Id),
       });
 
       const data = await res.json();

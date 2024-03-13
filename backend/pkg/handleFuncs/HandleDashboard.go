@@ -2,21 +2,25 @@ package handlefuncs
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"server/pkg/db/dbfuncs"
 )
 
-func GetAllChats(ownerId string ) ([]string, error) {
+func GetAllChats(ownerId string) ([]string, error) {
+
 	var chatIds []string
 
 	messaged, err := dbfuncs.GetAllUserIdsSortedByLastPrivateMessage(ownerId)
 	if err != nil {
+		fmt.Println("error getting all user ids sorted by last private message")
 		return chatIds, err
 	}
 
 	unmessaged, err := dbfuncs.GetUnmessagedUserIdsSortedAlphabetically(ownerId)
 	if err != nil {
+		fmt.Println("error getting all user ids sorted alphabetically")
 		return chatIds, err
 	}
 
@@ -41,6 +45,7 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 	chatIDs, err := GetAllChats(ownerId)
 	if err != nil {
 		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+		return
 	}
 
 	var users []dbfuncs.User

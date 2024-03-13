@@ -8,7 +8,7 @@ import (
 )
 
 func HandleNewUser(w http.ResponseWriter, r *http.Request) {
-
+	Cors(&w, r)
 	if r.Method != http.MethodPost {
 		http.Error(w, `{"error": "405 Method Not Allowed"}`, http.StatusMethodNotAllowed)
 	}
@@ -29,6 +29,10 @@ func HandleNewUser(w http.ResponseWriter, r *http.Request) {
 	nickname := r.FormValue("nickname")
 	dob := r.FormValue("DOB")
 	aboutMe := r.FormValue("aboutMe")
+
+	if nickname == "" {
+		nickname = firstName + lastName
+	}
 
 	file, header, err := r.FormFile("image")
 

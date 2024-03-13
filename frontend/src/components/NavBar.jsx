@@ -29,7 +29,7 @@ const NavigationBar = () => {
   // }
 
   const {user, onLogout} = useContext(AuthContext);
-
+  console.log(user);
   const logoutHandler = () => {
     onLogout();
   };
@@ -53,17 +53,17 @@ const NavigationBar = () => {
             {user.isLogIn && (
               <>
                 <NavItem>
-                  <Link className={classes.NavLink} to={`/profile/${user.id}`}>
+                  <Link className={classes.NavLink} to={`/profile/${user.Id}`}>
                     <div className={`${classes["profile-image"]}`}>
-                      {user.profileImg ? (
+                      {user.Profile ? (
                         <img
-                          src={`http://localhost:8000/images/${user.profileImg}`}
+                          src={`http://localhost:8000/images/${user.Profile}`}
                           alt="Profile"
                           className={`${classes["img-fluid"]} ${classes["rounded-circle"]}`}
                         />
                       ) : (
                         <div className={`${classes["initials-circle"]}`}>
-                          {user.username[0]}
+                          {user.Nickname}
                         </div>
                       )}
                     </div>

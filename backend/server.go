@@ -26,11 +26,30 @@ func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func DeleteUserByUsername(username string) error {
+	stmt, err := dbfuncs.Db.Prepare("DELETE FROM Users WHERE FirstName= ?")
+	if err != nil {
+		return err
+	}
+
+	_, err = stmt.Exec(username)
+
+	if err != nil {
+
+		//  you will get an arror if the user is not in the database
+		// fmt.Println("error in deleting user by username", err)
+		return err
+	}
+
+	return nil
+}
+
 func main() {
 	dbfuncs.Init()
+	// DeleteUserByUsername("bilal")
 	defer dbfuncs.Db.Close()
 	// defer dbfuncs.Db.Close()
-	// DeleteUserByUsername("bilal")
+
 	// sqlite.Magarate()
 	http.HandleFunc("/ws", wrapperHandler(handlefuncs.HandleConnection))
 

@@ -80,10 +80,12 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 			HttpOnly: true,
 			SameSite: http.SameSiteNoneMode,
 		})
+		user.Password = []byte{}
+		user.Email = ""
+
 		response := map[string]interface{}{
-			"success":  true,
-			"username": user.Nickname,
-			"id":       session.Id,
+			"success": true,
+			"user":    user,
 		}
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(response)
