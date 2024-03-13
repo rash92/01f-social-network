@@ -2,5 +2,6 @@ CREATE TABLE IF NOT EXISTS Sessions (
   Id BLOB NOT NULL PRIMARY KEY,
   expires DATETIME NOT NULL,
   userId BLOB,
+  UNIQUE (userId),
   FOREIGN KEY (userId) REFERENCES Users(Id)
 );
