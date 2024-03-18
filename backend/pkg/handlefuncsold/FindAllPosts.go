@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"server/pkg/db/dbfuncs"
+	"backend/pkg/db/dbfuncs"
 
 	_ "github.com/mattn/go-sqlite3"
 )

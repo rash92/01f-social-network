@@ -49,12 +49,12 @@ package handlefuncs
 // that we're checking for that and handling it appropriately. Should we have
 // an analogous timeout for websockets?
 import (
+	"backend/pkg/db/dbfuncs"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
-	"server/pkg/db/dbfuncs"
 	"sync"
 	"time"
 

@@ -1,9 +1,9 @@
 package app
 
 import (
+	dbfuncs "backend/pkg/db/dbfuncs"
 	"encoding/json"
 	"net/http"
-	dbfuncs "server/pkg/db/dbfuncs"
 )
 
 func HandleLogin(w http.ResponseWriter, r *http.Request) {

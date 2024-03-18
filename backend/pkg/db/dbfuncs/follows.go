@@ -1,6 +1,8 @@
 package dbfuncs
 
-import "database/sql"
+import (
+	"database/sql"
+)
 
 func AddFollow(follow *Follow) error {
 	statement, err := db.Prepare("INSERT INTO Follows VALUES (?,?,?)")
@@ -132,4 +134,41 @@ func GetPendingFollowingIdsByFollowerId(followerId string) ([]string, error) {
 }
 
 //TO DO: get 10 at a time? decide if doing it through SQL or get all and do in handlefunc
-//followers & folllowing
+
+// rewrite?
+
+// func GetNumberOfFollowersAndFollowing(flag string, ownerId string) (int, error) {
+// 	var count int
+// 	query := fmt.Sprintf("SELECT COUNT(*) FROM Follows WHERE %s=?", flag)
+// 	err := database.QueryRow(query, ownerId).Scan(&count)
+// 	if err != nil {
+// 		return 0, fmt.Errorf("failed to execute query: %v", err)
+// 	}
+// 	return count, nil
+// }
+
+// func GetFollowersOrFollowing(ownerId string, itemId string, offset int) ([]string, error) {
+// 	items := []string{}
+// 	var oppositeId string
+// 	if itemId == "FollowerId" {
+// 		oppositeId = "FollowingId"
+// 	} else {
+// 		oppositeId = "FollowerId"
+// 	}
+// 	query := fmt.Sprintf("SELECT %s FROM Follows WHERE %s = ? LIMIT 10 OFFSET %d", itemId, oppositeId, offset)
+// 	rows, err := db.Query(query, ownerId)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer rows.Close()
+// 	for rows.Next() {
+// 		var item string
+// 		err := rows.Scan(&item)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		items = append(items, GetNicknameFromId(item))
+// 	}
+// 	sort.Strings(items)
+// 	return items, nil
+// }

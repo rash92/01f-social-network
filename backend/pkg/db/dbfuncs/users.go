@@ -88,3 +88,56 @@ func GetUserById(id string) (User, error) {
 
 	return user, err
 }
+
+//figure out whether to delete or rewrite or keep etc.
+
+// func Getusers() ([]User_getAllUsers, error) {
+// 	rows, err := database.Query("SELECT Id,FirstName, LastName, Nickname, Profile, AboutMe, Privacy_setting, DOB, CreatedAt FROM Users")
+// 	if err != nil {
+// 		return []User_getAllUsers{}, err
+// 	}
+// 	defer rows.Close()
+// 	var user []User_getAllUsers
+
+// 	for rows.Next() {
+// 		var newUser User_getAllUsers
+// 		err := rows.Scan(&newUser.Id, &newUser.FirstName, &newUser.LastName, &newUser.Nickname, &newUser.Profile, &newUser.AboutMe, &newUser.Privacy_setting, &newUser.DOB, &newUser.CreatedAt)
+// 		if err != nil {
+// 			return []User_getAllUsers{}, err
+// 		}
+// 		user = append(user, newUser)
+// 	}
+
+// 	return user, err
+// }
+
+// func GetUserDataFromSession(sessionId string) (string, string, string, error) {
+// 	var userId string
+// 	var profileImage string
+// 	var nickname string
+
+// 	// Execute the SQL query
+// 	err := database.QueryRow(`
+// 			SELECT Sessions.userId, Users.Profile, Users.Nickname
+// 			FROM Sessions
+// 			JOIN Users ON Sessions.UserID = Users.Id
+// 			WHERE Sessions.Id = ?
+// 	`, sessionId).Scan(&userId, &profileImage, &nickname)
+
+// 	// Check for errors
+// 	if err != nil {
+// 		return "", "", "", err
+// 	}
+
+// 	return userId, profileImage, nickname, nil
+// }
+
+// func GetNumberOfByUserId(userId string, table string) (int, error) {
+// 	var count int
+// 	query := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE Creatorid=?", table)
+// 	err := database.QueryRow(query, userId).Scan(&count)
+// 	if err != nil {
+// 		return 0, fmt.Errorf("failed to execute query: %v", err)
+// 	}
+// 	return count, nil
+// }

@@ -1,7 +1,7 @@
 package app
 
 import (
-	"server/pkg/db/dbfuncs"
+	"backend/pkg/db/dbfuncs"
 	"time"
 )
 

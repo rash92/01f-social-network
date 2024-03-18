@@ -23,7 +23,6 @@ func AddMessage(sender_id, recipient_id, message, Type string) (uuid.UUID, time.
 	}
 	created := time.Now()
 
-	lock.Lock()
 	statement, err := database.Prepare(fmt.Sprintf("INSERT INTO %s VALUES (?,?,?,?,?)", Type))
 	if err != nil {
 		fmt.Println(err, "AddMessage line 27")
@@ -31,7 +30,6 @@ func AddMessage(sender_id, recipient_id, message, Type string) (uuid.UUID, time.
 	}
 	_, err = statement.Exec(id, sender_id, recipient_id, message, created)
 	fmt.Println(err, "AddMessage line 27")
-	lock.Unlock()
 
 	return id, created, nil
 }

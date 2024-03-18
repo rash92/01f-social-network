@@ -1,10 +1,10 @@
 package handlefuncs
 
 import (
+	"backend/pkg/db/dbfuncs"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"server/pkg/db/dbfuncs"
 )
 
 // At the momemt, we're getting the Owner struct from dbfuncs and sending
@@ -23,7 +23,6 @@ import (
 // type Image []byte
 
 // This is what will be returned by the handler.
-
 
 type Profile struct {
 	Owner             dbfuncs.User_GetProfileOwner

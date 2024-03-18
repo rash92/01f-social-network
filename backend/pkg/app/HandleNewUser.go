@@ -1,8 +1,8 @@
 package app
 
 import (
+	"backend/pkg/db/dbfuncs"
 	"encoding/json"
-	"server/pkg/db/dbfuncs"
 
 	// "fmt"
 	"net/http"
@@ -34,6 +34,7 @@ func HandleNewUser(w http.ResponseWriter, r *http.Request) {
 		}
 		var fileName string
 		if file != nil {
+			//save image function moved to within app, rather than dbfuncs, still needs to be rewritten.
 			fileName, err = dbfuncs.SaveImage(file, header)
 			if err != nil {
 				http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)

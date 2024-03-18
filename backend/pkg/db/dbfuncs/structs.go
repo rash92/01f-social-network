@@ -2,6 +2,7 @@ package dbfuncs
 
 import (
 	"database/sql"
+	"log"
 	"sync"
 	"time"
 )
@@ -11,6 +12,15 @@ import (
 var db *sql.DB
 
 var dbLock sync.RWMutex
+
+// opens database at beginning, should close automatically on server quit
+func init() {
+	var err error
+	db, err = sql.Open("sqlite3", "./pkg/db/sqlite/sqlite.db")
+	if err != nil {
+		log.Fatal("Invalid DB config, unable to open database:", err)
+	}
+}
 
 // structs based on database for entering and retrieving info
 type User struct {

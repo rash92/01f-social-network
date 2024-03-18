@@ -1,10 +1,10 @@
 package app
 
 import (
+	"backend/pkg/db/dbfuncs"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"server/pkg/db/dbfuncs"
 )
 
 func HandleValidateCookie(w http.ResponseWriter, r *http.Request) {

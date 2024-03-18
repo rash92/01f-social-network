@@ -1,9 +1,9 @@
 package handlefuncs
 
 import (
+	dbfuncs "backend/pkg/db/dbfuncs"
 	"encoding/json"
 	"net/http"
-	dbfuncs "server/pkg/db/dbfuncs"
 	"time"
 )
 

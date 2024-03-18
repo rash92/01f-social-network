@@ -1,10 +1,10 @@
 package handlefuncs
 
 import (
+	"backend/pkg/db/dbfuncs"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"server/pkg/db/dbfuncs"
 )
 
 func HandleAddPost(w http.ResponseWriter, r *http.Request) {

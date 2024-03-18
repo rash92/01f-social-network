@@ -9,7 +9,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func Magarate() {
+func Migrate() {
 	// Define the database URL for SQLite3
 	dbURL := "sqlite://./pkg/db/sqlite/sqlite.db"
 

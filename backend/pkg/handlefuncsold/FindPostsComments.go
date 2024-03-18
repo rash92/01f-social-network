@@ -1,10 +1,10 @@
 package handlefuncs
 
 import (
+	"backend/pkg/db/dbfuncs"
 	"database/sql"
 	"fmt"
 	"log"
-	"server/pkg/db/dbfuncs"
 
 	_ "github.com/mattn/go-sqlite3"
 )

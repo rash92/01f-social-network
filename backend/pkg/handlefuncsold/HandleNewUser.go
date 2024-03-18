@@ -1,8 +1,8 @@
 package handlefuncs
 
 import (
+	"backend/pkg/db/dbfuncs"
 	"encoding/json"
-	"server/pkg/db/dbfuncs"
 
 	"net/http"
 )

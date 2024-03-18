@@ -1,12 +1,12 @@
 package main
 
 import (
+	"backend/pkg/db/dbfuncs"
+	handlefuncs "backend/pkg/handlefuncsold"
 	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
-	dbfuncs "server/pkg/db/dbfuncs"
-	handlefuncs "server/pkg/handlefuncs"
 )
 
 var db *sql.DB
@@ -24,7 +24,12 @@ func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
 		handlefuncs.Cors(&w, r)
 		cookie, err := r.Cookie("user_token")
 
-		if err != nil || !dbfuncs.ValidateCookie(cookie.Value) {
+		cookieValue, err := dbfuncs.ValidateCookie(cookie.Value)
+		if err != nil || cookieValue {
+			http.Error(w, `{"error": "something went to wrong"}`, http.StatusUnauthorized)
+		}
+
+		if err != nil || cookieValue {
 			// fmt.Println("cookie value wrapper function", cookie.Value)
 			http.Error(w, `{"error": "something went to wrong"}`, http.StatusUnauthorized)
 			return
@@ -34,9 +39,7 @@ func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
 }
 
 func main() {
-	defer db.Close()
-	handlefuncs.SetDatabase(db)
-	dbfuncs.SetDatabase(db)
+
 	// DeleteUserByUsername("bilal")
 	// sqlite.Magarate()
 	http.HandleFunc("/ws", wrapperHandler(handlefuncs.HandleConnection))

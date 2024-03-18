@@ -1,9 +1,9 @@
 package handlefuncs
 
 import (
+	"backend/pkg/db/dbfuncs"
 	"database/sql"
 	"fmt"
-	"server/pkg/db/dbfuncs"
 )
 
 func FindPostByID(id string) (PostFontEnd, error) {

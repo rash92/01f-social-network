@@ -27,7 +27,7 @@ import (
 	"log"
 	"net/http"
 
-	"server/pkg/db/dbfuncs"
+	"backend/pkg/db/dbfuncs"
 	"sync"
 	"time"
 
@@ -51,8 +51,6 @@ var (
 	activeConnections = make(map[string][]*websocket.Conn)
 	connectionLock    sync.RWMutex
 )
-
-
 
 // Be sure to allow possibilty of one of a user's connections being closed
 // while they still have other connections open. Make this distinct from

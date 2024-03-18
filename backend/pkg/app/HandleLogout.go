@@ -1,9 +1,9 @@
 package app
 
 import (
+	"backend/pkg/db/dbfuncs"
 	"encoding/json"
 	"net/http"
-	"server/pkg/db/dbfuncs"
 	"time"
 )
 
