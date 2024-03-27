@@ -5,7 +5,7 @@ const Action = ({numberAction, actionName, toggleAction, active}) => {
 
   return (
     <li className={`${classes.action} ${activeClass} `}>
-      <span>{numberAction}</span>
+      <span> {numberAction} </span>
       <button onClick={toggleAction.bind(null, actionName)}>
         {actionName}
       </button>

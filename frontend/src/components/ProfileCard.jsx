@@ -33,9 +33,9 @@ const ProfileCard = ({
         )}
         <Card.Body>
           <div className={classes.image}>
-            {user.avatar && (
+            {user.Profile && (
               <RoundImage
-                src={user.avatar}
+                src={user.Profile}
                 alt="Profile Picture"
                 size={"100px"}
               />
@@ -62,19 +62,19 @@ const ProfileCard = ({
             </ul>
           </div>
           <Card.Title>
-            <span>{`${user.firstName} ${user.lastName}`}</span>
+            <span>{`${user.FirstName} ${user.LastName}`}</span>
           </Card.Title>
           <Card.Subtitle className="mb-2 text-muted">
             Date of Birth: {user.age}
           </Card.Subtitle>
-          {user.nickname && <Card.Text>Nickname: {user.nickname}</Card.Text>}
-          {user.aboutMe && <Card.Text>About Me: {user.aboutMe}</Card.Text>}
+          {user.Nickname && <Card.Text>Nickname: {user.Nickname}</Card.Text>}
+          {user.AboutMe && <Card.Text>About Me: {user.AboutMe}</Card.Text>}
 
           {!owner && (
             <div className={classes.interact}>
               <Button>{isFollowed ? "Ufellow" : "Fellow"}</Button>
 
-              <Link to={`/chats/${user.id}`}>
+              <Link to={`/chats/${user.Id}`}>
                 <Button> message </Button>
               </Link>
             </div>

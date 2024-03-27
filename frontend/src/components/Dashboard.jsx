@@ -1,14 +1,41 @@
-import React, {useState} from "react";
+import React, {useCallback, useContext, useEffect, useState} from "react";
 import {Row, Col, Nav} from "react-bootstrap";
 import Posts from "./Posts";
 import {dummyPosts, groups} from "../store/dummydata";
 import Groups from "./Groups";
 import Chats from "./ChatLists";
-
+import {getJson} from "../helpers/helpers";
+import AuthContext from "../store/authContext";
 function Dashboard() {
   const [activeSection, setActiveSection] = useState("posts");
-  const handleSectionClick = (section) => {
+  const [dashBoardData, setDashBoardData] = useState({});
+  const {user} = useContext(AuthContext);
+  const fetchDashboard = useCallback(async () => {
+    try {
+      const data = await getJson("dashboard", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          user_token: document.cookie,
+        },
+        credentials: "include",
+        body: JSON.stringify(user.Id),
+      });
+
+      setDashBoardData(data);
+    } catch (err) {
+      console.log(err);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
+
+  const handleSectionClick = (section, e) => {
     setActiveSection(section);
+
+    // setActiveSection(section);
   };
 
   return (
@@ -16,6 +43,7 @@ function Dashboard() {
       <Row className="mt-3">
         <Col>
           <Nav
+            onSubmit={handleSectionClick.bind(null, "posts")}
             variant="pills"
             defaultActiveKey="posts"
             style={{
@@ -26,7 +54,7 @@ function Dashboard() {
             <Nav.Item>
               <Nav.Link
                 eventKey="posts"
-                onClick={() => handleSectionClick("posts")}
+                onClick={handleSectionClick.bind(null, "posts")}
               >
                 Posts
               </Nav.Link>
@@ -34,7 +62,7 @@ function Dashboard() {
             <Nav.Item>
               <Nav.Link
                 eventKey="chats"
-                onClick={() => handleSectionClick("chats")}
+                onClick={handleSectionClick.bind(null, "chats")}
               >
                 Chats
               </Nav.Link>
@@ -42,7 +70,7 @@ function Dashboard() {
             <Nav.Item>
               <Nav.Link
                 eventKey="groups"
-                onClick={() => handleSectionClick("groups")}
+                onClick={handleSectionClick.bind(null, "groups")}
               >
                 Groups
               </Nav.Link>
@@ -59,7 +87,7 @@ function Dashboard() {
       >
         <Col>
           {activeSection === "posts" && <Posts posts={dummyPosts} />}
-          {activeSection === "chats" && <Chats />}
+          {activeSection === "chats" && <Chats chats={dashBoardData?.chats} />}
           {activeSection === "groups" && <Groups groups={groups} />}
         </Col>
       </Row>

@@ -1,18 +1,18 @@
 import React from "react";
 import {Image} from "react-bootstrap";
 import classes from "./User.module.css";
-function User({isOnline, userName, avatar}) {
+function User({Nickname, IsOnline,   Avatar }) {
   return (
     <div style={{display: "flex", alignItems: "center"}}>
       <div style={{position: "relative", marginRight: "10px"}}>
         <Image
-          src={`http://localhost:8000/images/${avatar}`}
+          src={`http://localhost:8000/images/${Avatar}`}
           roundedCircle
           style={{marginRight: "5px"}}
           width={50}
           height={50}
         />
-        {isOnline && (
+        {IsOnline && (
           <div
             style={{
               position: "absolute",
@@ -28,7 +28,7 @@ function User({isOnline, userName, avatar}) {
         )}
       </div>
       <div className={classes.userinfo}>
-        <span className={classes.username}>{userName} </span>
+        <span className={classes.username}>{Nickname} </span>
       </div>
     </div>
   );
