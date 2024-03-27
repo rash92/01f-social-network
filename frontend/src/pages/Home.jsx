@@ -7,6 +7,7 @@ import PostInput from "../components/PostInput";
 import Dashboard from "../components/Dashboard";
 import Chat from "../components/Chat";
 import {getJson} from "../helpers/helpers";
+import {Link} from "react-router-dom";
 function Home() {
   const {user, isWsReady, wsVal, onLogout} = useContext(AuthContext);
   const [showRegisterForm, setShowRegisterForm] = useState(false);
@@ -21,14 +22,14 @@ function Home() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({id: user.id}),
+        body: JSON.stringify({id: user.Id}),
       });
       console.log(res);
       setUsers(res);
     } catch (err) {
       console.log(err.message);
     }
-  }, [user.id]);
+  }, [user.Id]);
 
   useEffect(() => {
     getAllUsers();
@@ -55,7 +56,7 @@ function Home() {
         {user.isLogIn && (
           <>
             <div style={{width: "50vw", margin: "2rem 0 3rem 0"}}>
-              <PostInput src={user.profileImg} id={user.id} />
+              <PostInput src={user.Profile} id={user.Id} />
             </div>
 
             <Chat />
@@ -63,6 +64,14 @@ function Home() {
             <Dashboard />
           </>
         )}
+        {users.map((user) => (
+          <Link to={`/profile/${user.Id}`}>
+            <div>
+              <img src={user.Profile} alt="profile" />
+              <p>{user.Nickname}</p>
+            </div>
+          </Link>
+        ))}
       </div>
     </Container>
   );
