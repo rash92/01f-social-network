@@ -29,7 +29,7 @@ func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
 func main() {
 
 	// DeleteUserByUsername("bilal")
-	// sqlite.Magarate()
+	// sqlite.Migrate()
 	http.HandleFunc("/ws", wrapperHandler(handlefuncs.HandleConnection))
 
 	http.HandleFunc("/newUser", handlefuncs.HandleNewUser)
