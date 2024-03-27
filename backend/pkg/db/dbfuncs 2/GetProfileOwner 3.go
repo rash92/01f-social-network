@@ -19,7 +19,7 @@ type User_GetProfileOwner struct {
 
 func GetProfileOwner(userId string) (User_GetProfileOwner, error) {
 	profile := User_GetProfileOwner{}
-	err := db.QueryRow("SELECT * FROM users WHERE id = ?", userId).Scan(&profile.Id, &profile.Nickname, &profile.FirstName, &profile.LastName, &profile.Email, &profile.Password, &profile.Avatar, &profile.AboutMe, &profile.PrivacySetting, &profile.DOB, &profile.CreatedAt)
+	err := database.QueryRow("SELECT * FROM users WHERE id = ?", userId).Scan(&profile.Id, &profile.Nickname, &profile.FirstName, &profile.LastName, &profile.Email, &profile.Password, &profile.Avatar, &profile.AboutMe, &profile.PrivacySetting, &profile.DOB, &profile.CreatedAt)
 	if err != nil {
 		return profile, err
 	}

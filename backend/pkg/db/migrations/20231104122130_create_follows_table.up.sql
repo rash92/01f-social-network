@@ -1,7 +1,8 @@
 CREATE TABLE IF NOT EXISTS Follows (
-    FollowerId INTEGER NOT NULL,
-    FollowingId INTEGER NOT NULL,
+    FollowerId TEXT NOT NULL,
+    FollowingId TEXT NOT NULL,
+    Status TEXT NOT NUll,
     PRIMARY KEY (FollowerId, FollowingId),
-    FOREIGN KEY (FollowerId) REFERENCES Users(Id),
-    FOREIGN KEY (FollowingId) REFERENCES Users(Id)
+    FOREIGN KEY (FollowerId) REFERENCES Users (Id),
+    FOREIGN KEY (FollowingId) REFERENCES Users (Id)
 );

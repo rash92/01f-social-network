@@ -14,6 +14,7 @@ func AddUser(user *User) error {
 	}
 	user.Id = id.String()
 	user.CreatedAt = time.Now()
+	user.PrivacySetting = "private"
 	statement, err := db.Prepare("INSERT INTO Users VALUES (?,?,?,?,?,?,?,?,?,?,?)")
 	if err != nil {
 		return err
@@ -87,7 +88,7 @@ func GetUserById(id string) (User, error) {
 
 	// me and peter change PrivacySetting to  Privacy_setting temporly
 
-	err := db.QueryRow("SELECT Id, Nickname, FirstName, LastName, Email, Password, Profile, AboutMe,Privacy_setting, DOB, CreatedAt FROM Users WHERE Id=?", id).Scan(&user.Id, &user.Nickname, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Profile, &user.AboutMe, &user.PrivacySetting, &user.DOB, &user.CreatedAt)
+	err := db.QueryRow("SELECT Id, Nickname, FirstName, LastName, Email, Password, Avatar, AboutMe,PrivacySetting, DOB, CreatedAt FROM Users WHERE Id=?", id).Scan(&user.Id, &user.Nickname, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Profile, &user.AboutMe, &user.PrivacySetting, &user.DOB, &user.CreatedAt)
 
 	return user, err
 }

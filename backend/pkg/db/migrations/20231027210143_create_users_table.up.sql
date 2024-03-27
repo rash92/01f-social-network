@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS Users (
     Avatar TEXT,
     AboutMe TEXT,
     PrivacySetting TEXT NOT NULL,
-    git clone --filter=blob:none <repository_url> --path <folder_path>
+    DOB TEXT NOT NULL,
     CreatedAt DATETIME NOT NULL
 );
+

@@ -1,6 +1,11 @@
 package dbfuncs
 
-import "database/sql"
+import (
+	"database/sql"
+)
+
+
+
 
 func AddFollow(follow *Follow) error {
 	statement, err := db.Prepare("INSERT INTO Follows VALUES (?,?,?)")
@@ -129,6 +134,17 @@ func GetPendingFollowingIdsByFollowerId(followerId string) ([]string, error) {
 	}
 	err = rows.Err()
 	return followingIds, err
+}
+
+func IsFollowing(userId, ownerId string) (bool, error) {
+	isFellowing := false
+	query := `SELECT EXISTS(SELECT 1 FROM Follows WHERE FollowerId=? AND FollowingId=?)`
+	err := db.QueryRow(query, userId, ownerId).Scan(&isFellowing)
+	if err != nil {
+		return false, err
+	}
+
+	return isFellowing, nil
 }
 
 //TO DO: get 10 at a time? decide if doing it through SQL or get all and do in handlefunc

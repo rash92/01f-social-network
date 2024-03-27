@@ -3,7 +3,7 @@ import {ListGroup} from "react-bootstrap";
 import AuthContext from "../store/authContext";
 import {useContext} from "react";
 export default function Chats({chat}) {
-  const {user, openChat} = useContext(AuthContext);
+  const {openChat} = useContext(AuthContext);
 
   return (
     <ListGroup
@@ -14,7 +14,7 @@ export default function Chats({chat}) {
         gap: "2rem",
       }}
     >
-      {chat.map((chat, index) => (
+      {chat?.map((chat, index) => (
         <ChatList
           key={index}
           avatar={chat.avatar}

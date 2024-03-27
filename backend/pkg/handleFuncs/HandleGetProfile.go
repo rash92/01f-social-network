@@ -18,9 +18,8 @@ import (
 
 // This is what will be returned by the handler.
 
-
 type Profile struct {
-	Owner             dbfuncs.User_GetProfileOwner
+	Owner             dbfuncs.User
 	Posts             []dbfuncs.Post
 	Followers         []string
 	Following         []string
@@ -50,7 +49,7 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	profile.Owner, err = dbfuncs.GetProfileOwner(ownerId)
+	profile.Owner, err = dbfuncs.GetUserById(ownerId)
 
 	if err != nil {
 		errorMessage := fmt.Sprintf("error getting profile owner: %v", err.Error())
@@ -59,7 +58,7 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	profile.Owner.Password = ""
+	profile.Owner.Password = []byte{}
 
 	cookie, _ := r.Cookie("user_token")
 	userId, _ = dbfuncs.GetUserIdFromCookie(cookie.Value)
@@ -69,8 +68,8 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check Follows table to see if there's a row with FollowerId = userId and FollowingId = ownerId.
-	query := `SELECT EXISTS(SELECT 1 FROM Follows WHERE FollowerId=? AND FollowingId=?)`
-	err = database.QueryRow(query, userId, ownerId).Scan(&profile.IsFollowed)
+
+	profile.IsFollowed, err = dbfuncs.IsFollowing(userId, ownerId)
 	if err != nil {
 		fmt.Printf("failed to execute query: %v\n", err)
 		http.Error(w, "Failed to execute query", http.StatusInternalServerError)

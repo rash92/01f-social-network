@@ -29,7 +29,6 @@ const NavigationBar = () => {
   // }
 
   const {user, onLogout} = useContext(AuthContext);
-  console.log(user);
   const logoutHandler = () => {
     onLogout();
   };

@@ -26,28 +26,32 @@ func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func DeleteUserByUsername(username string) error {
-	stmt, err := dbfuncs.Db.Prepare("DELETE FROM Users WHERE FirstName= ?")
-	if err != nil {
-		return err
-	}
 
-	_, err = stmt.Exec(username)
 
-	if err != nil {
+// func DeleteUserByUsername(username string) error {
+// 	stmt, err := dbfuncs.Db.Prepare("DELETE FROM Users WHERE FirstName= ?")
+// 	if err != nil {
+// 		return err
+// 	}
 
-		//  you will get an arror if the user is not in the database
-		// fmt.Println("error in deleting user by username", err)
-		return err
-	}
+// 	_, err = stmt.Exec(username)
 
-	return nil
-}
+// 	if err != nil {
+
+// 		//  you will get an arror if the user is not in the database
+// 		// fmt.Println("error in deleting user by username", err)
+// 		return err
+// 	}
+
+// 	return nil
+// }
 
 func main() {
-	dbfuncs.Init()
+	// Magarate.Magarate()
+
+	defer dbfuncs.Close()
 	// DeleteUserByUsername("bilal")
-	defer dbfuncs.Db.Close()
+
 	// defer dbfuncs.Db.Close()
 
 	// sqlite.Magarate()
@@ -67,7 +71,7 @@ func main() {
 	// http.HandleFunc("/react-comment-like-dislike", handlefuncs.HandleCommenttLikeDislike)
 	// http.HandleFunc("/removePost", handlefuncs.HandleRemovePost)
 	http.HandleFunc("/profile", wrapperHandler(handlefuncs.HandleGetProfile))
-	// http.HandleFunc("/get-users", wrapperHandler(handlefuncs.HandleGetUsers))
+	http.HandleFunc("/get-users", wrapperHandler(handlefuncs.HandleGetUsers))
 	http.HandleFunc("/get-messages", handlefuncs.MessagesHandler)
 	http.HandleFunc("/dashboard", wrapperHandler(handlefuncs.HandleDashboard))
 	http.Handle("/images/", http.StripPrefix("/images", http.FileServer(http.Dir("./pkg/db/images"))))

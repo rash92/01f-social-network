@@ -10,9 +10,8 @@ import (
 // global database variable, so we only have to open it once and can access it etc.
 // possibly we don't want it globally and open and close it as needed
 var db *sql.DB
-var Db *sql.DB
 
-func Init() {
+func init() {
 	var err error
 	db, err = sql.Open("sqlite3", "./pkg/db/sqlite/sqlite.db")
 
@@ -21,8 +20,11 @@ func Init() {
 		log.Fatal("Invalid DB config:", err)
 	}
 
-	Db = db
 	// fmt.Println("db", db, Db, "Db")
+}
+
+func Close() {
+	db.Close()
 }
 
 var dbLock sync.RWMutex

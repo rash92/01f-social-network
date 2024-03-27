@@ -72,7 +72,11 @@ const Profile = () => {
   //     "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur et tristique libero.",
   // };
 
-  const isprivate = data.Owner.privacySetting === "private" ? true : false;
+  const isPrivate =
+    data?.Owner.PrivacySetting === "private" ||
+    data?.Owner.PrivacySetting === ""
+      ? true
+      : false;
 
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const toggleProfileVisibility = () => {};
@@ -101,7 +105,7 @@ const Profile = () => {
 
   const fetchMoreFellowers = () => {
     if (
-      data[isActive].length <
+      data[isActive]?.length <
       data[`NumberOf${isActive.charAt(0).toUpperCase()}${isActive.slice(1)}`]
     ) {
       setData((prev) => ({
@@ -114,10 +118,10 @@ const Profile = () => {
   };
 
   const fetchMorePosts = () => {
-    if (data.posts.length <= 50) {
+    if (data.Posts.length <= 50) {
       setData((prev) => ({
         ...prev,
-        posts: [...prev.posts, ...dummyPosts],
+        Posts: [...prev.Posts, ...dummyPosts],
       }));
       console.log(data);
     } else {
@@ -128,15 +132,19 @@ const Profile = () => {
 
   // console.log(d);
 
+  console.log(isPrivate, data.Owner.Id, user.Id, data.IsFollowed, "data");
+
   return routeError ? (
     routeError.message
   ) : (
     <Container>
       <div className={classes.profile}>
-        {isprivate && data.Owner.id !== user.id && !data.IsFollowed ? (
+        {isPrivate && data.Owner.Id !== user.Id && !data.IsFollowed ? (
           <PrivateProfile
+            Avatar={data?.Owner?.Profile}
+            IsOnline={true}
             name={"bilal"}
-            userName={data.Owner.firstName}
+            Nickname={data.Owner.Nickname}
             fellowUserHandler={() => {}}
           />
         ) : (
@@ -155,8 +163,8 @@ const Profile = () => {
               user={data.Owner}
               toggleAction={toggleAction}
               toggleProfileVisibility={toggleProfileVisibility}
-              isPrivate={isprivate}
-              owner={user.id === data.Owner.id}
+              isPrivate={isPrivate}
+              owner={user.Id === data.Owner.Id}
               numberOfFollowers={data.NumberOfFollowers}
               numberOfFollowing={data.NumberOfFollowing}
               numberOfPosts={data.NumberOfPosts}
@@ -175,7 +183,7 @@ const Profile = () => {
 
             <div>
               <div style={{width: "50vw", margin: "2rem 0 3rem 0"}}>
-                <PostInput src={user.profileImg} id={user.id} />
+                <PostInput src={user.Profile} id={user.Id} />
               </div>
               <section id="posts" ref={postRef}>
                 {<Posts posts={data.Posts} postref={postRef} />}
@@ -189,6 +197,7 @@ const Profile = () => {
 };
 
 export async function profileLoader({request, params}) {
+  console.log(params.id, "id profile");
   // console.log(params.id, request);
   return getJson("profile", {
     // signal: request.signal,/

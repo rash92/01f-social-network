@@ -44,3 +44,4 @@ func SaveImage(file multipart.File, header *multipart.FileHeader) (string, error
 
 	return image, nil
 }
+

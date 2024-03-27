@@ -12,7 +12,7 @@ function Dashboard() {
   const {user} = useContext(AuthContext);
   const fetchDashboard = useCallback(async () => {
     try {
-      const res = await getJson("dashboard", {
+      const data = await getJson("dashboard", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -22,7 +22,6 @@ function Dashboard() {
         body: JSON.stringify(user.Id),
       });
 
-      const data = await res.json();
       setDashBoardData(data);
     } catch (err) {
       console.log(err);
@@ -33,8 +32,10 @@ function Dashboard() {
     fetchDashboard();
   }, [fetchDashboard]);
 
-  const handleSectionClick = (section) => {
+  const handleSectionClick = (section, e) => {
     setActiveSection(section);
+
+    // setActiveSection(section);
   };
 
   return (
@@ -42,6 +43,7 @@ function Dashboard() {
       <Row className="mt-3">
         <Col>
           <Nav
+            onSubmit={handleSectionClick.bind(null, "posts")}
             variant="pills"
             defaultActiveKey="posts"
             style={{
@@ -52,7 +54,7 @@ function Dashboard() {
             <Nav.Item>
               <Nav.Link
                 eventKey="posts"
-                onClick={() => handleSectionClick("posts")}
+                onClick={handleSectionClick.bind(null, "posts")}
               >
                 Posts
               </Nav.Link>
@@ -60,7 +62,7 @@ function Dashboard() {
             <Nav.Item>
               <Nav.Link
                 eventKey="chats"
-                onClick={() => handleSectionClick("chats")}
+                onClick={handleSectionClick.bind(null, "chats")}
               >
                 Chats
               </Nav.Link>
@@ -68,7 +70,7 @@ function Dashboard() {
             <Nav.Item>
               <Nav.Link
                 eventKey="groups"
-                onClick={() => handleSectionClick("groups")}
+                onClick={handleSectionClick.bind(null, "groups")}
               >
                 Groups
               </Nav.Link>
