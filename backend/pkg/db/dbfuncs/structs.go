@@ -30,7 +30,7 @@ type User struct {
 	LastName       string
 	Email          string
 	Password       []byte
-	Profile        string
+	Avatar         string
 	AboutMe        string
 	PrivacySetting string
 	DOB            string

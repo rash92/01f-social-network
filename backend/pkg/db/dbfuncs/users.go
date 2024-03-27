@@ -18,7 +18,7 @@ func AddUser(user *User) error {
 	if err != nil {
 		return err
 	}
-	_, err = statement.Exec(user.Id, user.Nickname, user.FirstName, user.LastName, user.Email, user.Password, user.Profile, user.AboutMe, user.PrivacySetting, user.DOB, user.CreatedAt)
+	_, err = statement.Exec(user.Id, user.Nickname, user.FirstName, user.LastName, user.Email, user.Password, user.Avatar, user.AboutMe, user.PrivacySetting, user.DOB, user.CreatedAt)
 
 	return err
 }
@@ -84,7 +84,7 @@ func IsUserPrivate(userId string) (bool, error) {
 
 func GetUserById(id string) (User, error) {
 	var user User
-	err := db.QueryRow("SELECT Id, Nickname, FirstName, LastName, Email, Password, Profile, AboutMe, PrivacySetting, DOB, CreatedAt FROM Users WHERE Id=?", id).Scan(&user.Id, &user.Nickname, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Profile, &user.AboutMe, &user.PrivacySetting, &user.DOB, &user.CreatedAt)
+	err := db.QueryRow("SELECT Id, Nickname, FirstName, LastName, Email, Password,Avatar, AboutMe, PrivacySetting, DOB, CreatedAt FROM Users WHERE Id=?", id).Scan(&user.Id, &user.Nickname, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Avatar, &user.AboutMe, &user.PrivacySetting, &user.DOB, &user.CreatedAt)
 
 	return user, err
 }
@@ -92,7 +92,7 @@ func GetUserById(id string) (User, error) {
 //figure out whether to delete or rewrite or keep etc.
 
 func Getusers() ([]User, error) {
-	rows, err := db.Query("SELECT Id,FirstName, LastName, Nickname, Profile, AboutMe, Privacy_setting, DOB, CreatedAt FROM Users")
+	rows, err := db.Query("SELECT Id,FirstName, LastName, Nickname,Avatar, AboutMe, Privacy_setting, DOB, CreatedAt FROM Users")
 	if err != nil {
 		return []User{}, err
 	}
@@ -101,7 +101,7 @@ func Getusers() ([]User, error) {
 
 	for rows.Next() {
 		var newUser User
-		err := rows.Scan(&newUser.Id, &newUser.FirstName, &newUser.LastName, &newUser.Nickname, &newUser.Profile, &newUser.AboutMe, &newUser.PrivacySetting, &newUser.DOB, &newUser.CreatedAt)
+		err := rows.Scan(&newUser.Id, &newUser.FirstName, &newUser.LastName, &newUser.Nickname, &newUser.Avatar, &newUser.AboutMe, &newUser.PrivacySetting, &newUser.DOB, &newUser.CreatedAt)
 		if err != nil {
 			return []User{}, err
 		}
@@ -113,7 +113,7 @@ func Getusers() ([]User, error) {
 
 // func GetUserDataFromSession(sessionId string) (string, string, string, error) {
 // 	var userId string
-// 	var profileImage string
+// 	varAvatarImage string
 // 	var nickname string
 
 // 	// Execute the SQL query
@@ -129,7 +129,7 @@ func Getusers() ([]User, error) {
 // 		return "", "", "", err
 // 	}
 
-// 	return userId, profileImage, nickname, nil
+// 	return userId,AvatarImage, nickname, nil
 // }
 
 // func GetNumberOfByUserId(userId string, table string) (int, error) {
