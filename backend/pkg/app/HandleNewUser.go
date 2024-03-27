@@ -35,7 +35,7 @@ func HandleNewUser(w http.ResponseWriter, r *http.Request) {
 		var fileName string
 		if file != nil {
 			//save image function moved to within app, rather than dbfuncs, still needs to be rewritten.
-			fileName, err = dbfuncs.SaveImage(file, header)
+			fileName, err = SaveImageOld(file, header)
 			if err != nil {
 				http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
 				return
@@ -45,33 +45,47 @@ func HandleNewUser(w http.ResponseWriter, r *http.Request) {
 
 		// insert user into SQLite database
 
-		_, isexistNickName, err := dbfuncs.CheckValueInDB(w, r, NickName, "Nickname")
+		// _, isexistNickName, err := dbfuncs.CheckValueInDB(w, r, NickName, "Nickname")
+		// if err != nil {
+		// 	http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
+		// 	return
+		// }
+
+		// if isexistNickName {
+
+		// 	http.Error(w, `{"error": "NickName is already take please choose another one !"}`, http.StatusBadRequest)
+		// 	return
+		// }
+
+		// _, isexistemail, err := dbfuncs.CheckValueInDB(w, r, email, "Email")
+
 		if err != nil {
+
 			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
 			return
 		}
 
-		if isexistNickName {
+		// if isexistemail {
 
-			http.Error(w, `{"error": "NickName is already take please choose another one !"}`, http.StatusBadRequest)
-			return
-		}
-
-		_, isexistemail, err := dbfuncs.CheckValueInDB(w, r, email, "Email")
-
+		// 	http.Error(w, `{"error": "Email is already take please choose another one !"}`, http.StatusBadRequest)
+		// 	return
+		// }
+		hashedPass, err := dbfuncs.HashPassword(password)
 		if err != nil {
-
 			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
 			return
 		}
-
-		if isexistemail {
-
-			http.Error(w, `{"error": "Email is already take please choose another one !"}`, http.StatusBadRequest)
-			return
+		user := dbfuncs.User{
+			Email:     email,
+			Password:  hashedPass,
+			FirstName: firstName,
+			LastName:  lastName,
+			Nickname:  NickName,
+			DOB:       dob,
+			AboutMe:   aboutMe,
+			Profile:   fileName,
 		}
-
-		err = dbfuncs.AddUser(NickName, firstName, lastName, email, fileName, aboutMe, "private", dob, HashPassord(password))
+		err = dbfuncs.AddUser(&user)
 
 		if err != nil {
 			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
