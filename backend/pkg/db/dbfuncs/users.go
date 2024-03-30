@@ -118,7 +118,7 @@ func Getusers() ([]User, error) {
 
 // 	// Execute the SQL query
 // 	err := database.QueryRow(`
-// 			SELECT Sessions.userId, Users.Profile, Users.Nickname
+// 			SELECT Sessions.userId, Users.Avatar, Users.Nickname
 // 			FROM Sessions
 // 			JOIN Users ON Sessions.UserID = Users.Id
 // 			WHERE Sessions.Id = ?

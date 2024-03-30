@@ -83,7 +83,7 @@ func HandleNewUser(w http.ResponseWriter, r *http.Request) {
 			Nickname:  NickName,
 			DOB:       dob,
 			AboutMe:   aboutMe,
-			Profile:   fileName,
+			Avatar:    fileName,
 		}
 		err = dbfuncs.AddUser(&user)
 

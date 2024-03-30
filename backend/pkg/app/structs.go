@@ -21,7 +21,7 @@ type RegistrationData struct {
 	FirstName   string `json:"firstName"`
 	LastName    string `json:"lastName"`
 	DateOfBirth string `json:"dateOfBirth"`
-	Profile     string `json:"profile"`
+	Avatar      string `json:"profile"`
 	Nickname    string `json:"nickname"`
 	AboutMe     string `json:"aboutMe"`
 }

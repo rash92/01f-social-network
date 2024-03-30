@@ -18,7 +18,7 @@ package handlefuncs
 
 // // This is what will be returned by the handler.
 
-// type Profile struct {
+// type Avatar struct {
 // 	Owner             dbfuncs.User
 // 	Posts             []dbfuncs.Post
 // 	Followers         []string
@@ -33,7 +33,7 @@ package handlefuncs
 
 // 	var userId string
 // 	var ownerId string
-// 	var profile Profile
+// 	var profile Avatar
 // 	var usersOwnProfile bool
 
 // 	if r.Method != http.MethodPost {

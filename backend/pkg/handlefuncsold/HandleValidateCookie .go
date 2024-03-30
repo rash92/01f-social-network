@@ -1,9 +1,9 @@
 package handlefuncs
 
 import (
+	dbfuncs "backend/pkg/db/dbfuncs"
 	"encoding/json"
 	"net/http"
-	dbfuncs "backend/pkg/db/dbfuncs"
 )
 
 func HandleValidateCookie(w http.ResponseWriter, r *http.Request) {
@@ -19,7 +19,7 @@ func HandleValidateCookie(w http.ResponseWriter, r *http.Request) {
 		// 		// var storedPassword string
 
 		// 		query := `
-		//     SELECT  Sessions.userId, Users.Profile
+		//     SELECT  Sessions.userId, Users.Avatar
 		// FROM Sessions
 		// JOIN Users ON Sessions.UserID = Users.Id
 		// WHERE Sessions.Id = ?
