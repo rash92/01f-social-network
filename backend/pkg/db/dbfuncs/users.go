@@ -113,7 +113,7 @@ func Getusers() ([]User, error) {
 
 // func GetUserDataFromSession(sessionId string) (string, string, string, error) {
 // 	var userId string
-// 	varAvatarImage string
+// 	var varAvatarImage string
 // 	var nickname string
 
 // 	// Execute the SQL query
