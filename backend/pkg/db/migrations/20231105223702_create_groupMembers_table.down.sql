@@ -1,1 +1,1 @@
-DROP TABLE GroupMembers;
+-- DROP TABLE GroupMembers;

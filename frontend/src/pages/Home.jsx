@@ -22,7 +22,7 @@ function Home() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({id: user.Id}),
+        body: JSON.stringify({Id: user.Id}),
       });
       console.log(res);
       setUsers(res);
@@ -32,8 +32,10 @@ function Home() {
   }, [user.Id]);
 
   useEffect(() => {
-    getAllUsers();
-  }, [getAllUsers]);
+    if (user.isLogIn) {
+      getAllUsers();
+    }
+  }, [user.isLogIn, getAllUsers]);
 
   return (
     <Container>

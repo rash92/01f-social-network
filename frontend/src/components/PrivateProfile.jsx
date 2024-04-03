@@ -1,6 +1,12 @@
 import {Button} from "react-bootstrap";
 import User from "./User";
-const PrivateProfile = ({Nickname, fellowUserHandler, IsOnline, Avatar}) => {
+const PrivateProfile = ({
+  Nickname,
+  fellowUserHandler,
+  IsOnline,
+  Avatar,
+  IsPending,
+}) => {
   return (
     <div
       style={{
@@ -8,10 +14,15 @@ const PrivateProfile = ({Nickname, fellowUserHandler, IsOnline, Avatar}) => {
         textAlign: "center",
       }}
     >
-      <p>{Nickname}'s profile is Private . Please Fellow.</p>
+      {IsPending ? (
+        <p>{Nickname} has not accepted your request yet. Please wait.</p>
+      ) : (
+        <p>{Nickname}'s profile is Private. Please Follow.</p>
+      )}
       <div style={{display: "flex", gap: "3rem"}}>
-        <User Nickname={Nickname} isLoggedIn={IsOnline}  Avatar={Avatar}/>
-        <Button onClick={fellowUserHandler}>Follow</Button>
+        <User Nickname={Nickname} isLoggedIn={IsOnline} Avatar={Avatar} />
+
+        {!IsPending && <Button onClick={fellowUserHandler}>Follow</Button>}
       </div>
     </div>
   );

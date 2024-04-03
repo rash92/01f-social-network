@@ -27,10 +27,10 @@ type Avatar struct {
 	NumberOfFollowers int
 	NumberOfFollowing int
 	IsFollowed        bool
+	IsPending         bool
 }
 
 func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
-
 	var userId string
 	var ownerId string
 	var profile Avatar
@@ -76,7 +76,14 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !usersOwnProfile && profile.Owner.PrivacySetting == "private" && !profile.IsFollowed {
+	profile.IsPending, err = dbfuncs.IsPending(userId, ownerId)
+	if err != nil {
+		fmt.Printf("failed to execute query: %v\n", err)
+		http.Error(w, "Failed to execute query", http.StatusInternalServerError)
+		return
+	}
+
+	if !usersOwnProfile && profile.Owner.PrivacySetting == "private" && !profile.IsFollowed  {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -145,3 +152,5 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(profile)
 
 }
+
+// "f79a88a6-6eaf-479f-936c-79a1b9de0729:1 Access to fetch at 'http://localhost:8000/profile' from origin 'http://localhost:3000' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. If an opaque response serves your needs, set the request's mode to 'no-cors' to fetch the resource with CORS disabled."

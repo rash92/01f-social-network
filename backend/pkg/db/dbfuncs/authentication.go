@@ -33,11 +33,15 @@ func ValidateCookie(sessionId string) (bool, error) {
 	var id string
 	var expiration time.Time
 	err := db.QueryRow("SELECT Id, Expires FROM Sessions WHERE Id=?", sessionId).Scan(&id, &expiration)
+
 	if err == sql.ErrNoRows {
+
 		return false, nil
 	} else if err != nil {
+
 		return false, err
 	}
+
 	return id == sessionId && time.Now().Before(expiration), nil
 }
 

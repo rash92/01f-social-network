@@ -34,6 +34,7 @@ func HandleValidateCookie(w http.ResponseWriter, r *http.Request) {
 		//	}
 		id, err := dbfuncs.GetUserIdFromCookie(cookie.Value)
 		if err != nil {
+			
 			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 			return
 		}

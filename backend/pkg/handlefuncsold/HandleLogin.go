@@ -72,6 +72,8 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 		}
 
+		fmt.Println("session might expire, but who really knows ...", session.Expires)
+
 		http.SetCookie(w, &http.Cookie{
 			Name:     "user_token",
 			Value:    session.Id,

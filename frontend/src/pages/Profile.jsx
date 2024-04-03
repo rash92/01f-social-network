@@ -1,5 +1,5 @@
 // YourComponent.js
-import React, {useState, useRef} from "react";
+import React, {useState, useRef, useEffect} from "react";
 import classes from "./Profile.module.css";
 import ProfileCard from "../components/ProfileCard";
 import AuthContext from "../store/authContext";
@@ -40,7 +40,7 @@ const options2 = [
 ];
 
 const Profile = () => {
-  const {user} = React.useContext(AuthContext);
+  const {user, isWsReady, wsMsgToServer} = React.useContext(AuthContext);
   const userData = useLoaderData();
   const routeError = useRouteError();
   const postRef = useRef(null);
@@ -130,9 +130,25 @@ const Profile = () => {
     }
   };
 
-  // console.log(d);
-
-  console.log(isPrivate, data.Owner.Id, user.Id, data.IsFollowed, "data");
+  const requestFollowHandler = async () => {
+    console.log(data.Owner.Id, "ownerId", user.Id, "userId");
+    try {
+      if (isWsReady) {
+        wsMsgToServer(
+          JSON.stringify({
+            type: "requestToFollow",
+            message: {
+              FollowerId: user.Id,
+              FollowingId: data.Owner.Id,
+              Status: "pending",
+            },
+          })
+        );
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   return routeError ? (
     routeError.message
@@ -141,11 +157,12 @@ const Profile = () => {
       <div className={classes.profile}>
         {isPrivate && data.Owner.Id !== user.Id && !data.IsFollowed ? (
           <PrivateProfile
-            Avatar={data?.Owner?.Profile}
+            IsPending={data.IsPending}
+            Avatar={data?.Owner?.avatar}
             IsOnline={true}
             name={"bilal"}
             Nickname={data.Owner.Nickname}
-            fellowUserHandler={() => {}}
+            fellowUserHandler={requestFollowHandler}
           />
         ) : (
           <InfiniteScroll
@@ -197,15 +214,12 @@ const Profile = () => {
 };
 
 export async function profileLoader({request, params}) {
-  console.log(params.id, "id profile");
-  // console.log(params.id, request);
   return getJson("profile", {
-    // signal: request.signal,/
     method: "POST",
-    credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: "include",
     body: JSON.stringify(params.id),
   });
 }

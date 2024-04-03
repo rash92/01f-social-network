@@ -30,7 +30,7 @@ func AddSession(userId string) (Session, error) {
 	}
 	session := Session{
 		Id:      id.String(),
-		Expires: time.Now().Add(time.Minute * 60),
+		Expires: time.Now().Add(time.Hour * 72),
 		UserId:  userId,
 	}
 
@@ -76,7 +76,7 @@ func IsUserPrivate(userId string) (bool, error) {
 	if privacySetting == "public" {
 		return false, nil
 	}
-	if privacySetting == "private" {
+	if  privacySetting == "private"  ||  privacySetting == ""{
 		return true, nil
 	}
 	return false, errors.New("privacy setting not recognized, should be either 'private' or 'public'")
@@ -91,8 +91,8 @@ func GetUserById(id string) (User, error) {
 
 //figure out whether to delete or rewrite or keep etc.
 
-func Getusers() ([]User, error) {
-	rows, err := db.Query("SELECT Id,FirstName, LastName, Nickname,Avatar, AboutMe, Privacy_setting, DOB, CreatedAt FROM Users")
+func GetUsers() ([]User, error) {
+	rows, err := db.Query("SELECT Id,FirstName, LastName, Nickname, Avatar, AboutMe, PrivacySetting, DOB, CreatedAt FROM Users")
 	if err != nil {
 		return []User{}, err
 	}

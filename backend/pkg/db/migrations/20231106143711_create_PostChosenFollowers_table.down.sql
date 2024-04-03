@@ -1,1 +1,1 @@
-DROP TABLE PostChosenFollowers;
+-- DROP TABLE PostChosenFollowers;

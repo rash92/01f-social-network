@@ -1,1 +1,1 @@
-   DROP TABLE GroupEvents;
+   -- DROP TABLE GroupEvents;

@@ -2,33 +2,55 @@ package main
 
 import (
 	"backend/pkg/db/dbfuncs"
+
 	handlefuncs "backend/pkg/handlefuncsold"
 	"fmt"
 	"net/http"
 )
 
+// func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
+// 	return func(w http.ResponseWriter, r *http.Request) {
+// 		handlefuncs.Cors(&w, r)
+// 		cookie, err := r.Cookie("user_token")
+// 		if err != nil {
+// 			http.Error(w, `{"error": "something went to wrong"}`, http.StatusUnauthorized)
+// 			return
+// 		}
+// 		isValidCookie, err := dbfuncs.ValidateCookie(cookie.Value)
+// 		if err != nil || !isValidCookie {
+// 			// fmt.Println("cookie value wrapper function", cookie.Value)
+// 			http.Error(w, `{"error": "something went to wrong"}`, http.StatusUnauthorized)
+// 			return
+// 		}
+// 		handler(w, r)
+// 	}
+// }
+
 func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		handlefuncs.Cors(&w, r)
-		cookie, err := r.Cookie("user_token")
 
-		cookieValue, err := dbfuncs.ValidateCookie(cookie.Value)
-		if err != nil || cookieValue {
+		cookie, err := r.Cookie("user_token")
+		if err != nil {
 			http.Error(w, `{"error": "something went to wrong"}`, http.StatusUnauthorized)
+			return
 		}
 
-		if err != nil || cookieValue {
+		cookieValue, err := dbfuncs.ValidateCookie(cookie.Value)
+
+		if !(err == nil && cookieValue) {
 			// fmt.Println("cookie value wrapper function", cookie.Value)
 			http.Error(w, `{"error": "something went to wrong"}`, http.StatusUnauthorized)
 			return
 		}
+
 		handler(w, r)
 	}
 }
 
 func main() {
 
-	// DeleteUserByUsername("bilal")
+	// dbfuncs.DeleteUserByUsername("Accepted")
 	// sqlite.Migrate()
 	http.HandleFunc("/ws", wrapperHandler(handlefuncs.HandleConnection))
 
@@ -47,6 +69,7 @@ func main() {
 	// http.HandleFunc("/react-Post-like-dislike", handlefuncs.HandlePostLikeDislike)
 	// http.HandleFunc("/react-comment-like-dislike", handlefuncs.HandleCommenttLikeDislike)
 	// http.HandleFunc("/removePost", handlefuncs.HandleRemovePost)
+	http.HandleFunc("/dashboard", wrapperHandler(handlefuncs.HandleDashboard))
 	http.HandleFunc("/profile", wrapperHandler(handlefuncs.HandleGetProfile))
 	http.HandleFunc("/get-users", wrapperHandler(handlefuncs.HandleGetUsers))
 	http.HandleFunc("/get-messages", handlefuncs.MessagesHandler)

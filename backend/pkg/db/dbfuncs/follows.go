@@ -4,6 +4,26 @@ import (
 	"database/sql"
 )
 
+func IsFollowing(userId, ownerId string) (bool, error) {
+	isFollowing := false
+	query := `SELECT EXISTS(SELECT 1 FROM Follows WHERE FollowerId=? AND FollowingId=? AND Status=?)`
+	err := db.QueryRow(query, userId, ownerId, "accepted").Scan(&isFollowing)
+	if err != nil {
+		return false, err
+	}
+	return isFollowing, nil
+}
+
+func IsPending(userId, ownerId string) (bool, error) {
+	isPending := false
+	query := `SELECT EXISTS(SELECT 1 FROM Follows WHERE FollowerId=? AND FollowingId=? AND Status=?)`
+	err := db.QueryRow(query, userId, ownerId, "pending").Scan(&isPending)
+	if err != nil {
+		return false, err
+	}
+	return isPending, nil
+}
+
 func AddFollow(follow *Follow) error {
 	statement, err := db.Prepare("INSERT INTO Follows VALUES (?,?,?)")
 	if err != nil {

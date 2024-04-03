@@ -1,1 +1,1 @@
-DROP TABLE Groups;
+-- DROP TABLE Groups;

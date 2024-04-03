@@ -64,9 +64,10 @@ var (
 // this is what the client sends to the server,
 // Body will be unmarshalled based on type into PrivateMessage, GroupMessage, or Notification etc.
 // as well as ws messages unrelated to database operations
+
 type SignalReceived struct {
-	Type string `json:"type"`
-	Body []byte `json:"message"`
+	Type string          `json:"type"`
+	Body json.RawMessage `json:"message"`
 }
 
 func unmarshalBody[T any](signalBody []byte, receivedData T) {
@@ -105,15 +106,15 @@ func unmarshalBody[T any](signalBody []byte, receivedData T) {
 // 	}
 // }
 
-// type Notification struct {
-// 	Id         string    `json:"Id"`
-// 	ReceiverId string    `json:"RecieverId"`
-// 	SenderId   string    `json:"SenderId"`
-// 	Body       string    `json:"Body"`
-// 	Type       string    `json:"Type"`
-// 	CreatedAt  time.Time `json:"CreatedAt"`
-// 	Seen       bool      `json:"Seen"`
-// }
+type Notification struct {
+	Id         string    `json:"Id"`
+	ReceiverId string    `json:"RecieverId"`
+	SenderId   string    `json:"SenderId"`
+	Body       string    `json:"Body"`
+	Type       string    `json:"Type"`
+	CreatedAt  time.Time `json:"CreatedAt"`
+	Seen       bool      `json:"Seen"`
+}
 
 // type NotificationSeen struct {
 // 	Id string `json:"Id"`
@@ -131,19 +132,25 @@ func unmarshalBody[T any](signalBody []byte, receivedData T) {
 // // these may not involve database calls but can still be sent through websockets
 // // this can be resused for sending SignalReceiveds to other users about a user who has
 // // e.g. registered, logged in, logged out, or changed their status
-// type BasicUserInfo struct {
-// 	UserId         string `json:"UserId"`
-// 	FirstName      string `json:"FirstName"`
-// 	LastName       string `json:"LastName"`
-// 	Nickname       string `json:"Nickname"`
-// 	PrivacySetting string `json:"PrivacySetting"`
-// }
+type BasicUserInfo struct {
+	UserId         string `json:"UserId"`
+	FirstName      string `json:"FirstName"`
+	LastName       string `json:"LastName"`
+	Nickname       string `json:"Nickname"`
+	PrivacySetting string `json:"PrivacySetting"`
+}
 
-// type RequestToFollow struct {
-// 	User   BasicUserInfo `json:"User"`
-// 	Status string        `json:"Status"`
-// 	Type   string        `json:"Type"`
-// }
+type RequestToFollow struct {
+	User   BasicUserInfo `json:"User"`
+	Status string        `json:"Status"`
+	Type   string        `json:"Type"`
+}
+
+type Follow struct {
+	FollowerId  string `json:"FollowerId"`
+	FollowingId string `json:"FollowingId"`
+	Status      string `json:"Status"`
+}
 
 // type Event struct {
 // 	EventId     string `json:"EventId"`
@@ -221,7 +228,7 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 	// this.
 	broadcastUserList()
 
-camelsBack:
+	// camelsBack:
 	for {
 		_, msgBytes, err := conn.ReadMessage()
 		//possibly don't want to immediately delete the connection if there is an error
@@ -253,14 +260,16 @@ camelsBack:
 			break
 		}
 
-		var finalStraw error
-		if err != nil {
-			// finalStraw = notifyClientOfError(err, "error processing websocket message", userID)
-		}
-		if finalStraw != nil {
-			log.Println("error sending error message to client:", finalStraw)
-			break camelsBack
-		}
+		fmt.Println("returned from broker", err)
+
+		// var finalStraw error
+		// if err != nil {
+		// 	finalStraw = notifyClientOfError(err, "error processing websocket message", userID)
+		// }
+		// if finalStraw != nil {
+		// 	log.Println("error sending error message to client:", finalStraw)
+		// 	break camelsBack
+		// }
 	}
 }
 
@@ -282,6 +291,14 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		logout(userID, conn, w)
 		err = fmt.Errorf("logout")
 		return err
+
+	case "requestToFollow":
+		var receivedData Follow
+
+		unmarshalBody(signal.Body, &receivedData)
+		fmt.Println(receivedData)
+		err = requestToFollow(receivedData)
+		fmt.Println("returned from requestToFollow")
 
 		// 	//fill in
 		// case "inviteToJoinGroup":
@@ -338,6 +355,7 @@ func closeConnection(conn *websocket.Conn) {
 // The frontend also needs to trigger handlefuncs.HandleLogOut via http
 // as we don't have access to the cookie using websockets.
 func logout(userID string, thisConn *websocket.Conn, w http.ResponseWriter) {
+	fmt.Println("logging out")
 	connectionLock.RLock()
 	for _, c := range activeConnections[userID] {
 		if c != thisConn {
@@ -359,4 +377,76 @@ func logout(userID string, thisConn *websocket.Conn, w http.ResponseWriter) {
 
 		SameSite: http.SameSiteLaxMode,
 	})
+}
+
+func requestToFollow(receivedData Follow) error {
+	fmt.Println("requestToFollow", receivedData)
+	var follow dbfuncs.Follow
+	follow.FollowingId = receivedData.FollowingId
+	follow.FollowerId = receivedData.FollowerId
+
+	log.Println(follow)
+
+	private, err := dbfuncs.IsUserPrivate(receivedData.FollowingId)
+	if err != nil {
+
+		log.Println("error checking if user is public", err)
+		return err
+
+	}
+
+	log.Println("private", private)
+
+	if private {
+		follow.Status = "pending"
+	} else {
+		follow.Status = "accepted"
+	}
+
+
+
+
+
+
+	
+	err = dbfuncs.AddFollow(&follow)
+	if err != nil {
+		log.Println("error adding follow to database", err)
+		// notifyClientOfError(err, "error adding follow to database", receivedData.FollowerId)
+		return err
+	}
+
+	// follower, err := dbfuncs.GetUserById(receivedData.FollowerId)
+	// if err != nil {
+	// 	log.Println("error getting nickname from database", err)
+	// 	// notifyClientOfError(err, "error getting nickname from database", receivedData.FollowerId)
+	// 	return err
+	// }
+
+	// // notification := Notification{
+	// // 	ReceiverId: receivedData.FollowingId,
+	// // 	SenderId:   receivedData.FollowerId,
+	// // 	Body:       fmt.Sprintf("%s has requested to follow you", follower.Nickname),
+	// // 	Type:       "requestToFollow",
+	// // }
+
+	// if private {
+	// 	// err = dbfuncs.AddNotification(notification.parseForDB())
+	// 	if err != nil {
+	// 		log.Println("error adding requestToFollow notification to database", err)
+	// 		return err
+	// 	}
+	// }
+
+	// connectionLock.RLock()
+	// for _, c := range activeConnections[follow.FollowingId] {
+	// 	err = c.WriteJSON(notification)
+	// 	if err != nil {
+	// 		log.Println("error sending (potential) new follower info to recipient", err)
+	// 	}
+	// }
+
+	// connectionLock.RUnlock()
+
+	return err
 }

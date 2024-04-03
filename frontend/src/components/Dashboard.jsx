@@ -12,13 +12,14 @@ function Dashboard() {
   const {user} = useContext(AuthContext);
   const fetchDashboard = useCallback(async () => {
     try {
+      console.log(user.Id, "dashboard");
       const data = await getJson("dashboard", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          user_token: document.cookie,
         },
-        credentials: "include",
+
         body: JSON.stringify(user.Id),
       });
 

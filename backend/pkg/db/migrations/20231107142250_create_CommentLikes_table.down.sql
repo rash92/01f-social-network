@@ -1,1 +1,1 @@
-DROP TABLE CommentLikes
+-- DROP TABLE CommentLikes
