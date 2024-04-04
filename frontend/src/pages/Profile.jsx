@@ -13,31 +13,6 @@ import PrivateProfile from "../components/PrivateProfile";
 import {useLoaderData, useRouteError} from "react-router";
 import PostInput from "../components/PostInput";
 
-const options1 = [
-  {id: 1, username: "user", name: "User 1"},
-  {id: 2, username: "user", name: "User 2"},
-  {id: 3, username: "user", name: "User 3"},
-  {id: 4, username: "user", name: "User 4"},
-  {id: 5, username: "user", name: "User 5"},
-  {id: 6, username: "user", name: "User 6"},
-  {id: 7, username: "user", name: "User 7"},
-  {id: 8, username: "user", name: "User 8"},
-  {id: 9, username: "user", name: "User 9"},
-  {id: 10, username: "user", name: "User 10"},
-];
-
-const options2 = [
-  {id: 1, username: "user", name: "User 1"},
-  {id: 2, username: "user", name: "User 2"},
-  {id: 3, username: "user", name: "User 3"},
-  {id: 4, username: "user", name: "User 4"},
-  {id: 5, username: "user", name: "User 5"},
-  {id: 6, username: "user", name: "User 6"},
-  {id: 7, username: "user", name: "User 7"},
-  {id: 8, username: "user", name: "User 8"},
-  {id: 9, username: "user", name: "User 9"},
-  {id: 10, username: "user", name: "User 10"},
-];
 
 const Profile = () => {
   const {user, isWsReady, wsMsgToServer} = React.useContext(AuthContext);
@@ -45,12 +20,12 @@ const Profile = () => {
   const routeError = useRouteError();
   const postRef = useRef(null);
   const [show, setShow] = useState(false);
-  const [isActive, setIsActive] = useState("");
+  const [isActive, setIsActive] = useState("Posts");
   const [data, setData] = useState(userData);
-  const [hasMoreFellowers, setHasMoreFellowers] = useState({
-    followers: true,
-    following: true,
-  });
+  // const [hasMoreFellowers, setHasMoreFellowers] = useState({
+  //   followers: true,
+  //   following: true,
+  // });
 
   // const dummyUser = {
   //   id: "4e56t78y98u0ii9i90i",
@@ -78,7 +53,7 @@ const Profile = () => {
       ? true
       : false;
 
-  const [hasMorePosts, setHasMorePosts] = useState(true);
+  // const [hasMorePosts, setHasMorePosts] = useState(true);
   const toggleProfileVisibility = () => {};
 
   const toggleActionModel = (active) => {
@@ -90,48 +65,52 @@ const Profile = () => {
   };
 
   const toggleAction = (clickButton, e) => {
+    console.log(clickButton);
     if (clickButton === "Posts") {
       postRef.current.scrollIntoView({behavior: "smooth"});
       return;
     }
     setIsActive(clickButton.toLowerCase());
-    console.log(isActive);
-    if (
-      data[`NumberOf${isActive.charAt(0).toUpperCase()}${isActive.slice(1)}`]
-    ) {
+  };
+
+  useEffect(() => {
+    if (!(isActive === "Posts")) {
       handleShow();
     }
-  };
 
-  const fetchMoreFellowers = () => {
-    if (
-      data[isActive]?.length <
-      data[`NumberOf${isActive.charAt(0).toUpperCase()}${isActive.slice(1)}`]
-    ) {
-      setData((prev) => ({
-        ...prev,
-        [isActive]: [...prev[isActive], ...options1],
-      }));
-    } else {
-      setHasMoreFellowers((pre) => ({...pre, [isActive]: false}));
-    }
-  };
+    return () => {
+      setIsActive("Posts");
+    };
+  }, [isActive]);
 
-  const fetchMorePosts = () => {
-    if (data.Posts.length <= 50) {
-      setData((prev) => ({
-        ...prev,
-        Posts: [...prev.Posts, ...dummyPosts],
-      }));
-      console.log(data);
-    } else {
-      console.log(data);
-      setHasMorePosts(false);
-    }
-  };
+  // const fetchMoreFellowers = () => {
+  //   if (
+  //     data[isActive]?.length <
+  //     data[`NumberOf${isActive.charAt(0).toUpperCase()}${isActive.slice(1)}`]
+  //   ) {
+  //     setData((prev) => ({
+  //       ...prev,
+  //       [isActive]: [...prev[isActive], ...options1],
+  //     }));
+  //   } else {
+  //     setHasMoreFellowers((pre) => ({...pre, [isActive]: false}));
+  //   }
+  // };
+
+  // const fetchMorePosts = () => {
+  //   if (data.Posts.length <= 50) {
+  //     setData((prev) => ({
+  //       ...prev,
+  //       Posts: [...prev.Posts, ...dummyPosts],
+  //     }));
+  //     console.log(data);
+  //   } else {
+  //     console.log(data);
+  //     setHasMorePosts(false);
+  //   }
+  // };
 
   const requestFollowHandler = async () => {
-    console.log(data.Owner.Id, "ownerId", user.Id, "userId");
     try {
       if (isWsReady) {
         wsMsgToServer(
@@ -165,17 +144,18 @@ const Profile = () => {
             fellowUserHandler={requestFollowHandler}
           />
         ) : (
-          <InfiniteScroll
-            dataLength={data.posts?.length || 0}
-            next={fetchMorePosts}
-            hasMore={hasMorePosts}
-            loader={<h4>Loading...</h4>}
-            endMessage={
-              <p style={{textAlign: "center"}}>
-                <b>Yay! You have seen it all</b>
-              </p>
-            }
-          >
+          // <InfiniteScroll
+          //   dataLength={data.posts?.length || 0}
+          //   next={fetchMorePosts}
+          //   hasMore={hasMorePosts}
+          //   loader={<h4>Loading...</h4>}
+          //   endMessage={
+          //     <p style={{textAlign: "center"}}>
+          //       <b>Yay! You have seen it all</b>
+          //     </p>
+          //   }
+          // >
+          <>
             <ProfileCard
               user={data.Owner}
               toggleAction={toggleAction}
@@ -185,6 +165,7 @@ const Profile = () => {
               numberOfFollowers={data.NumberOfFollowers}
               numberOfFollowing={data.NumberOfFollowing}
               numberOfPosts={data.NumberOfPosts}
+              numberOfRequests={1}
             />
             <ProfileActions
               user={data}
@@ -193,9 +174,10 @@ const Profile = () => {
               show={show}
               flag={false}
               isActive={isActive}
+              owner={user.Id === data.Owner.Id}
               toggleAction={toggleActionModel}
-              fetchMoreFellowers={fetchMoreFellowers}
-              hasMoreFellowers={hasMoreFellowers}
+              // fetchMoreFellowers={fetchMoreFellowers}
+              // hasMoreFellowers={hasMoreFellowers}
             />
 
             <div>
@@ -206,7 +188,8 @@ const Profile = () => {
                 {<Posts posts={data.Posts} postref={postRef} />}
               </section>
             </div>
-          </InfiniteScroll>
+          </>
+          // </InfiniteScroll>
         )}
       </div>
     </Container>

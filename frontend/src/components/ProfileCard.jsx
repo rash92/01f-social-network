@@ -13,10 +13,8 @@ const ProfileCard = ({
   owner,
   isPrivate,
   isFollowed,
-  numberOfFollowers,
-  numberOfFollowing,
-  numberOfPosts,
 }) => {
+  // console.log(owner, "owner");
   return (
     <Card className={classes.card}>
       <div className={classes.profileContainer}>
@@ -40,25 +38,32 @@ const ProfileCard = ({
                 size={"100px"}
               />
             )}
-
-            <ul className={`${classes["profile-action"]}   `}>
+                     
+            <ul className={`${classes["profile-action"]}`}>
               <Action
-                numberAction={numberOfPosts}
+                numberAction={user.Posts?.length || 0}
                 actionName={"Posts"}
                 toggleAction={toggleAction}
               />
 
               <Action
-                numberAction={numberOfFollowers}
+                numberAction={user.Followers?.length || 0}
                 actionName={"Followers"}
                 toggleAction={toggleAction}
               />
 
               <Action
-                numberAction={numberOfFollowing}
+                numberAction={user.Following?.length || 0}
                 actionName={"Following"}
                 toggleAction={toggleAction}
               />
+              {owner && (
+                <Action
+                  numberAction={user?.Requests?.length || 0}
+                  actionName={"Requests"}
+                  toggleAction={toggleAction}
+                />
+              )}
             </ul>
           </div>
           <Card.Title>

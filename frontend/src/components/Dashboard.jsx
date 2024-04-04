@@ -6,6 +6,13 @@ import Groups from "./Groups";
 import Chats from "./ChatLists";
 import {getJson} from "../helpers/helpers";
 import AuthContext from "../store/authContext";
+import NotificationContainer from "./Notifications";
+const notifications = [
+  {message: "Notification 1", variant: "success"},
+  {message: "Notification 2", variant: "info"},
+  {message: "Notification 3", variant: "warning"},
+  {message: "Notification 4", variant: "danger"},
+];
 function Dashboard() {
   const [activeSection, setActiveSection] = useState("posts");
   const [dashBoardData, setDashBoardData] = useState({});
@@ -76,6 +83,15 @@ function Dashboard() {
                 Groups
               </Nav.Link>
             </Nav.Item>
+
+            <Nav.Item>
+              <Nav.Link
+                eventKey="Notifications"
+                onClick={handleSectionClick.bind(null, "notifications")}
+              >
+                Notifications
+              </Nav.Link>
+            </Nav.Item>
           </Nav>
         </Col>
       </Row>
@@ -90,6 +106,9 @@ function Dashboard() {
           {activeSection === "posts" && <Posts posts={dummyPosts} />}
           {activeSection === "chats" && <Chats chats={dashBoardData?.chats} />}
           {activeSection === "groups" && <Groups groups={groups} />}
+          {activeSection === "notifications" && (
+            <NotificationContainer notifications={notifications} />
+          )}
         </Col>
       </Row>
     </>

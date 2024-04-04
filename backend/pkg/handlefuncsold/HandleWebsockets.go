@@ -380,7 +380,7 @@ func logout(userID string, thisConn *websocket.Conn, w http.ResponseWriter) {
 }
 
 func requestToFollow(receivedData Follow) error {
-	fmt.Println("requestToFollow", receivedData)
+	// fmt.Println("requestToFollow", receivedData)
 	var follow dbfuncs.Follow
 	follow.FollowingId = receivedData.FollowingId
 	follow.FollowerId = receivedData.FollowerId

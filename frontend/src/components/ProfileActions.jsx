@@ -6,7 +6,7 @@ import User from "./User";
 import classes from "./ProfileActions.module.css";
 import {Link} from "react-router-dom";
 import {Button} from "react-bootstrap";
-import InfiniteScroll from "react-infinite-scroll-component";
+// import InfiniteScroll from "react-infinite-scroll-component";
 
 const ProfileActions = ({
   user,
@@ -16,9 +16,13 @@ const ProfileActions = ({
   flag,
   toggleAction,
   isActive,
-  fetchMoreFellowers,
-  hasMoreFellowers,
+  owner,
+  // fetchMoreFellowers,
+  // hasMoreFellowers,
 }) => {
+
+    
+
   return (
     <MyModal
       handleClose={handleClose}
@@ -28,21 +32,29 @@ const ProfileActions = ({
     >
       <ul className={classes.actions}>
         <Action
-          numberAction={user.NumberOfFollowers}
+          numberAction={user.Followers.length}
           actionName={"followers"}
           toggleAction={toggleAction}
           active={isActive}
         />
         <Action
-          numberAction={user.NumberOfFollowing}
+          numberAction={user.Following.length}
           actionName={"following"}
           toggleAction={toggleAction}
           active={isActive}
         />
+        {owner && (
+          <Action
+            numberAction={user?.Requests?.length || 0} //  user.numberOfRequests
+            actionName={"Requests"}
+            toggleAction={toggleAction}
+            active={isActive}
+          />
+        )}
       </ul>
       <div>
         <ul>
-          <InfiniteScroll
+          {/* <InfiniteScroll
             dataLength={
               user[
                 `NumberOf${isActive.charAt(0).toUpperCase()}${isActive.slice(
@@ -60,23 +72,23 @@ const ProfileActions = ({
               </p>
             }
             className={classes.followers}
-          >
-            {user[isActive]?.map((user, i) => (
-              <li key={i} className={classes.item}>
-                <Link to={`/profile/${i}`} className={classes.links}>
-                  <User
-                    userName={`${user.username} ${i + 1}`}
-                    isLoggedIn={true}
-                    name={user.name}
-                  />
-                </Link>
+          > */}
+          {user[isActive]?.map((user, i) => (
+            <li key={i} className={classes.item}>
+              <Link to={`/profile/${i}`} className={classes.links}>
+                <User
+                  userName={`${user.username} ${i + 1}`}
+                  isLoggedIn={true}
+                  name={user.name}
+                />
+              </Link>
 
-                <Button className={classes.itemButton}>
-                  {isActive === "followers" ? "Remove" : "Fellowing"}
-                </Button>
-              </li>
-            ))}
-          </InfiniteScroll>
+              <Button className={classes.itemButton}>
+                {isActive === "followers" ? "Remove" : "Following"}
+              </Button>
+            </li>
+          ))}
+          {/* </InfiniteScroll> */}
         </ul>
       </div>
     </MyModal>
