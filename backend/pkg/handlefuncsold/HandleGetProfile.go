@@ -131,6 +131,7 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	if usersOwnProfile {
+		fmt.Println("getting pending followers")
 		pendingFollowers, err := dbfuncs.GetPendingFollowerIdsByFollowingId(ownerId)
 		if err != nil {
 
@@ -167,12 +168,6 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
-
-
-
-
-	
 	profile.Followers, err = dbfuncs.GetFollowersOrFollowing(ownerId, "FollowerId", 1)
 	if err != nil {
 		errorMessage := fmt.Sprintf("error getting followers: %v", err.Error())
@@ -189,7 +184,7 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// fmt.Println(profile, "profile")
+	fmt.Println(profile, "profile")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(profile)
