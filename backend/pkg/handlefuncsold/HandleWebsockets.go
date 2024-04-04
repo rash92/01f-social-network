@@ -140,16 +140,22 @@ type BasicUserInfo struct {
 	PrivacySetting string `json:"PrivacySetting"`
 }
 
-type RequestToFollow struct {
-	User   BasicUserInfo `json:"User"`
-	Status string        `json:"Status"`
-	Type   string        `json:"Type"`
-}
+// type RequestToFollow struct {
+// 	User   BasicUserInfo `json:"User"`
+// 	Status string        `json:"Status"`
+// 	Type   string        `json:"Type"`
+// }
 
 type Follow struct {
 	FollowerId  string `json:"FollowerId"`
 	FollowingId string `json:"FollowingId"`
 	Status      string `json:"Status"`
+}
+
+type AnswerRequestToFollow struct {
+	SenderId   string `json:"SenderId"`
+	ReceiverId string `json:"ReceiverId"`
+	Reply      string `json:"Reply"`
 }
 
 // type Event struct {
@@ -271,10 +277,12 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 		// if err != nil {
 		// 	finalStraw = notifyClientOfError(err, "error processing websocket message", userID)
 		// }
+
 		// if finalStraw != nil {
 		// 	log.Println("error sending error message to client:", finalStraw)
 		// 	break camelsBack
 		// }
+
 	}
 }
 
@@ -304,7 +312,8 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		err = requestToFollow(receivedData)
 		fmt.Println("returned from requestToFollow")
 	case "answerRequestToFollow":
-		var receivedData Notification
+		var receivedData AnswerRequestToFollow
+		unmarshalBody(signal.Body, &receivedData)
 		err = answerRequestToFollow(receivedData)
 	}
 	return err
@@ -443,10 +452,10 @@ func requestToFollow(receivedData Follow) error {
 }
 
 // When received, client should request profile if they're on profile page.
-func answerRequestToFollow(receivedData Notification) error {
+func answerRequestToFollow(receivedData AnswerRequestToFollow) error {
 	var err error
 
-	switch receivedData.Body {
+	switch receivedData.Reply {
 	case "yes":
 		err = dbfuncs.AcceptFollow(receivedData.SenderId, receivedData.ReceiverId)
 		if err != nil {
@@ -462,26 +471,35 @@ func answerRequestToFollow(receivedData Notification) error {
 		}
 		return err
 	default:
-		log.Println("unexpected body in answerRequestToFollow:", receivedData.Body)
+		log.Println("unexpected reply in answerRequestToFollow:", receivedData.Reply)
 		log.Printf("%s sent unexpected body %s, answering request from %s\n",
-			receivedData.SenderId, receivedData.Body, receivedData.ReceiverId)
+			receivedData.SenderId, receivedData.Reply, receivedData.ReceiverId)
 		return fmt.Errorf("unexpected body in answerRequestToFollow")
 	}
 
-	err = dbfuncs.AddNotification(receivedData.parseForDB())
-	if err != nil {
-		log.Print("error adding notification to database", err)
-		log.Printf("%s answered follow request from %s\n",
-			receivedData.SenderId, receivedData.ReceiverId)
+	notificationForDB := dbfuncs.Notification{
+		Body:       receivedData.Reply,
+		Type:       "answerRequestToFollow",
+		CreatedAt:  time.Now(), // check format
+		ReceiverId: receivedData.SenderId,
+		SenderId:   receivedData.ReceiverId,
+		Seen:       false,
 	}
 
-	receivedData.Seen = false
+	notificationToSend := Notification{
+		ReceiverId: receivedData.SenderId,
+		SenderId:   receivedData.ReceiverId,
+		Body:       receivedData.Reply,
+		Type:       "answerRequestToFollow",
+		CreatedAt:  notificationForDB.CreatedAt,
+		Seen:       false,
+	}
 
 	connectionLock.RLock()
 	for _, c := range activeConnections[receivedData.ReceiverId] {
-		err = c.WriteJSON(receivedData)
+		err = c.WriteJSON(notificationToSend)
 		if err != nil {
-			log.Println("error sending group message to recipient", err)
+			log.Println("error sending notification to recipient", err)
 		}
 	}
 	connectionLock.RUnlock()
