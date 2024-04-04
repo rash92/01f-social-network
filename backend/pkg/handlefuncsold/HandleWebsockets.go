@@ -299,21 +299,13 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 
 	case "requestToFollow":
 		var receivedData Follow
-
 		unmarshalBody(signal.Body, &receivedData)
 		fmt.Println(receivedData)
 		err = requestToFollow(receivedData)
 		fmt.Println("returned from requestToFollow")
-
-		// 	//fill in
-		// case "inviteToJoinGroup":
-		// 	//fill in
-		// 	// Notify the person you're inviting.
-		// 	inviteToJoinGroup(receivedData)
-		// case "answerInviteToGroup":
-		// 	//fill in
-		// 	answerInviteToJoinGroup(receivedData)
-
+	case "answerRequestToFollow":
+		var receivedData Notification
+		err = answerRequestToFollow(receivedData)
 	}
 	return err
 }
@@ -445,6 +437,53 @@ func requestToFollow(receivedData Follow) error {
 		}
 	}
 
+	connectionLock.RUnlock()
+
+	return err
+}
+
+// When received, client should request profile if they're on profile page.
+func answerRequestToFollow(receivedData Notification) error {
+	var err error
+
+	switch receivedData.Body {
+	case "yes":
+		err = dbfuncs.AcceptFollow(receivedData.SenderId, receivedData.ReceiverId)
+		if err != nil {
+			log.Println("database error accepting follow", err)
+			notifyClientOfError(err, "database error accepting follow", receivedData.SenderId)
+			return err
+		}
+	case "no":
+		err := dbfuncs.DeleteFollow(receivedData.SenderId, receivedData.ReceiverId)
+		if err != nil {
+			log.Println("error rejecting follow", err)
+			notifyClientOfError(err, "error rejecting follow", receivedData.SenderId)
+		}
+		return err
+	default:
+		log.Println("unexpected body in answerRequestToFollow:", receivedData.Body)
+		log.Printf("%s sent unexpected body %s, answering request from %s\n",
+			receivedData.SenderId, receivedData.Body, receivedData.ReceiverId)
+		return fmt.Errorf("unexpected body in answerRequestToFollow")
+	}
+
+	err = dbfuncs.AddNotification(receivedData.parseForDB())
+	if err != nil {
+		log.Print("error adding notification to database", err)
+		log.Printf("%s answered follow request from %s\n",
+			receivedData.SenderId, receivedData.ReceiverId)
+	}
+
+	receivedData.Seen = false
+
+	connectionLock.RLock()
+	for _, c := range activeConnections[receivedData.ReceiverId] {
+		err = c.WriteJSON(receivedData)
+		if err != nil {
+			log.Println("error sending group message to recipient", err)
+		}
+	}
 	connectionLock.RUnlock()
 
 	return err
