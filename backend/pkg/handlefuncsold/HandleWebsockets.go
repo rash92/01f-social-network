@@ -108,7 +108,7 @@ func unmarshalBody[T any](signalBody []byte, receivedData T) {
 
 type Notification struct {
 	Id         string    `json:"Id"`
-	ReceiverId string    `json:"RecieverId"`
+	ReceiverId string    `json:"ReceiverId"` // I changed this from RecieverId 4 Apr
 	SenderId   string    `json:"SenderId"`
 	Body       string    `json:"Body"`
 	Type       string    `json:"Type"`
@@ -120,36 +120,43 @@ type Notification struct {
 // 	Id string `json:"Id"`
 // }
 
-// func (receivedData Notification) parseForDB() *dbfuncs.Notification {
-// 	return &dbfuncs.Notification{
-// 		Body:       receivedData.Body,
-// 		Type:       "requestToFollow",
-// 		ReceiverId: receivedData.ReceiverId,
-// 		SenderId:   receivedData.SenderId,
-// 	}
-// }
+func (receivedData Notification) parseForDB() *dbfuncs.Notification {
+	return &dbfuncs.Notification{
+		Body:       receivedData.Body,
+		Type:       receivedData.Type,
+		ReceiverId: receivedData.ReceiverId,
+		SenderId:   receivedData.SenderId,
+	}
+}
 
 // // these may not involve database calls but can still be sent through websockets
 // // this can be resused for sending SignalReceiveds to other users about a user who has
 // // e.g. registered, logged in, logged out, or changed their status
-type BasicUserInfo struct {
-	UserId         string `json:"UserId"`
-	FirstName      string `json:"FirstName"`
-	LastName       string `json:"LastName"`
-	Nickname       string `json:"Nickname"`
-	PrivacySetting string `json:"PrivacySetting"`
-}
+// type BasicUserInfo struct {
+// 	Avatar string `json:"Avatar"`
+// 	UserId         string `json:"UserId"`
+// 	FirstName      string `json:"FirstName"`
+// 	LastName       string `json:"LastName"`
+// 	Nickname       string `json:"Nickname"`
+// 	PrivacySetting string `json:"PrivacySetting"`
+// }
 
-type RequestToFollow struct {
-	User   BasicUserInfo `json:"User"`
-	Status string        `json:"Status"`
-	Type   string        `json:"Type"`
-}
+// type RequestToFollow struct {
+// 	User   BasicUserInfo `json:"User"`
+// 	Status string        `json:"Status"`
+// 	Type   string        `json:"Type"`
+// }
 
 type Follow struct {
 	FollowerId  string `json:"FollowerId"`
 	FollowingId string `json:"FollowingId"`
 	Status      string `json:"Status"`
+}
+
+type AnswerRequestToFollow struct {
+	SenderId   string `json:"SenderId"`
+	ReceiverId string `json:"ReceiverId"`
+	Reply      string `json:"Reply"`
 }
 
 // type Event struct {
@@ -190,6 +197,11 @@ type Follow struct {
 // connection.
 func HandleConnection(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("user_token")
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	valid, err := dbfuncs.ValidateCookie(cookie.Value)
 	if err != nil || !valid {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -266,10 +278,12 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 		// if err != nil {
 		// 	finalStraw = notifyClientOfError(err, "error processing websocket message", userID)
 		// }
+
 		// if finalStraw != nil {
 		// 	log.Println("error sending error message to client:", finalStraw)
 		// 	break camelsBack
 		// }
+
 	}
 }
 
@@ -294,21 +308,14 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 
 	case "requestToFollow":
 		var receivedData Follow
-
 		unmarshalBody(signal.Body, &receivedData)
 		fmt.Println(receivedData)
 		err = requestToFollow(receivedData)
 		fmt.Println("returned from requestToFollow")
-
-		// 	//fill in
-		// case "inviteToJoinGroup":
-		// 	//fill in
-		// 	// Notify the person you're inviting.
-		// 	inviteToJoinGroup(receivedData)
-		// case "answerInviteToGroup":
-		// 	//fill in
-		// 	answerInviteToJoinGroup(receivedData)
-
+	case "answerRequestToFollow":
+		var receivedData AnswerRequestToFollow
+		unmarshalBody(signal.Body, &receivedData)
+		err = answerRequestToFollow(receivedData)
 	}
 	return err
 }
@@ -380,7 +387,7 @@ func logout(userID string, thisConn *websocket.Conn, w http.ResponseWriter) {
 }
 
 func requestToFollow(receivedData Follow) error {
-	// fmt.Println("requestToFollow", receivedData)
+	fmt.Println("requestToFollow", receivedData)
 	var follow dbfuncs.Follow
 	follow.FollowingId = receivedData.FollowingId
 	follow.FollowerId = receivedData.FollowerId
@@ -403,50 +410,122 @@ func requestToFollow(receivedData Follow) error {
 		follow.Status = "accepted"
 	}
 
-
-
-
-
-
-	
 	err = dbfuncs.AddFollow(&follow)
 	if err != nil {
 		log.Println("error adding follow to database", err)
-		// notifyClientOfError(err, "error adding follow to database", receivedData.FollowerId)
+		notifyClientOfError(err, "error adding follow to database", receivedData.FollowerId)
 		return err
 	}
 
-	// follower, err := dbfuncs.GetUserById(receivedData.FollowerId)
-	// if err != nil {
-	// 	log.Println("error getting nickname from database", err)
-	// 	// notifyClientOfError(err, "error getting nickname from database", receivedData.FollowerId)
-	// 	return err
-	// }
+	follower, err := dbfuncs.GetUserById(receivedData.FollowerId)
+	if err != nil {
+		log.Println("error getting nickname from database", err)
+		notifyClientOfError(err, "error getting nickname from database", receivedData.FollowerId)
+		return err
+	}
 
-	// // notification := Notification{
-	// // 	ReceiverId: receivedData.FollowingId,
-	// // 	SenderId:   receivedData.FollowerId,
-	// // 	Body:       fmt.Sprintf("%s has requested to follow you", follower.Nickname),
-	// // 	Type:       "requestToFollow",
-	// // }
+	notification := Notification{
+		ReceiverId: receivedData.FollowingId,
+		SenderId:   receivedData.FollowerId,
+		Body:       fmt.Sprintf("%s has requested to follow you", follower.Nickname),
+		Type:       "requestToFollow",
+	}
 
-	// if private {
-	// 	// err = dbfuncs.AddNotification(notification.parseForDB())
-	// 	if err != nil {
-	// 		log.Println("error adding requestToFollow notification to database", err)
-	// 		return err
-	// 	}
-	// }
+	if private {
+		err = dbfuncs.AddNotification(notification.parseForDB())
+		if err != nil {
+			log.Println("error adding requestToFollow notification to database", err)
+			return err
+		}
+	}
 
-	// connectionLock.RLock()
-	// for _, c := range activeConnections[follow.FollowingId] {
-	// 	err = c.WriteJSON(notification)
-	// 	if err != nil {
-	// 		log.Println("error sending (potential) new follower info to recipient", err)
-	// 	}
-	// }
+	connectionLock.RLock()
+	for _, c := range activeConnections[follow.FollowingId] {
+		err = c.WriteJSON(notification)
+		if err != nil {
+			log.Println("error sending (potential) new follower info to recipient", err)
+		}
+	}
 
-	// connectionLock.RUnlock()
+	connectionLock.RUnlock()
 
+	return err
+}
+
+// When received, client should request profile if they're on profile page.
+func answerRequestToFollow(receivedData AnswerRequestToFollow) error {
+	var err error
+
+	switch receivedData.Reply {
+	case "yes":
+		err = dbfuncs.AcceptFollow(receivedData.SenderId, receivedData.ReceiverId)
+		if err != nil {
+			log.Println("database error accepting follow", err)
+			notifyClientOfError(err, "database error accepting follow", receivedData.SenderId)
+			return err
+		}
+	case "no":
+		err := dbfuncs.DeleteFollow(receivedData.SenderId, receivedData.ReceiverId)
+		if err != nil {
+			log.Println("error rejecting follow", err)
+			notifyClientOfError(err, "error rejecting follow", receivedData.SenderId)
+		}
+		return err
+	default:
+		log.Println("unexpected reply in answerRequestToFollow:", receivedData.Reply)
+		log.Printf("%s sent unexpected body %s, answering request from %s\n",
+			receivedData.SenderId, receivedData.Reply, receivedData.ReceiverId)
+		return fmt.Errorf("unexpected body in answerRequestToFollow")
+	}
+
+	notificationForDB := dbfuncs.Notification{
+		Body:       receivedData.Reply,
+		Type:       "answerRequestToFollow",
+		CreatedAt:  time.Now(), // check format
+		ReceiverId: receivedData.SenderId,
+		SenderId:   receivedData.ReceiverId,
+		Seen:       false,
+	}
+
+	notificationToSend := Notification{
+		ReceiverId: receivedData.SenderId,
+		SenderId:   receivedData.ReceiverId,
+		Body:       receivedData.Reply,
+		Type:       "answerRequestToFollow",
+		CreatedAt:  notificationForDB.CreatedAt,
+		Seen:       false,
+	}
+
+	connectionLock.RLock()
+	for _, c := range activeConnections[receivedData.ReceiverId] {
+		err = c.WriteJSON(notificationToSend)
+		if err != nil {
+			log.Println("error sending notification to recipient", err)
+		}
+	}
+	connectionLock.RUnlock()
+
+	return err
+}
+
+// Only notify a user of an error that occurred while processing an
+// action they attempted. No need to notify someone if someone else
+// failed to follow them, for example. I'm thinking, also, only notify
+// user that a message couldn't be added to the db, since that affects
+// them directly. If a message couldn't be sent to one of their connections,
+// we can just log that and deal with it ourselves.
+func notifyClientOfError(err error, message string, id string) error {
+	log.Println(err, message)
+	data := map[string]interface{}{
+		"type": "error",
+	}
+	connectionLock.RLock()
+	for _, c := range activeConnections[id] {
+		err = c.WriteJSON(data)
+		if err != nil {
+			break
+		}
+	}
+	connectionLock.RUnlock()
 	return err
 }

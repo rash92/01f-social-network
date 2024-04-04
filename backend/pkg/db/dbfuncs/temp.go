@@ -6,6 +6,18 @@ import (
 	"sort"
 )
 
+// type BasicUserInfo struct {
+// 	Avatar string `json:"Avatar"`
+// 	UserId         string `json:"UserId"`
+// 	FirstName      string `json:"FirstName"`
+// 	LastName       string `json:"LastName"`
+// 	Nickname       string `json:"Nickname"`
+// 	PrivacySetting string `json:"PrivacySetting"`
+// }
+
+
+
+
 func GetFollowersOrFollowing(ownerId string, itemId string, offset int) ([]string, error) {
 	items := []string{}
 	var oppositeId string

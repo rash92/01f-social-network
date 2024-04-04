@@ -4,6 +4,7 @@ import (
 	"backend/pkg/db/dbfuncs"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -18,22 +19,24 @@ import (
 
 // This is what will be returned by the handler.
 
-type Avatar struct {
-	Owner             dbfuncs.User
-	Posts             []dbfuncs.Post
-	Followers         []string
-	Following         []string
-	NumberOfPosts     int
-	NumberOfFollowers int
-	NumberOfFollowing int
-	IsFollowed        bool
-	IsPending         bool
+type Profile struct {
+	Owner     dbfuncs.User
+	Posts     []dbfuncs.Post
+	Followers []string
+	Following []string
+
+	// NumberOfPosts     int
+	// NumberOfFollowers int
+	// NumberOfFollowing int
+	PendingFollowers []BasicUserInfo
+	IsFollowed       bool
+	IsPending        bool
 }
 
 func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 	var userId string
 	var ownerId string
-	var profile Avatar
+	var profile Profile
 	var usersOwnProfile bool
 
 	if r.Method != http.MethodPost {
@@ -83,7 +86,7 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !usersOwnProfile && profile.Owner.PrivacySetting == "private" && !profile.IsFollowed  {
+	if !usersOwnProfile && profile.Owner.PrivacySetting == "private" && !profile.IsFollowed {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -97,29 +100,63 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
+
 	fmt.Println(ownerId, "")
-	profile.NumberOfPosts, err = dbfuncs.GetNumberOfById(ownerId, "Posts")
-	if err != nil {
-		errorMessage := fmt.Sprintf("error getting number of posts: %v", err.Error())
-		fmt.Println(err.Error(), "90")
-		http.Error(w, errorMessage, http.StatusInternalServerError)
-		return
-	}
 
-	profile.NumberOfFollowers, err = dbfuncs.GetNumberOfFollowersAndFollowing("FollowingId", ownerId)
-	if err != nil {
-		errorMessage := fmt.Sprintf("error getting number of followers: %v", err.Error())
-		fmt.Println(err.Error())
-		http.Error(w, errorMessage, http.StatusInternalServerError)
-		return
-	}
+	//  this  is where we would get the number of posts, followers, and following
+	// we decided we not going to use this for now so it can be removed
 
-	profile.NumberOfFollowing, err = dbfuncs.GetNumberOfFollowersAndFollowing("FollowerId", ownerId)
-	if err != nil {
-		fmt.Println(err.Error())
-		errorMessage := fmt.Sprintf("error getting number of following: %v", err.Error())
-		http.Error(w, errorMessage, http.StatusInternalServerError)
-		return
+	// profile.NumberOfPosts, err = dbfuncs.GetNumberOfById(ownerId, "Posts")
+	// if err != nil {
+	// 	errorMessage := fmt.Sprintf("error getting number of posts: %v", err.Error())
+	// 	fmt.Println(err.Error(), "90")
+	// 	http.Error(w, errorMessage, http.StatusInternalServerError)
+	// 	return
+	// }
+
+	// profile.NumberOfFollowers, err = dbfuncs.GetNumberOfFollowersAndFollowing("FollowingId", ownerId)
+	// if err != nil {
+	// 	errorMessage := fmt.Sprintf("error getting number of followers: %v", err.Error())
+	// 	fmt.Println(err.Error())
+	// 	http.Error(w, errorMessage, http.StatusInternalServerError)
+	// 	return
+	// }
+
+	// profile.NumberOfFollowing, err = dbfuncs.GetNumberOfFollowersAndFollowing("FollowerId", ownerId)
+	// if err != nil {
+	// 	fmt.Println(err.Error())
+	// 	errorMessage := fmt.Sprintf("error getting number of following: %v", err.Error())
+	// 	http.Error(w, errorMessage, http.StatusInternalServerError)
+	// 	return
+	// }
+
+	if usersOwnProfile {
+		pendingFollowers, err := dbfuncs.GetPendingFollowerIdsByFollowingId(ownerId)
+		if err != nil {
+
+			fmt.Println(err.Error(), "105")
+			errorMessage := fmt.Sprintf("error getting following: %v", err.Error())
+			http.Error(w, errorMessage, http.StatusInternalServerError)
+			return
+		}
+
+		for _, followerId := range pendingFollowers {
+			follower, err := dbfuncs.GetUserById(followerId)
+			if err != nil {
+				log.Panicf("error getting follower: %v", err.Error())
+			}
+
+			basicInfo := BasicUserInfo{
+				Avatar:         follower.Avatar,
+				Id:             follower.Id,
+				Nickname:       follower.Nickname,
+				FirstName:      follower.FirstName,
+				LastName:       follower.LastName,
+				PrivacySetting: follower.PrivacySetting,
+			}
+			profile.PendingFollowers = append(profile.PendingFollowers, basicInfo)
+		}
+
 	}
 
 	profile.Posts, err = dbfuncs.GetPosts(userId, 1, 10, usersOwnProfile)
@@ -130,6 +167,12 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+
+
+
+
+
+	
 	profile.Followers, err = dbfuncs.GetFollowersOrFollowing(ownerId, "FollowerId", 1)
 	if err != nil {
 		errorMessage := fmt.Sprintf("error getting followers: %v", err.Error())
