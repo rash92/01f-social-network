@@ -35,17 +35,20 @@ func AddFollow(follow *Follow) error {
 
 // Only to be used when updating a pending follow to accepted follow - only necessary if following private user
 func AcceptFollow(followerId, followingId string) error {
-	statement, err := db.Prepare("UPDATE Follows SET Status=?, WHERE FollowerId=? AND FollowingId=?")
+
+	statement, err := db.Prepare("UPDATE Follows SET Status=?  WHERE FollowerId=? AND FollowingId=?")
 	if err != nil {
 		return err
 	}
+
 	_, err = statement.Exec("accepted", followerId, followingId)
+
 	return err
 }
 
 // may not use this and can just delete follow from table instead on rejected a follow request
 func RejectFollow(followerId, followingId string) error {
-	statement, err := db.Prepare("UPDATE Follows SET Status=?, WHERE FollowerId=? AND FollowingId=?")
+	statement, err := db.Prepare("UPDATE Follows SET Status=? WHERE FollowerId=? AND FollowingId=?")
 	if err != nil {
 		return err
 	}

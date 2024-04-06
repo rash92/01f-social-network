@@ -11,8 +11,7 @@ import (
 // I've included whatever structs I needed in this file. They can be replaced
 // with the real ones when they're ready, or if anyone knows where they live
 // now. UPDATE: We've moved some of these structs to dbfuncs, along with the
-// helper functions that access the database.
-
+// helper functions that access the database.  
 // I just added this to get rid of the red line under *Image. I don't know
 // what Image is really supposed to be.
 // type Image []byte
@@ -191,4 +190,3 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// "f79a88a6-6eaf-479f-936c-79a1b9de0729:1 Access to fetch at 'http://localhost:8000/profile' from origin 'http://localhost:3000' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. If an opaque response serves your needs, set the request's mode to 'no-cors' to fetch the resource with CORS disabled."

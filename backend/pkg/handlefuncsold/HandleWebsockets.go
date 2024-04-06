@@ -214,6 +214,7 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() {
+		fmt.Println(err, "defer")
 		conn.Close()
 	}()
 
@@ -268,11 +269,11 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 		}
 
 		err = broker(msgBytes, userID, conn, w)
-		if err.Error() == "logout" {
+		fmt.Println("returned from broker", err)
+		if err != nil && err.Error() == "logout" {
+			fmt.Println("logout error")
 			break
 		}
-
-		fmt.Println("returned from broker", err)
 
 		// var finalStraw error
 		// if err != nil {
@@ -293,6 +294,8 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.ResponseWriter) error {
 	var signal SignalReceived
 	err := json.Unmarshal(msgBytes, &signal)
+
+	fmt.Println()
 	if err != nil {
 		log.Println("Error unmarshalling websocket signal:", err)
 	}
@@ -315,8 +318,10 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 	case "answerRequestToFollow":
 		var receivedData AnswerRequestToFollow
 		unmarshalBody(signal.Body, &receivedData)
+
 		err = answerRequestToFollow(receivedData)
 	}
+	log.Println("end of broker")
 	return err
 }
 
@@ -458,14 +463,14 @@ func answerRequestToFollow(receivedData AnswerRequestToFollow) error {
 
 	switch receivedData.Reply {
 	case "yes":
-		err = dbfuncs.AcceptFollow(receivedData.SenderId, receivedData.ReceiverId)
+		err = dbfuncs.AcceptFollow(receivedData.ReceiverId, receivedData.SenderId)
 		if err != nil {
 			log.Println("database error accepting follow", err)
 			notifyClientOfError(err, "database error accepting follow", receivedData.SenderId)
 			return err
 		}
 	case "no":
-		err := dbfuncs.DeleteFollow(receivedData.SenderId, receivedData.ReceiverId)
+		err := dbfuncs.DeleteFollow(receivedData.ReceiverId, receivedData.SenderId)
 		if err != nil {
 			log.Println("error rejecting follow", err)
 			notifyClientOfError(err, "error rejecting follow", receivedData.SenderId)
@@ -478,33 +483,34 @@ func answerRequestToFollow(receivedData AnswerRequestToFollow) error {
 		return fmt.Errorf("unexpected body in answerRequestToFollow")
 	}
 
-	notificationForDB := dbfuncs.Notification{
-		Body:       receivedData.Reply,
-		Type:       "answerRequestToFollow",
-		CreatedAt:  time.Now(), // check format
-		ReceiverId: receivedData.SenderId,
-		SenderId:   receivedData.ReceiverId,
-		Seen:       false,
-	}
+	// notificationForDB := dbfuncs.Notification{
+	// 	Body:       receivedData.Reply,
+	// 	Type:       "answerRequestToFollow",
+	// 	CreatedAt:  time.Now(), // check format
+	// 	ReceiverId: receivedData.SenderId,
+	// 	SenderId:   receivedData.ReceiverId,
+	// 	Seen:       false,
+	// }
 
-	notificationToSend := Notification{
-		ReceiverId: receivedData.SenderId,
-		SenderId:   receivedData.ReceiverId,
-		Body:       receivedData.Reply,
-		Type:       "answerRequestToFollow",
-		CreatedAt:  notificationForDB.CreatedAt,
-		Seen:       false,
-	}
+	// notificationToSend := Notification{
+	// 	ReceiverId: receivedData.SenderId,
+	// 	SenderId:   receivedData.ReceiverId,
+	// 	Body:       receivedData.Reply,
+	// 	Type:       "answerRequestToFollow",
+	// 	CreatedAt:  notificationForDB.CreatedAt,
+	// 	Seen:       false,
+	// }
 
-	connectionLock.RLock()
-	for _, c := range activeConnections[receivedData.ReceiverId] {
-		err = c.WriteJSON(notificationToSend)
-		if err != nil {
-			log.Println("error sending notification to recipient", err)
-		}
-	}
-	connectionLock.RUnlock()
+	// connectionLock.RLock()
+	// for _, c := range activeConnections[receivedData.ReceiverId] {
+	// 	err = c.WriteJSON(notificationToSend)
+	// 	if err != nil {
+	// 		log.Println("error sending notification to recipient", err)
+	// 	}
+	// }
+	// connectionLock.RUnlock()
 
+	log.Println("end of answer")
 	return err
 }
 
