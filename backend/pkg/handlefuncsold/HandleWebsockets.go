@@ -300,6 +300,8 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		log.Println("Error unmarshalling websocket signal:", err)
 	}
 
+	log.Println(signal.Type)
+
 	switch signal.Type {
 	// case "login":
 	// No need. This is covered at the start of handleConnection.
@@ -316,10 +318,13 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		err = requestToFollow(receivedData)
 		fmt.Println("returned from requestToFollow")
 	case "answerRequestToFollow":
+		fmt.Println("case: answerRequestToFollow")
 		var receivedData AnswerRequestToFollow
 		unmarshalBody(signal.Body, &receivedData)
 
 		err = answerRequestToFollow(receivedData)
+		fmt.Println(err)
+		fmt.Println("retured from answerRequestToFollow")
 	}
 	log.Println("end of broker")
 	return err
@@ -454,12 +459,17 @@ func requestToFollow(receivedData Follow) error {
 
 	connectionLock.RUnlock()
 
+	log.Println("err:", err)
+	log.Println("receivedData.FollowerId", receivedData.FollowerId)
+	notifyClientOfError(err, "successfully requested to follow", receivedData.FollowerId)
 	return err
 }
 
 // When received, client should request profile if they're on profile page.
 func answerRequestToFollow(receivedData AnswerRequestToFollow) error {
 	var err error
+
+	log.Println("inside requestToFollow")
 
 	switch receivedData.Reply {
 	case "yes":
@@ -470,12 +480,14 @@ func answerRequestToFollow(receivedData AnswerRequestToFollow) error {
 			return err
 		}
 	case "no":
+		log.Println("case is no")
+		log.Println(receivedData.ReceiverId, "ReceiverId\n", receivedData.SenderId, "SenderId")
 		err := dbfuncs.DeleteFollow(receivedData.ReceiverId, receivedData.SenderId)
 		if err != nil {
 			log.Println("error rejecting follow", err)
 			notifyClientOfError(err, "error rejecting follow", receivedData.SenderId)
+			return err
 		}
-		return err
 	default:
 		log.Println("unexpected reply in answerRequestToFollow:", receivedData.Reply)
 		log.Printf("%s sent unexpected body %s, answering request from %s\n",
@@ -510,6 +522,11 @@ func answerRequestToFollow(receivedData AnswerRequestToFollow) error {
 	// }
 	// connectionLock.RUnlock()
 
+	// fmt.Println(err)
+	// fmt.Println("success string")
+	// fmt.Println(receivedData.SenderId)
+
+	notifyClientOfError(err, "successfully answered request to follow", receivedData.SenderId)
 	log.Println("end of answer")
 	return err
 }
@@ -521,10 +538,19 @@ func answerRequestToFollow(receivedData AnswerRequestToFollow) error {
 // them directly. If a message couldn't be sent to one of their connections,
 // we can just log that and deal with it ourselves.
 func notifyClientOfError(err error, message string, id string) error {
-	log.Println(err, message)
+	log.Println("notify client of error", err, message)
+
 	data := map[string]interface{}{
-		"type": "error",
+		"message": message,
 	}
+
+	if err == nil {
+		data["type"] = "success"
+	} else {
+		data["type"] = "error"
+		data["error"] = err
+	}
+
 	connectionLock.RLock()
 	for _, c := range activeConnections[id] {
 		err = c.WriteJSON(data)

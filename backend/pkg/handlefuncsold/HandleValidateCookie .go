@@ -10,7 +10,7 @@ func HandleValidateCookie(w http.ResponseWriter, r *http.Request) {
 	Cors(&w, r)
 
 	if r.Method == http.MethodGet {
-		cookie, _ := r.Cookie("user_token")
+		cookie, err:= r.Cookie("user_token")
 
 		// 		var username string
 		// 		var imgURL string
@@ -32,9 +32,18 @@ func HandleValidateCookie(w http.ResponseWriter, r *http.Request) {
 		//		http.Error(w, `{"error": "something went wrong "}`, http.StatusBadRequest)
 		//		return
 		//	}
+
+
+
+		if cookie == nil || err != nil{
+			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+			return
+
+		}
 		id, err := dbfuncs.GetUserIdFromCookie(cookie.Value)
+
 		if err != nil {
-			
+
 			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 			return
 		}

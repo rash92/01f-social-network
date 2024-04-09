@@ -62,7 +62,7 @@ func DeleteFollow(followerId, followingId string) error {
 	if err != nil {
 		return err
 	}
-	_, err = statement.Exec(followerId, followerId)
+	_, err = statement.Exec(followerId, followingId)
 	return err
 }
 

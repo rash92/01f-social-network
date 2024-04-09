@@ -1,7 +1,8 @@
 package handlefuncs
+
 type BasicUserInfo struct {
-	Avatar string `json:"Avatar"`
-	Id         string `json:"UserId"`
+	Avatar         string `json:"Avatar"`
+	Id             string `json:"Id"`
 	FirstName      string `json:"FirstName"`
 	LastName       string `json:"LastName"`
 	Nickname       string `json:"Nickname"`

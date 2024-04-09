@@ -7,14 +7,21 @@ import Action from "./Action";
 import {Link} from "react-router-dom";
 
 const ProfileCard = ({
-  user,
+  data: {
+    Owner: user,
+    PendingFollowers,
+    Followers,
+    Following,
+    Posts,
+    IsFollowed,
+  },
   toggleAction,
   toggleProfileVisibility,
   owner,
   isPrivate,
-  isFollowed,
+
+  requestFollow,
 }) => {
-  // console.log(owner, "owner");
   return (
     <Card className={classes.card}>
       <div className={classes.profileContainer}>
@@ -38,29 +45,29 @@ const ProfileCard = ({
                 size={"100px"}
               />
             )}
-                     
+
             <ul className={`${classes["profile-action"]}`}>
               <Action
-                numberAction={user.Posts?.length || 0}
+                numberAction={Posts?.length || 0}
                 actionName={"Posts"}
                 toggleAction={toggleAction}
               />
 
               <Action
-                numberAction={user.Followers?.length || 0}
+                numberAction={Followers?.length || 0}
                 actionName={"Followers"}
                 toggleAction={toggleAction}
               />
 
               <Action
-                numberAction={user.Following?.length || 0}
+                numberAction={Following?.length || 0}
                 actionName={"Following"}
                 toggleAction={toggleAction}
               />
               {owner && (
                 <Action
-                  numberAction={user?.Requests?.length || 0}
-                  actionName={"Requests"}
+                  numberAction={PendingFollowers?.length || 0}
+                  actionName={"PendingFollowers"}
                   toggleAction={toggleAction}
                 />
               )}
@@ -77,11 +84,13 @@ const ProfileCard = ({
 
           {!owner && (
             <div className={classes.interact}>
-              <Button>{isFollowed ? "Ufellow" : "Fellow"}</Button>
-
-              <Link to={`/chats/${user.Id}`}>
-                <Button> message </Button>
-              </Link>
+              <Button
+                variant={`${!IsFollowed ? "primary" : "secondary"}`}
+                onClick={requestFollow}
+              >
+                {IsFollowed ? "Unfollow" : "Follow"}
+              </Button>
+              <Link to={`/chats/${user.Id}`}></Link>
             </div>
           )}
         </Card.Body>

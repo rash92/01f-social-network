@@ -9,7 +9,8 @@ import {Button} from "react-bootstrap";
 // import InfiniteScroll from "react-infinite-scroll-component";
 
 const ProfileActions = ({
-  user,
+  data: {Owner: user, PendingFollowers, Followers, Following},
+  active,
   handleClose,
   handleShow,
   show,
@@ -17,12 +18,8 @@ const ProfileActions = ({
   toggleAction,
   isActive,
   owner,
-  // fetchMoreFellowers,
-  // hasMoreFellowers,
+  accepOrRejectRequestHandler,
 }) => {
-
-    
-
   return (
     <MyModal
       handleClose={handleClose}
@@ -32,21 +29,21 @@ const ProfileActions = ({
     >
       <ul className={classes.actions}>
         <Action
-          numberAction={user.Followers.length}
-          actionName={"followers"}
+          numberAction={Followers.length}
+          actionName={"Followers"}
           toggleAction={toggleAction}
           active={isActive}
         />
         <Action
-          numberAction={user.Following.length}
-          actionName={"following"}
+          numberAction={Following.length}
+          actionName={"Following"}
           toggleAction={toggleAction}
           active={isActive}
         />
         {owner && (
           <Action
-            numberAction={user?.Requests?.length || 0} //  user.numberOfRequests
-            actionName={"Requests"}
+            numberAction={PendingFollowers?.length || 0} //  user.numberOfRequests
+            actionName={"PendingFollowers"}
             toggleAction={toggleAction}
             active={isActive}
           />
@@ -73,19 +70,44 @@ const ProfileActions = ({
             }
             className={classes.followers}
           > */}
-          {user[isActive]?.map((user, i) => (
+          {active?.map((user, i) => (
             <li key={i} className={classes.item}>
-              <Link to={`/profile/${i}`} className={classes.links}>
+              <Link to={`/profile/${user.UserId}`} className={classes.links}>
                 <User
-                  userName={`${user.username} ${i + 1}`}
+                  Avatar={user.Avatar}
+                  Nickname={`${user.Nickname}`}
                   isLoggedIn={true}
-                  name={user.name}
                 />
               </Link>
+              {
+                isActive === "PendingFollowers" && (
+                  <>
+                    <Button
+                      className={classes.itemButton}
+                      onClick={accepOrRejectRequestHandler.bind(null, {
+                        id: user.Id,
+                        flag: "yes",
+                      })}
+                    >
+                      Accept
+                    </Button>
 
-              <Button className={classes.itemButton}>
-                {isActive === "followers" ? "Remove" : "Following"}
-              </Button>
+                    <Button
+                      onClick={accepOrRejectRequestHandler.bind(null, {
+                        id: user.Id,
+                        flag: "no",
+                      })}
+                      className={classes.itemButton}
+                    >
+                      Reject
+                    </Button>
+                  </>
+                )
+
+                //   <Button className={classes.itemButton}>
+                //        {isActive === "followers" ? "Remove" : "Following"}
+                // </Button>
+              }
             </li>
           ))}
           {/* </InfiniteScroll> */}

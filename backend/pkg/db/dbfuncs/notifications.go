@@ -15,7 +15,7 @@ func AddNotification(notification *Notification) error {
 	}
 	notification.Id = id.String()
 	notification.CreatedAt = time.Now()
-	statement, err := db.Prepare("INSERT INTO groups VALUES (?,?,?,?,?,?,?)")
+	statement, err := db.Prepare("INSERT INTO notification VALUES (?,?,?,?,?,?,?)")
 	if err != nil {
 		return err
 	}

@@ -111,6 +111,7 @@ export const AuthContextProvider = (props) => {
 
       return () => {
         if (isWsReady) {
+          console.log("closing");
           socket.close();
         }
       };

@@ -6,46 +6,21 @@ import AuthContext from "../store/authContext";
 import {Container} from "react-bootstrap";
 import ProfileActions from "../components/ProfileActions";
 import Posts from "../components/Posts";
-import {dummyPosts} from "../store/dummydata";
+
 import {getJson} from "../helpers/helpers";
-import InfiniteScroll from "react-infinite-scroll-component";
+
 import PrivateProfile from "../components/PrivateProfile";
 import {useLoaderData, useRouteError} from "react-router";
 import PostInput from "../components/PostInput";
 
-
 const Profile = () => {
-  const {user, isWsReady, wsMsgToServer} = React.useContext(AuthContext);
+  const {user, isWsReady, wsVal, wsMsgToServer} = React.useContext(AuthContext);
   const userData = useLoaderData();
   const routeError = useRouteError();
   const postRef = useRef(null);
   const [show, setShow] = useState(false);
   const [isActive, setIsActive] = useState("Posts");
   const [data, setData] = useState(userData);
-  // const [hasMoreFellowers, setHasMoreFellowers] = useState({
-  //   followers: true,
-  //   following: true,
-  // });
-
-  // const dummyUser = {
-  //   id: "4e56t78y98u0ii9i90i",
-  //   relStatus: "fellow",
-  //   isOwner: true,
-  //   Isprivate: true,
-  //   followers: options1,
-  //   following: options2,
-  //   numberOfFollowers: 60,
-  //   numberOfFollowing: 60,
-  //   numberOfPosts: 60,
-  //   posts: dummyPosts,
-  //   firstName: "John",
-  //   lastName: "Doe",
-  //   dateOfBirth: "1990-01-01",
-  //   avatar: user.profileImg,
-  //   nickname: "JD",
-  //   aboutMe:
-  //     "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur et tristique libero.",
-  // };
 
   const isPrivate =
     data?.Owner.PrivacySetting === "private" ||
@@ -57,6 +32,7 @@ const Profile = () => {
   const toggleProfileVisibility = () => {};
 
   const toggleActionModel = (active) => {
+    console.log(active);
     setIsActive(active);
   };
   const handleClose = () => setShow(false);
@@ -65,22 +41,34 @@ const Profile = () => {
   };
 
   const toggleAction = (clickButton, e) => {
-    console.log(clickButton);
     if (clickButton === "Posts") {
       postRef.current.scrollIntoView({behavior: "smooth"});
       return;
     }
-    setIsActive(clickButton.toLowerCase());
+
+    setIsActive(clickButton);
   };
+
+  // console.log(data[isActive], isActive);
+
+  useEffect(() => {
+    if (isWsReady) {
+      const data = JSON.parse(wsVal);
+      console.log(data);
+      if (data?.type === "success") {
+        console.log(data);
+      }
+    }
+  }, [isWsReady, wsVal]);
 
   useEffect(() => {
     if (!(isActive === "Posts")) {
       handleShow();
     }
 
-    return () => {
-      setIsActive("Posts");
-    };
+    // return () => {
+    //   setIsActive("Posts");
+    // };
   }, [isActive]);
 
   // const fetchMoreFellowers = () => {
@@ -110,22 +98,35 @@ const Profile = () => {
   //   }
   // };
 
-  const requestFollowHandler = async () => {
-    try {
-      if (isWsReady) {
-        wsMsgToServer(
-          JSON.stringify({
-            type: "requestToFollow",
-            message: {
-              FollowerId: user.Id,
-              FollowingId: data.Owner.Id,
-              Status: "pending",
-            },
-          })
-        );
-      }
-    } catch (err) {
-      console.log(err);
+  const requestFollowHandler = () => {
+    console.log(isWsReady);
+    console.log(data.Owner.Id);
+    if (isWsReady) {
+      wsMsgToServer(
+        JSON.stringify({
+          type: "requestToFollow",
+          message: {
+            FollowerId: user.Id,
+            FollowingId: data.Owner.Id,
+            Status: "pending",
+          },
+        })
+      );
+    }
+  };
+
+  const accepOrRejectRequestHandler = ({id, flag}, e) => {
+    if (isWsReady) {
+      wsMsgToServer(
+        JSON.stringify({
+          Type: "answerRequestToFollow",
+          message: {
+            SenderId: user.Id,
+            ReceiverId: id,
+            Reply: flag,
+          },
+        })
+      );
     }
   };
 
@@ -157,18 +158,16 @@ const Profile = () => {
           // >
           <>
             <ProfileCard
-              user={data.Owner}
+              data={data}
               toggleAction={toggleAction}
               toggleProfileVisibility={toggleProfileVisibility}
               isPrivate={isPrivate}
               owner={user.Id === data.Owner.Id}
-              numberOfFollowers={data.NumberOfFollowers}
-              numberOfFollowing={data.NumberOfFollowing}
-              numberOfPosts={data.NumberOfPosts}
-              numberOfRequests={1}
+              requestFollow={requestFollowHandler}
             />
             <ProfileActions
-              user={data}
+              data={data}
+              active={data[isActive]}
               handleClose={handleClose}
               handleShow={handleShow}
               show={show}
@@ -176,6 +175,7 @@ const Profile = () => {
               isActive={isActive}
               owner={user.Id === data.Owner.Id}
               toggleAction={toggleActionModel}
+              accepOrRejectRequestHandler={accepOrRejectRequestHandler}
               // fetchMoreFellowers={fetchMoreFellowers}
               // hasMoreFellowers={hasMoreFellowers}
             />

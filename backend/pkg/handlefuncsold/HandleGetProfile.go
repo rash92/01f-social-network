@@ -11,7 +11,7 @@ import (
 // I've included whatever structs I needed in this file. They can be replaced
 // with the real ones when they're ready, or if anyone knows where they live
 // now. UPDATE: We've moved some of these structs to dbfuncs, along with the
-// helper functions that access the database.  
+// helper functions that access the database.
 // I just added this to get rid of the red line under *Image. I don't know
 // what Image is really supposed to be.
 // type Image []byte
@@ -21,8 +21,8 @@ import (
 type Profile struct {
 	Owner     dbfuncs.User
 	Posts     []dbfuncs.Post
-	Followers []string
-	Following []string
+	Followers []BasicUserInfo
+	Following []BasicUserInfo
 
 	// NumberOfPosts     int
 	// NumberOfFollowers int
@@ -30,6 +30,29 @@ type Profile struct {
 	PendingFollowers []BasicUserInfo
 	IsFollowed       bool
 	IsPending        bool
+}
+
+func helper(input []string) []BasicUserInfo {
+	res := []BasicUserInfo{}
+
+	for _, followerId := range input {
+		follower, err := dbfuncs.GetUserById(followerId)
+		if err != nil {
+			log.Panicf("error getting follower: %v", err.Error())
+		}
+
+		basicInfo := BasicUserInfo{
+			Avatar:         follower.Avatar,
+			Id:             follower.Id,
+			Nickname:       follower.Nickname,
+			FirstName:      follower.FirstName,
+			LastName:       follower.LastName,
+			PrivacySetting: follower.PrivacySetting,
+		}
+		res = append(res, basicInfo)
+	}
+
+	return res
 }
 
 func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
@@ -130,7 +153,6 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	if usersOwnProfile {
-		fmt.Println("getting pending followers")
 		pendingFollowers, err := dbfuncs.GetPendingFollowerIdsByFollowingId(ownerId)
 		if err != nil {
 
@@ -140,22 +162,7 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		for _, followerId := range pendingFollowers {
-			follower, err := dbfuncs.GetUserById(followerId)
-			if err != nil {
-				log.Panicf("error getting follower: %v", err.Error())
-			}
-
-			basicInfo := BasicUserInfo{
-				Avatar:         follower.Avatar,
-				Id:             follower.Id,
-				Nickname:       follower.Nickname,
-				FirstName:      follower.FirstName,
-				LastName:       follower.LastName,
-				PrivacySetting: follower.PrivacySetting,
-			}
-			profile.PendingFollowers = append(profile.PendingFollowers, basicInfo)
-		}
+		profile.PendingFollowers = helper(pendingFollowers)
 
 	}
 
@@ -167,21 +174,23 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	profile.Followers, err = dbfuncs.GetFollowersOrFollowing(ownerId, "FollowerId", 1)
+	acceptedFollowers, err := dbfuncs.GetAcceptedFollowerIdsByFollowingId(ownerId)
 	if err != nil {
 		errorMessage := fmt.Sprintf("error getting followers: %v", err.Error())
-		fmt.Println(err.Error(), "97")
 		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
 
-	profile.Following, err = dbfuncs.GetFollowersOrFollowing(ownerId, "FollowingId", 1)
+	profile.Followers = helper(acceptedFollowers)
+
+	following, err := dbfuncs.GetAcceptedFollowingIdsByFollowerId(ownerId)
 	if err != nil {
-		fmt.Println(err.Error(), "105")
 		errorMessage := fmt.Sprintf("error getting following: %v", err.Error())
 		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
+
+	profile.Following = helper(following)
 
 	fmt.Println(profile, "profile")
 	w.Header().Set("Content-Type", "application/json")
@@ -189,4 +198,3 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(profile)
 
 }
-
