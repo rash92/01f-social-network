@@ -111,7 +111,6 @@ export const AuthContextProvider = (props) => {
 
       return () => {
         if (isWsReady) {
-          console.log("closing");
           socket.close();
         }
       };
@@ -123,9 +122,7 @@ export const AuthContextProvider = (props) => {
   useEffect(() => {
     if (isWsReady) {
       const data = JSON.parse(wsVal);
-      console.log(data);
       if (data?.type === "logout") {
-        console.log("logout");
         logoutHandler(false);
       }
 
