@@ -159,6 +159,11 @@ type AnswerRequestToFollow struct {
 	Reply      string `json:"Reply"`
 }
 
+type Unfollow struct {
+	FollowerId  string `json:"FollowerId"`
+	FollowingId string `json:"FollowingId"`
+}
+
 // type Event struct {
 // 	EventId     string `json:"EventId"`
 // 	GroupId     string `json:"GroupId"`
@@ -325,6 +330,10 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		err = answerRequestToFollow(receivedData)
 		fmt.Println(err)
 		fmt.Println("retured from answerRequestToFollow")
+	case "unfollow":
+		var receivedData Unfollow
+		unmarshalBody(signal.Body, &receivedData)
+		err = unfollow(receivedData)
 	}
 	log.Println("end of broker")
 	return err
@@ -528,6 +537,18 @@ func answerRequestToFollow(receivedData AnswerRequestToFollow) error {
 
 	notifyClientOfError(err, "successfully answered request to follow", receivedData.SenderId)
 	log.Println("end of answer")
+	return err
+}
+
+func unfollow(receivedData Unfollow) error {
+	err := dbfuncs.DeleteFollow(receivedData.FollowerId, receivedData.FollowingId)
+	if err != nil {
+		log.Println("error deleting follow", err)
+		notifyClientOfError(err, "error deleting follow", receivedData.FollowerId)
+		return err
+	}
+
+	notifyClientOfError(err, "successfully unfollowed", receivedData.FollowerId)
 	return err
 }
 
