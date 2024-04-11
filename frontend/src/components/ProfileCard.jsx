@@ -7,21 +7,22 @@ import Action from "./Action";
 import {Link} from "react-router-dom";
 
 const ProfileCard = ({
-  data: {
+  data,
+  toggleAction,
+  toggleProfileVisibility,
+  owner,
+  isPrivate,
+  requestFollow,
+}) => {
+  const {
     Owner: user,
     PendingFollowers,
     Followers,
     Following,
     Posts,
     IsFollowed,
-  },
-  toggleAction,
-  toggleProfileVisibility,
-  owner,
-  isPrivate,
+  } = data;
 
-  requestFollow,
-}) => {
   return (
     <Card className={classes.card}>
       <div className={classes.profileContainer}>
@@ -87,6 +88,9 @@ const ProfileCard = ({
               <Button
                 variant={`${!IsFollowed ? "primary" : "secondary"}`}
                 onClick={requestFollow}
+                OnClick={() => {
+                  requestFollow();
+                }}
               >
                 {IsFollowed ? "Unfollow" : "Follow"}
               </Button>

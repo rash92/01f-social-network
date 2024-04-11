@@ -49,6 +49,20 @@ const Profile = () => {
     setIsActive(clickButton);
   };
 
+  // const unfollowHandler = (id) => {
+  //   if (isWsReady) {
+  //     wsMsgToServer(
+  //       JSON.stringify({
+  //         Type: "unfollow",
+  //         message: {
+  //           FollowerId: user.Id,
+  //           FollowingId: id,
+  //         },
+  //       })
+  //     );
+  //   }
+  // };
+
   // console.log(data[isActive], isActive);
 
   useEffect(() => {
@@ -99,9 +113,21 @@ const Profile = () => {
   // };
 
   const requestFollowHandler = () => {
-    console.log(isWsReady);
-    console.log(data.Owner.Id);
     if (isWsReady) {
+      if (data.IsFollowed) {
+        wsMsgToServer(
+          JSON.stringify({
+            Type: "unfollow",
+            message: {
+              FollowerId: user.Id,
+              FollowingId: data.Owner.Id,
+            },
+          })
+        );
+
+        return;
+      }
+
       wsMsgToServer(
         JSON.stringify({
           type: "requestToFollow",
@@ -156,6 +182,7 @@ const Profile = () => {
           //     </p>
           //   }
           // >
+
           <>
             <ProfileCard
               data={data}
@@ -176,6 +203,7 @@ const Profile = () => {
               owner={user.Id === data.Owner.Id}
               toggleAction={toggleActionModel}
               accepOrRejectRequestHandler={accepOrRejectRequestHandler}
+
               // fetchMoreFellowers={fetchMoreFellowers}
               // hasMoreFellowers={hasMoreFellowers}
             />
