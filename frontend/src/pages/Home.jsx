@@ -12,31 +12,6 @@ function Home() {
   const {user, isWsReady, wsVal, onLogout} = useContext(AuthContext);
   const [showRegisterForm, setShowRegisterForm] = useState(false);
 
-  const [users, setUsers] = useState([]);
-
-  const getAllUsers = useCallback(async () => {
-    try {
-      const res = await getJson("get-users", {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({Id: user.Id}),
-      });
-      console.log(res);
-      setUsers(res);
-    } catch (err) {
-      console.log(err.message);
-    }
-  }, [user.Id]);
-
-  useEffect(() => {
-    if (user.isLogIn) {
-      getAllUsers();
-    }
-  }, [user.isLogIn, getAllUsers]);
-
   return (
     <Container>
       <div
@@ -66,14 +41,6 @@ function Home() {
             <Dashboard />
           </>
         )}
-        {users.map((user) => (
-          <Link to={`/profile/${user.Id}`}>
-            <div>
-              <img src={user.Profile} alt="profile" />
-              <p>{user.Nickname}</p>
-            </div>
-          </Link>
-        ))}
       </div>
     </Container>
   );

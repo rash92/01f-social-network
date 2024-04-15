@@ -15,9 +15,6 @@ import (
 // 	PrivacySetting string `json:"PrivacySetting"`
 // }
 
-
-
-
 func GetFollowersOrFollowing(ownerId string, itemId string, offset int) ([]string, error) {
 	items := []string{}
 	var oppositeId string
@@ -148,3 +145,25 @@ func GetNumberOfFollowersAndFollowing(flag string, ownerId string) (int, error) 
 // 	}
 // 	return nil
 // }
+
+func SearchUsers(query string) ([]User, error) {
+	var users []User
+	rows, err := db.Query("SELECT Id,  Nickname, Avatar  FROM users WHERE FirstName LIKE ? OR LastName LIKE ? OR Nickname LIKE ?", "%"+query+"%", "%"+query+"%", "%"+query+"%")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var user User
+		if err := rows.Scan(&user.Id, &user.Nickname, &user.Avatar); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
