@@ -1,5 +1,5 @@
 import React, {useCallback, useContext, useState} from "react";
-import {Link,} from "react-router-dom";
+import {Link} from "react-router-dom";
 import {Nav, Navbar, Container, NavItem} from "react-bootstrap";
 import AuthContext from "../store/authContext";
 import SearchUser from "./SearchUser"; // Import the Search component
@@ -10,6 +10,7 @@ const NavigationBar = () => {
   const {user, onLogout} = useContext(AuthContext);
   const [seachList, setSeachList] = useState([]);
   const [typingTimeout, setTypingTimeout] = useState(null);
+
   // Add a state variable to store the search list
   const logoutHandler = () => {
     onLogout();
@@ -69,9 +70,9 @@ const NavigationBar = () => {
                       to={`/profile/${user.Id}`}
                     >
                       <div className={`${classes["profile-image"]}`}>
-                        {user.Profile ? (
+                        {user.Avatar ? (
                           <img
-                            src={`http://localhost:8000/images/${user.Profile}`}
+                            src={`http://localhost:8000/images/${user.Avatar}`}
                             alt="Profile"
                             className={`${classes["img-fluid"]} ${classes["rounded-circle"]}`}
                           />

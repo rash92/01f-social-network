@@ -122,6 +122,7 @@ export const AuthContextProvider = (props) => {
   useEffect(() => {
     if (isWsReady) {
       const data = JSON.parse(wsVal);
+      console.log("data", data);
       if (data?.type === "logout") {
         logoutHandler(false);
       }

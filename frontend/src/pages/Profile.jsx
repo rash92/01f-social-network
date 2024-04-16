@@ -15,12 +15,12 @@ import PostInput from "../components/PostInput";
 
 const Profile = () => {
   const {user, isWsReady, wsVal, wsMsgToServer} = React.useContext(AuthContext);
-  const userData = useLoaderData();
+  const data = useLoaderData();
+
   const routeError = useRouteError();
   const postRef = useRef(null);
   const [show, setShow] = useState(false);
   const [isActive, setIsActive] = useState("Posts");
-  const [data, setData] = useState(userData);
 
   const isPrivate =
     data?.Owner.PrivacySetting === "private" ||
@@ -46,6 +46,7 @@ const Profile = () => {
       return;
     }
 
+    handleShow();
     setIsActive(clickButton);
   };
 
@@ -68,22 +69,22 @@ const Profile = () => {
   useEffect(() => {
     if (isWsReady) {
       const data = JSON.parse(wsVal);
-      console.log(data);
       if (data?.type === "success") {
         console.log(data);
       }
     }
   }, [isWsReady, wsVal]);
 
-  useEffect(() => {
-    if (!(isActive === "Posts")) {
-      handleShow();
-    }
+  // useEffect(() => {
+  //   console.log(isActive);
+  //   if (!(isActive === "Posts")) {
+  //     handleShow();
+  //   }
 
-    // return () => {
-    //   setIsActive("Posts");
-    // };
-  }, [isActive]);
+  //   // return () => {
+  //   //   setIsActive("Posts");
+  //   // };
+  // }, [isActive]);
 
   // const fetchMoreFellowers = () => {
   //   if (
