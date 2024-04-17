@@ -1,1 +1,1 @@
--- DROP TABLE PostLikes;
+DROP TABLE PostLikes;

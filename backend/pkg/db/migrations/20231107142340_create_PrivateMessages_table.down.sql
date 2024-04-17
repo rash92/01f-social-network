@@ -1,1 +1,1 @@
--- DROP TABLE PrivateMessages
+DROP TABLE PrivateMessages

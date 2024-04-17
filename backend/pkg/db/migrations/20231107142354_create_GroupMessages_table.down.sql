@@ -1,1 +1,1 @@
--- DROP TABLE GroupMessages;
+DROP TABLE GroupMessages;

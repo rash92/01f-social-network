@@ -2,6 +2,7 @@ package dbfuncs
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -76,7 +77,7 @@ func IsUserPrivate(userId string) (bool, error) {
 	if privacySetting == "public" {
 		return false, nil
 	}
-	if  privacySetting == "private"  ||  privacySetting == ""{
+	if privacySetting == "private" || privacySetting == "" {
 		return true, nil
 	}
 	return false, errors.New("privacy setting not recognized, should be either 'private' or 'public'")
@@ -111,6 +112,15 @@ func GetUsers() ([]User, error) {
 	return user, err
 }
 
+// possibly not necessary and can do this in helper where needed
+func GetNicknameFromId(userId string) (string, error) {
+	user, err := GetUserById(userId)
+
+	return user.Nickname, err
+}
+
+//TO DO: rewrites etc.
+
 // func GetUserDataFromSession(sessionId string) (string, string, string, error) {
 // 	var userId string
 // 	var varAvatarImage string
@@ -141,3 +151,40 @@ func GetUsers() ([]User, error) {
 // 	}
 // 	return count, nil
 // }
+
+// func DeleteUserByUsername(username string) error {
+// 	stmt, err := db.Prepare("DELETE * FROM Follows")
+// 	if err != nil {
+// 		return err
+// 	}
+// 	_, err = stmt.Exec()
+// 	if err != nil {
+// 		//  you will get an arror if the user is not in the database
+// 		// fmt.Println("error in deleting user by username", err)
+// 		return err
+// 	}
+// 	return nil
+// }
+
+func SearchUsers(query string) ([]User, error) {
+	var users []User
+	fmt.Println(users)
+	rows, err := db.Query("SELECT Id,  Nickname, Avatar  FROM users WHERE FirstName LIKE ? OR LastName LIKE ? OR Nickname LIKE ?", "%"+query+"%", "%"+query+"%", "%"+query+"%")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var user User
+		if err := rows.Scan(&user.Id, &user.Nickname, &user.Avatar); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	fmt.Println(users)
+	return users, nil
+}

@@ -88,6 +88,17 @@ func GetAcceptedFollowerIdsByFollowingId(followingId string) ([]string, error) {
 	return followerIds, err
 }
 
+func GetNumberOfFollowersByUserId(userId string) (int, error) {
+	follow, err := GetAcceptedFollowerIdsByFollowingId(userId)
+	return len(follow), err
+}
+
+func GetNumberOfFollowingByUserId(userId string) (int, error) {
+	following, err := GetAcceptedFollowingIdsByFollowerId(userId)
+	return len(following), err
+
+}
+
 // Find all people you are following (accepted follows only)
 func GetAcceptedFollowingIdsByFollowerId(followerId string) ([]string, error) {
 	var followingIds []string
@@ -159,7 +170,7 @@ func GetPendingFollowingIdsByFollowerId(followerId string) ([]string, error) {
 //TO DO: get 10 at a time? decide if doing it through SQL or get all and do in handlefunc
 
 // rewrite?
-
+// Think this can be cut and use existing seperate get accepted/ pending followers/ following funcs
 // func GetNumberOfFollowersAndFollowing(flag string, ownerId string) (int, error) {
 // 	var count int
 // 	query := fmt.Sprintf("SELECT COUNT(*) FROM Follows WHERE %s=?", flag)

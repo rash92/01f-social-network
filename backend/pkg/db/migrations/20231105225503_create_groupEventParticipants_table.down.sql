@@ -1,1 +1,1 @@
--- DROP TABLE GroupEventParticipants;
+DROP TABLE GroupEventParticipants;

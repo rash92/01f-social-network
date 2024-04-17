@@ -16,7 +16,7 @@ var dbLock sync.RWMutex
 // opens database at beginning, should close automatically on server quit
 func init() {
 	var err error
-	db, err = sql.Open("sqlite3", "./pkg/db/sqlite/sqlite.db")
+	db, err = sql.Open("sqlite3", "file:./pkg/db/sqlite/sqlite.db?_foreign_keys=on")
 	if err != nil {
 		log.Fatal("Invalid DB config, unable to open database:", err)
 	}

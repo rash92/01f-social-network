@@ -1,1 +1,1 @@
--- DROP TABLE Notifications;
+DROP TABLE Notifications;
