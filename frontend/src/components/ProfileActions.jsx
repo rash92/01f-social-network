@@ -82,25 +82,29 @@ const ProfileActions = ({
               {
                 isActive === "PendingFollowers" && (
                   <>
-                    <Button
-                      className={classes.itemButton}
-                      onClick={accepOrRejectRequestHandler.bind(null, {
-                        id: user.Id,
-                        flag: "yes",
-                      })}
-                    >
-                      Accept
-                    </Button>
+                    <div>
+                      <Button
+                        className={classes.itemButton}
+                        onClick={accepOrRejectRequestHandler.bind(null, {
+                          id: user.Id,
+                          flag: "yes",
+                        })}
+                      >
+                        Accept
+                      </Button>
+                    </div>
 
-                    <Button
-                      onClick={accepOrRejectRequestHandler.bind(null, {
-                        id: user.Id,
-                        flag: "no",
-                      })}
-                      className={classes.itemButton}
-                    >
-                      Reject
-                    </Button>
+                    <div>
+                      <Button
+                        onClick={accepOrRejectRequestHandler.bind(null, {
+                          id: user.Id,
+                          flag: "no",
+                        })}
+                        className={classes.itemButton}
+                      >
+                        Reject
+                      </Button>
+                    </div>
                   </>
                 )
 

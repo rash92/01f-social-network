@@ -432,14 +432,14 @@ func requestToFollow(receivedData Follow) error {
 	err = dbfuncs.AddFollow(&follow)
 	if err != nil {
 		log.Println("error adding follow to database", err)
-		notifyClientOfError(err, "error adding follow to database", receivedData.FollowerId)
+		notifyClientOfError(err, "requestToFollow", receivedData.FollowerId)
 		return err
 	}
 
 	follower, err := dbfuncs.GetUserById(receivedData.FollowerId)
 	if err != nil {
 		log.Println("error getting nickname from database", err)
-		notifyClientOfError(err, "error getting nickname from database", receivedData.FollowerId)
+		notifyClientOfError(err, "requestToFollow", receivedData.FollowerId)
 		return err
 	}
 
@@ -461,6 +461,7 @@ func requestToFollow(receivedData Follow) error {
 	connectionLock.RLock()
 	for _, c := range activeConnections[follow.FollowingId] {
 		err = c.WriteJSON(notification)
+
 		if err != nil {
 			log.Println("error sending (potential) new follower info to recipient", err)
 		}
@@ -470,7 +471,7 @@ func requestToFollow(receivedData Follow) error {
 
 	log.Println("err:", err)
 	log.Println("receivedData.FollowerId", receivedData.FollowerId)
-	notifyClientOfError(err, "successfully requested to follow", receivedData.FollowerId)
+	notifyClientOfError(err, "requestToFollow", receivedData.FollowerId)
 	return err
 }
 
@@ -485,7 +486,7 @@ func answerRequestToFollow(receivedData AnswerRequestToFollow) error {
 		err = dbfuncs.AcceptFollow(receivedData.ReceiverId, receivedData.SenderId)
 		if err != nil {
 			log.Println("database error accepting follow", err)
-			notifyClientOfError(err, "database error accepting follow", receivedData.SenderId)
+			notifyClientOfError(err, "answerRequestToFollow accept", receivedData.SenderId)
 			return err
 		}
 	case "no":
@@ -494,7 +495,7 @@ func answerRequestToFollow(receivedData AnswerRequestToFollow) error {
 		err := dbfuncs.DeleteFollow(receivedData.ReceiverId, receivedData.SenderId)
 		if err != nil {
 			log.Println("error rejecting follow", err)
-			notifyClientOfError(err, "error rejecting follow", receivedData.SenderId)
+			notifyClientOfError(err, "answerRequestToFollow reject", receivedData.SenderId)
 			return err
 		}
 	default:
@@ -535,7 +536,7 @@ func answerRequestToFollow(receivedData AnswerRequestToFollow) error {
 	// fmt.Println("success string")
 	// fmt.Println(receivedData.SenderId)
 
-	notifyClientOfError(err, "successfully answered request to follow", receivedData.SenderId)
+	notifyClientOfError(err, "answerRequestToFollow", receivedData.SenderId)
 	log.Println("end of answer")
 	return err
 }
@@ -544,11 +545,11 @@ func unfollow(receivedData Unfollow) error {
 	err := dbfuncs.DeleteFollow(receivedData.FollowerId, receivedData.FollowingId)
 	if err != nil {
 		log.Println("error deleting follow", err)
-		notifyClientOfError(err, "error deleting follow", receivedData.FollowerId)
+		notifyClientOfError(err, "unfollow", receivedData.FollowerId)
 		return err
 	}
 
-	notifyClientOfError(err, "successfully unfollowed", receivedData.FollowerId)
+	notifyClientOfError(err, "unfollow", receivedData.FollowerId)
 	return err
 }
 
@@ -565,7 +566,7 @@ func notifyClientOfError(err error, message string, id string) error {
 		"message": message,
 	}
 
-	if err == nil {
+	if err != nil {
 		data["type"] = "success"
 	} else {
 		data["type"] = "error"
@@ -576,6 +577,7 @@ func notifyClientOfError(err error, message string, id string) error {
 	for _, c := range activeConnections[id] {
 		err = c.WriteJSON(data)
 		if err != nil {
+
 			break
 		}
 	}

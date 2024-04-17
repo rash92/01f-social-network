@@ -27,7 +27,7 @@ const router = createBrowserRouter([
         path: "/profile/:id",
         errorElement: <Profile />,
         element: <PrivateRoutes component={Profile} />,
-        loader: profileLoader,
+        // loader: profileLoader,
       },
 
       // {

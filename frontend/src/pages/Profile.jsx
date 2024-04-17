@@ -1,5 +1,5 @@
 // YourComponent.js
-import React, {useState, useRef, useEffect} from "react";
+import React, {useState, useRef, useEffect, useCallback} from "react";
 import classes from "./Profile.module.css";
 import ProfileCard from "../components/ProfileCard";
 import AuthContext from "../store/authContext";
@@ -10,12 +10,35 @@ import Posts from "../components/Posts";
 import {getJson} from "../helpers/helpers";
 
 import PrivateProfile from "../components/PrivateProfile";
-import {useLoaderData, useRouteError} from "react-router";
+import {useRouteError, useParams} from "react-router";
 import PostInput from "../components/PostInput";
 
 const Profile = () => {
   const {user, isWsReady, wsVal, wsMsgToServer} = React.useContext(AuthContext);
-  const data = useLoaderData();
+  const [data, setData] = useState({});
+
+  const {id} = useParams();
+
+  const fetchProfile = useCallback(async () => {
+    try {
+      const res = await getJson("profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(id),
+      });
+
+      setData(res);
+    } catch (err) {
+      console.log(err);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [id, fetchProfile]);
 
   const routeError = useRouteError();
   const postRef = useRef(null);
@@ -23,8 +46,8 @@ const Profile = () => {
   const [isActive, setIsActive] = useState("Posts");
 
   const isPrivate =
-    data?.Owner.PrivacySetting === "private" ||
-    data?.Owner.PrivacySetting === ""
+    data?.Owner?.PrivacySetting === "private" ||
+    data?.Owner?.PrivacySetting === ""
       ? true
       : false;
 
@@ -50,30 +73,27 @@ const Profile = () => {
     setIsActive(clickButton);
   };
 
-  // const unfollowHandler = (id) => {
-  //   if (isWsReady) {
-  //     wsMsgToServer(
-  //       JSON.stringify({
-  //         Type: "unfollow",
-  //         message: {
-  //           FollowerId: user.Id,
-  //           FollowingId: id,
-  //         },
-  //       })
-  //     );
-  //   }
-  // };
-
-  // console.log(data[isActive], isActive);
-
   useEffect(() => {
     if (isWsReady) {
       const data = JSON.parse(wsVal);
-      if (data?.type === "success") {
-        console.log(data);
+      console.log(data);
+      switch (data?.message) {
+        case "requestToFollow":
+          setData((prw) => ({...prw, IsPending: true}));
+          break;
+        default: {
+          break;
+        }
       }
+
+      // if (data?.Type === "requestToFollow") {
+      //   setData((prev) => ({
+      //     ...prev,
+      //     PendingFollowers: [...prev.PendingFollowers, data.message],
+      //   }));
+      //  }
     }
-  }, [isWsReady, wsVal]);
+  }, [wsVal, isWsReady]);
 
   // useEffect(() => {
   //   console.log(isActive);
@@ -155,6 +175,11 @@ const Profile = () => {
         })
       );
     }
+
+    setData((prev) => ({
+      ...prev,
+      PendingFollowers: prev.PendingFollowers.filter((item) => item.Id !== id),
+    }));
   };
 
   return routeError ? (
@@ -185,29 +210,34 @@ const Profile = () => {
           // >
 
           <>
-            <ProfileCard
-              data={data}
-              toggleAction={toggleAction}
-              toggleProfileVisibility={toggleProfileVisibility}
-              isPrivate={isPrivate}
-              owner={user.Id === data.Owner.Id}
-              requestFollow={requestFollowHandler}
-            />
-            <ProfileActions
-              data={data}
-              active={data[isActive]}
-              handleClose={handleClose}
-              handleShow={handleShow}
-              show={show}
-              flag={false}
-              isActive={isActive}
-              owner={user.Id === data.Owner.Id}
-              toggleAction={toggleActionModel}
-              accepOrRejectRequestHandler={accepOrRejectRequestHandler}
+            {data.Owner && (
+              <ProfileCard
+                data={data}
+                toggleAction={toggleAction}
+                toggleProfileVisibility={toggleProfileVisibility}
+                isPrivate={isPrivate}
+                owner={user?.Id === data?.Owner?.Id}
+                requestFollow={requestFollowHandler}
+              />
+            )}
 
-              // fetchMoreFellowers={fetchMoreFellowers}
-              // hasMoreFellowers={hasMoreFellowers}
-            />
+            {data.Owner && (
+              <ProfileActions
+                data={data}
+                active={data[isActive]}
+                handleClose={handleClose}
+                handleShow={handleShow}
+                show={show}
+                flag={false}
+                isActive={isActive}
+                owner={user?.Id === data?.Owner?.Id}
+                toggleAction={toggleActionModel}
+                accepOrRejectRequestHandler={accepOrRejectRequestHandler}
+
+                // fetchMoreFellowers={fetchMoreFellowers}
+                // hasMoreFellowers={hasMoreFellowers}
+              />
+            )}
 
             <div>
               <div style={{width: "50vw", margin: "2rem 0 3rem 0"}}>
@@ -225,15 +255,15 @@ const Profile = () => {
   );
 };
 
-export async function profileLoader({request, params}) {
-  return getJson("profile", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "include",
-    body: JSON.stringify(params.id),
-  });
-}
+// export async function profileLoader({request, params}) {
+//   return getJson("profile", {
+//     method: "POST",
+//     headers: {
+//       "Content-Type": "application/json",
+//     },
+//     credentials: "include",
+//     body: JSON.stringify(params.id),
+//   });
+// }
 
 export default Profile;
