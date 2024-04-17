@@ -99,6 +99,16 @@ func GetNumberOfFollowingByUserId(userId string) (int, error) {
 
 }
 
+func GetNumberOfPendingFollowersByUserId(userId string) (int, error) {
+	pendingFollow, err := GetPendingFollowerIdsByFollowingId(userId)
+	return len(pendingFollow), err
+}
+
+func GetNumberOfPendingFollowingsByUserId(userId string) (int, error) {
+	pendingFollowing, err := GetPendingFollowingIdsByFollowerId(userId)
+	return len(pendingFollowing), err
+}
+
 // Find all people you are following (accepted follows only)
 func GetAcceptedFollowingIdsByFollowerId(followerId string) ([]string, error) {
 	var followingIds []string
@@ -166,43 +176,3 @@ func GetPendingFollowingIdsByFollowerId(followerId string) ([]string, error) {
 	err = rows.Err()
 	return followingIds, err
 }
-
-//TO DO: get 10 at a time? decide if doing it through SQL or get all and do in handlefunc
-
-// rewrite?
-// Think this can be cut and use existing seperate get accepted/ pending followers/ following funcs
-// func GetNumberOfFollowersAndFollowing(flag string, ownerId string) (int, error) {
-// 	var count int
-// 	query := fmt.Sprintf("SELECT COUNT(*) FROM Follows WHERE %s=?", flag)
-// 	err := database.QueryRow(query, ownerId).Scan(&count)
-// 	if err != nil {
-// 		return 0, fmt.Errorf("failed to execute query: %v", err)
-// 	}
-// 	return count, nil
-// }
-
-// func GetFollowersOrFollowing(ownerId string, itemId string, offset int) ([]string, error) {
-// 	items := []string{}
-// 	var oppositeId string
-// 	if itemId == "FollowerId" {
-// 		oppositeId = "FollowingId"
-// 	} else {
-// 		oppositeId = "FollowerId"
-// 	}
-// 	query := fmt.Sprintf("SELECT %s FROM Follows WHERE %s = ? LIMIT 10 OFFSET %d", itemId, oppositeId, offset)
-// 	rows, err := db.Query(query, ownerId)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer rows.Close()
-// 	for rows.Next() {
-// 		var item string
-// 		err := rows.Scan(&item)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		items = append(items, GetNicknameFromId(item))
-// 	}
-// 	sort.Strings(items)
-// 	return items, nil
-// }

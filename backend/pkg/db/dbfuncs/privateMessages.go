@@ -58,6 +58,8 @@ func GetAllUserIdsSortedByLastPrivateMessage(userId string) ([]string, error) {
 		}
 		userIds = append(userIds, userId)
 	}
+
+	err = row.Err()
 	return userIds, err
 }
 
@@ -96,8 +98,12 @@ func GetUnmessagedUserIdsSortedAlphabetically(userId string) ([]string, error) {
 		}
 		unmessagedUserIds = append(unmessagedUserIds, unmessagedUserId)
 	}
+
+	err = row.Err()
 	return unmessagedUserIds, err
 }
+
+// TODO
 
 func GetAllPrivateMessagesByUserId(userId string) ([]PrivateMessage, error) {
 	return []PrivateMessage{}, nil
@@ -107,4 +113,3 @@ func GetRecentPrivateMessagesByUserId(userId string, numberOfMessages, offset in
 	return []PrivateMessage{}, nil
 }
 
-//TO DO: get 10 at a time? decide if doing it through SQL or get all and do in handlefunc

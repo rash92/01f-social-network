@@ -3,7 +3,6 @@ package dbfuncs
 import (
 	"database/sql"
 	"errors"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -172,7 +171,7 @@ func GetPostIdByCommentId(commentId string) (string, error) {
 	return postId, err
 }
 
-func GetPostsByCreatorId(creatorId string) ([]Post, error) {
+func GetAllPostsByCreatorId(creatorId string) ([]Post, error) {
 	var posts []Post
 	rows, err := db.Query("SELECT * FROM Posts WHERE CreatorId=?", creatorId)
 	if err == sql.ErrNoRows {
@@ -191,74 +190,117 @@ func GetPostsByCreatorId(creatorId string) ([]Post, error) {
 		posts = append(posts, post)
 	}
 
+	err = rows.Err()
+
 	return posts, err
 }
 
-// rewrite?
-// don't need batch size stuff, do need checking if allowed to see based on privacy level etc
-func GetPosts(userId string, page int, batchSize int, usersOwnProfile bool) ([]Post, error) {
-	offset := (page - 1) * batchSize
-	query := `
-    SELECT * FROM Posts
-    WHERE CreatorId = ?
-    ORDER BY CreatedAt DESC
-    LIMIT ? OFFSET ?
-`
-	rows, err := db.Query(query, userId, batchSize, offset)
+func GetNumberOfPostsByUserId(userId string) (int, error) {
+	posts, err := GetAllPostsByCreatorId(userId)
+
+	return len(posts), err
+}
+
+func GetProfilePosts(viewerId string, creatorId string) ([]Post, error) {
+	var posts []Post
+	// check if creator has public profile, if yes move on to checking privacy level of posts. If no, check if viewer is following them.
+	creatorPrivate, err := IsUserPrivate(creatorId)
 	if err != nil {
-		log.Println(err, "GetPost")
-		return nil, err
+		return posts, err
 	}
-	defer rows.Close()
-	posts := []Post{}
-	for rows.Next() {
+	isFollowing, err := IsFollowing(viewerId, creatorId)
+	if err != nil {
+		return posts, err
+	}
+	if creatorPrivate && !isFollowing {
+		return posts, nil
+	}
+
+	row, err := db.Query(`
+		SELECT * FROM Posts 
+			WHERE CreatorId=? AND PrivacyLevel='public'
+		UNION
+		SELECT * FROM Posts
+			WHERE CreatorId=? AND PrivacyLevel='private' AND CreatorId IN
+			(
+				SELECT FollowingId
+					FROM Follows
+					WHERE FollowerId=? AND Status='accepted'
+			)
+		UNION
+		SELECT * FROM Posts
+			WHERE CreatorId=? AND PrivacyLevel='superPrivate' AND Id IN
+			(
+				SELECT PostId FROM PostChosenFollowers
+					WHERE FollowerId=?
+			)
+		ORDER BY CreatedAt DESC`,
+		creatorId, creatorId, viewerId, creatorId, viewerId)
+
+	if err == sql.ErrNoRows {
+		return posts, nil
+	}
+	if err != nil {
+		return posts, err
+	}
+	defer row.Close()
+
+	for row.Next() {
 		var post Post
-		err := rows.Scan(&post.Id,
-			&post.Title,
-			&post.Body,
-			&post.CreatorId,
-			&post.CreatedAt,
-			&post.Image,
-			&post.PrivacyLevel)
+		err = row.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
 		if err != nil {
-			log.Println(err)
-			return nil, err
+			return posts, err
 		}
-
-		// Skip superprivate posts if the viewer does not have access.
-		// if !usersOwnProfile || post.PrivacyLevel == "superprivate" {
-		// 	allowed, err := CheckSuperprivateAccess(post.Id, userId) // Changed from post.Id.String() now that dbfuncs.Post.Id is of type string.
-		// 	if err != nil {
-		// 		log.Println(err)
-		// 		return nil, err
-		// 	}
-		// 	if !allowed {
-		// 		continue
-		// 	}
-		// }
-
 		posts = append(posts, post)
 	}
 
-	// If some posts could not be displayed because they were superprivate,
-	// recursively call GetPosts till we have 10 posts.
-	if !usersOwnProfile {
-		if len(posts) < 10 {
-			shortfall := 10 - len(posts)
-			page++
-			morePosts, err := GetPosts(userId, page, shortfall, usersOwnProfile)
-			if err != nil {
-				log.Println(err)
-				return nil, err
-			}
-			posts = append(posts, morePosts...)
+	err = row.Err()
+
+	return posts, err
+}
+
+func GetDashboardPosts(userId string) ([]Post, error) {
+	var posts []Post
+
+	row, err := db.Query(`
+		SELECT * FROM Posts 
+			WHERE PrivacyLevel='public'
+		UNION
+		SELECT * FROM Posts
+			WHERE PrivacyLevel='private' AND CreatorId IN
+			(
+				SELECT FollowingId
+					FROM Follows
+					WHERE FollowerId=? AND Status='accepted'
+			)
+		UNION
+		SELECT * FROM Posts
+			WHERE PrivacyLevel='superPrivate' AND Id IN
+			(
+				SELECT PostId FROM PostChosenFollowers
+					WHERE FollowerId=?
+			)
+		ORDER BY CreatedAt DESC`,
+		userId, userId)
+
+	if err == sql.ErrNoRows {
+		return posts, nil
+	}
+	if err != nil {
+		return posts, err
+	}
+
+	defer row.Close()
+	for row.Next() {
+		var post Post
+		err = row.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
+		if err != nil {
+			return posts, err
 		}
+		posts = append(posts, post)
 	}
 
-	// Swap order to display latest posts at the bottom.
-	for i, j := 0, len(posts)-1; i < j; i, j = i+1, j-1 {
-		posts[i], posts[j] = posts[j], posts[i]
-	}
+	err = row.Err()
 
-	return posts, nil
+	return posts, err
 }

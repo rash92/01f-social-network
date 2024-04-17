@@ -1,8 +1,8 @@
 package dbfuncs
 
 import (
+	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,6 +21,15 @@ func AddUser(user *User) error {
 	}
 	_, err = statement.Exec(user.Id, user.Nickname, user.FirstName, user.LastName, user.Email, user.Password, user.Avatar, user.AboutMe, user.PrivacySetting, user.DOB, user.CreatedAt)
 
+	return err
+}
+
+func DeleteUser(userId string) error {
+	statement, err := db.Prepare("DELETE FROM Users WHERE Id = ?")
+	if err != nil {
+		return err
+	}
+	_, err = statement.Exec(userId)
 	return err
 }
 
@@ -119,59 +128,24 @@ func GetNicknameFromId(userId string) (string, error) {
 	return user.Nickname, err
 }
 
-//TO DO: rewrites etc.
+func GetUserBySessionId(sessionId string) (User, error) {
+	userId, err := GetUserIdFromCookie(sessionId)
+	if err != nil {
+		return User{}, err
+	}
+	user, err := GetUserById(userId)
+	return user, err
+}
 
-// func GetUserDataFromSession(sessionId string) (string, string, string, error) {
-// 	var userId string
-// 	var varAvatarImage string
-// 	var nickname string
-
-// 	// Execute the SQL query
-// 	err := database.QueryRow(`
-// 			SELECT Sessions.userId, Users.Avatar, Users.Nickname
-// 			FROM Sessions
-// 			JOIN Users ON Sessions.UserID = Users.Id
-// 			WHERE Sessions.Id = ?
-// 	`, sessionId).Scan(&userId, &profileImage, &nickname)
-
-// 	// Check for errors
-// 	if err != nil {
-// 		return "", "", "", err
-// 	}
-
-// 	return userId,AvatarImage, nickname, nil
-// }
-
-// func GetNumberOfByUserId(userId string, table string) (int, error) {
-// 	var count int
-// 	query := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE Creatorid=?", table)
-// 	err := database.QueryRow(query, userId).Scan(&count)
-// 	if err != nil {
-// 		return 0, fmt.Errorf("failed to execute query: %v", err)
-// 	}
-// 	return count, nil
-// }
-
-// func DeleteUserByUsername(username string) error {
-// 	stmt, err := db.Prepare("DELETE * FROM Follows")
-// 	if err != nil {
-// 		return err
-// 	}
-// 	_, err = stmt.Exec()
-// 	if err != nil {
-// 		//  you will get an arror if the user is not in the database
-// 		// fmt.Println("error in deleting user by username", err)
-// 		return err
-// 	}
-// 	return nil
-// }
-
+// returns slice of users with only id, nickname and avatar filled, everything else is default/ nil values
 func SearchUsers(query string) ([]User, error) {
 	var users []User
-	fmt.Println(users)
 	rows, err := db.Query("SELECT Id,  Nickname, Avatar  FROM users WHERE FirstName LIKE ? OR LastName LIKE ? OR Nickname LIKE ?", "%"+query+"%", "%"+query+"%", "%"+query+"%")
+	if err == sql.ErrNoRows {
+		return users, nil
+	}
 	if err != nil {
-		return nil, err
+		return users, err
 	}
 	defer rows.Close()
 
@@ -182,9 +156,6 @@ func SearchUsers(query string) ([]User, error) {
 		}
 		users = append(users, user)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	fmt.Println(users)
-	return users, nil
+	err = rows.Err()
+	return users, err
 }
