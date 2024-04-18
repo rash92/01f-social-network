@@ -110,14 +110,12 @@ export const AuthContextProvider = (props) => {
       ws.current = socket;
 
       return () => {
-        if (isWsReady) {
-          socket.close();
-        }
+        socket.close();
       };
     }
 
     // Clean up WebSocket connection
-  }, [isWsReady, user.isLogIn]);
+  }, [user.isLogIn]);
 
   useEffect(() => {
     if (isWsReady) {

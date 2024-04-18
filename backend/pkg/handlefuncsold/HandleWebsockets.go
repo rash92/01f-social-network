@@ -41,6 +41,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"runtime"
 	"sync"
 	"time"
 
@@ -201,6 +202,7 @@ type Unfollow struct {
 // logging out, although logging out will include closing the current
 // connection.
 func HandleConnection(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("Number of goroutines: %d\n", runtime.NumGoroutine())
 	cookie, err := r.Cookie("user_token")
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -214,6 +216,7 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
+
 	if err != nil {
 		log.Println("Error upgrading to WebSocket:", err)
 		return
@@ -229,10 +232,15 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 	}
 
 	connectionLock.Lock()
+
 	if _, ok := activeConnections[userID]; !ok {
 		activeConnections[userID] = []*websocket.Conn{conn}
 	} else {
 		activeConnections[userID] = append(activeConnections[userID], conn)
+	}
+
+	for id, arr := range activeConnections {
+		fmt.Println(id, len(arr))
 	}
 	connectionLock.Unlock()
 
@@ -251,6 +259,7 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 		_, msgBytes, err := conn.ReadMessage()
 		//possibly don't want to immediately delete the connection if there is an error
 		if err != nil {
+			fmt.Println("connections error not nil")
 			myUpdatedConnections := []*websocket.Conn{}
 			connectionLock.Lock()
 
@@ -459,14 +468,17 @@ func requestToFollow(receivedData Follow) error {
 	}
 
 	connectionLock.RLock()
-	for _, c := range activeConnections[follow.FollowingId] {
-		err = c.WriteJSON(notification)
+	val, ok := activeConnections[follow.FollowingId]
 
-		if err != nil {
-			log.Println("error sending (potential) new follower info to recipient", err)
+	if ok {
+		for _, c := range val {
+			err = c.WriteJSON(notification)
+
+			if err != nil {
+				log.Println("error sending (potential) new follower info to recipient", err)
+			}
 		}
 	}
-
 	connectionLock.RUnlock()
 
 	log.Println("err:", err)
@@ -574,11 +586,15 @@ func notifyClientOfError(err error, message string, id string) error {
 	}
 
 	connectionLock.RLock()
-	for _, c := range activeConnections[id] {
-		err = c.WriteJSON(data)
-		if err != nil {
 
-			break
+	val, ok := activeConnections[id]
+	if ok {
+		for _, c := range val {
+			err = c.WriteJSON(data)
+			if err != nil {
+				fmt.Println("error sending error message to client:", err)
+				break
+			}
 		}
 	}
 	connectionLock.RUnlock()
