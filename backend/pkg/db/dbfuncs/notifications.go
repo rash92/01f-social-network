@@ -7,21 +7,21 @@ import (
 	"github.com/google/uuid"
 )
 
-func AddNotification(notification *Notification) error {
+func AddNotification(notification *Notification) (string, error) {
 	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
 	if err != nil {
-		return err
+		return "", err
 	}
 	notification.Id = id.String()
 	notification.CreatedAt = time.Now()
 	statement, err := db.Prepare("INSERT INTO Notifications VALUES (?,?,?,?,?,?,?)")
 	if err != nil {
-		return err
+		return "", err
 	}
 	_, err = statement.Exec(notification.Id, notification.Body, notification.Type, notification.CreatedAt, notification.ReceiverId, notification.SenderId, notification.Seen)
 
-	return err
+	return notification.Id, err
 }
 
 // updates notification to seen

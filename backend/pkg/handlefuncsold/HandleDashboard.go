@@ -1,11 +1,11 @@
 package handlefuncs
 
 import (
+	"backend/pkg/db/dbfuncs"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"backend/pkg/db/dbfuncs"
 )
 
 func GetAllChats(ownerId string) ([]string, error) {
@@ -58,8 +58,17 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 		users = append(users, user)
 	}
 
+	group, err := dbfuncs.GetAllGroups()
+
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+		return
+	}
+
 	response := map[string]interface{}{
-		"chats": users,
+		"chats":         users,
+		"groups":        group,
+		"notifications": []Notification{},
 	}
 
 	err = json.NewEncoder(w).Encode(response)

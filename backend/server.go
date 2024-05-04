@@ -72,6 +72,7 @@ func main() {
 	http.HandleFunc("/get-users", wrapperHandler(handlefuncs.HandleGetUsers))
 	http.HandleFunc("/get-messages", handlefuncs.MessagesHandler)
 	http.HandleFunc("/search", wrapperHandler(handlefuncs.HandleSearchUser))
+	http.HandleFunc("/toggle-privacy", wrapperHandler(handlefuncs.HanddleToggleProfilePrivacy))
 	http.Handle("/images/", http.StripPrefix("/images", http.FileServer(http.Dir("./pkg/db/images"))))
 
 	fmt.Println("Starting server on http://localhost:8000")

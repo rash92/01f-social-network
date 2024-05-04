@@ -14,31 +14,22 @@ import {useRouteError, useParams} from "react-router";
 import PostInput from "../components/PostInput";
 
 const Profile = () => {
-  const {user, isWsReady, wsVal, wsMsgToServer} = React.useContext(AuthContext);
-  const [data, setData] = useState({});
+  const {
+    user,
+    isWsReady,
+
+    wsMsgToServer,
+    toggleProfilePrivacy,
+    profileData: {data, error},
+    resetIsProfileComponentVisible,
+    fetchProfileData,
+  } = React.useContext(AuthContext);
 
   const {id} = useParams();
 
-  const fetchProfile = useCallback(async () => {
-    try {
-      const res = await getJson("profile", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(id),
-      });
-
-      setData(res);
-    } catch (err) {
-      console.log(err);
-    }
-  }, [id]);
-
   useEffect(() => {
-    fetchProfile();
-  }, [id, fetchProfile]);
+    fetchProfileData(id);
+  }, [id, fetchProfileData]);
 
   const routeError = useRouteError();
   const postRef = useRef(null);
@@ -52,7 +43,9 @@ const Profile = () => {
       : false;
 
   // const [hasMorePosts, setHasMorePosts] = useState(true);
-  const toggleProfileVisibility = () => {};
+  const toggleProfileVisibility = () => {
+    toggleProfilePrivacy(data?.Owner.PrivacySetting);
+  };
 
   const toggleActionModel = (active) => {
     console.log(active);
@@ -74,26 +67,47 @@ const Profile = () => {
   };
 
   useEffect(() => {
-    if (isWsReady) {
-      const data = JSON.parse(wsVal);
-      console.log(data);
-      switch (data?.message) {
-        case "requestToFollow":
-          setData((prw) => ({...prw, IsPending: true}));
-          break;
-        default: {
-          break;
-        }
-      }
+    resetIsProfileComponentVisible(true);
+    return () => resetIsProfileComponentVisible(false);
+  }, [resetIsProfileComponentVisible]);
 
-      // if (data?.Type === "requestToFollow") {
-      //   setData((prev) => ({
-      //     ...prev,
-      //     PendingFollowers: [...prev.PendingFollowers, data.message],
-      //   }));
-      //  }
-    }
-  }, [wsVal, isWsReady]);
+  // useEffect(() => {
+  //   if (!isComponentVisible || !isWsReady) return;
+  //   const data = JSON.parse(wsVal);
+  //   console.log(data);
+
+  //   switch (data?.message) {
+  //     case "requestToFollow":
+  //       setData((prw) => ({...prw, IsPending: true}));
+  //       break;
+  //     default: {
+  //       break;
+  //     }
+  //   }
+
+  //   //  nofications actions
+  //   // console.log(data.Body.Data);
+  //   if (data?.Type === "notification requestToFollow") {
+  //     setData((prev) => {
+  //       if (Object.keys(prev).length === 0) {
+  //         console.log(" not prev", prev);
+  //         return {};
+  //       }
+
+  //       let arr = prev?.PendingFollowers;
+
+  //       if (!arr) {
+  //         console.log(" not arr", prev);
+  //         return {};
+  //       }
+  //       console.log("prev", prev);
+  //       return {
+  //         ...prev,
+  //         PendingFollowers: [...arr, data?.Body?.Data],
+  //       };
+  //     });
+  //   }
+  // }, [wsVal, isWsReady, isComponentVisible]);
 
   // useEffect(() => {
   //   console.log(isActive);
@@ -134,6 +148,7 @@ const Profile = () => {
   // };
 
   const requestFollowHandler = () => {
+    console.log("unfollowing");
     if (isWsReady) {
       if (data.IsFollowed) {
         wsMsgToServer(
@@ -175,11 +190,6 @@ const Profile = () => {
         })
       );
     }
-
-    setData((prev) => ({
-      ...prev,
-      PendingFollowers: prev.PendingFollowers.filter((item) => item.Id !== id),
-    }));
   };
 
   return routeError ? (
