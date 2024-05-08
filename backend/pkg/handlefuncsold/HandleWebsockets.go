@@ -290,6 +290,7 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			for _, c := range activeConnections[userID] {
+				fmt.Println(userID, "userId")
 				if c != conn {
 					myUpdatedConnections = append(myUpdatedConnections, conn)
 				}
@@ -315,7 +316,7 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 		// 	finalStraw = notifyClientOfError(err, "error processing websocket message", userID)
 		// }
 
-		// if finalStraw != nil {
+		// if finalStraw != nil {Error sending user list to client: websocket: close sent
 		// 	log.Println("error sending error message to client:", finalStraw)
 		// 	break camelsBack
 		// }
@@ -625,6 +626,7 @@ func answerRequestToFollow(receivedData AnswerRequestToFollow) error {
 }
 
 func unfollow(receivedData Unfollow) error {
+	log.Println("reached unfollow")
 	err := dbfuncs.DeleteFollow(receivedData.FollowerId, receivedData.FollowingId)
 	if err != nil {
 		log.Println("error deleting follow", err)

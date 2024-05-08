@@ -1,5 +1,6 @@
 import React, {useState, useEffect, useCallback, useRef} from "react";
 import {getJson} from "../helpers/helpers";
+import User from "../components/User";
 
 const userObj = {
   Id: "",
@@ -101,7 +102,15 @@ export const AuthContextProvider = (props) => {
     }
   }, []);
 
-  const toggleProfilePrivacy = async (s) => {
+  const toggleProfilePrivacy = async () => {
+    console.log(profileData.data?.Owner?.PrivacySetting, "before toggle");
+    let s =
+      profileData.data?.Owner?.PrivacySetting === "private"
+        ? "public"
+        : "private";
+
+    console.log("after toggle ", s);
+
     try {
       const res = await getJson("toggle-privacy", {
         method: "POST",
@@ -115,14 +124,11 @@ export const AuthContextProvider = (props) => {
         }),
       });
       if (res.message) {
-        console.log("before:", s);
-        const updated = s === "private" ? "public" : "private";
-        console.log("after:", updated);
         setProfileData((prev) => ({
           ...prev,
           data: {
             ...prev.data,
-            Owner: {...prev.data.Owner, PrivacySetting: updated},
+            Owner: {...prev.data.Owner, PrivacySetting: s},
           },
         }));
       }
@@ -321,8 +327,29 @@ export const AuthContextProvider = (props) => {
   };
 
   const handleWebsocketSucess = (data) => {
+    const followers = {
+      Id: user.Id,
+      Nickname: user.Nickname,
+      Avatar: user.Avatar,
+      FirstName: user.FirstName,
+      LastName: user.LastName,
+      PrivacySetting: user.Privicy_setting,
+    };
     switch (data.message) {
       case "requestToFollow":
+        if (profileData.data?.Owner?.PrivacySetting === "public") {
+          setProfileData((prev) => ({
+            ...prev,
+            data: {
+              ...prev.data,
+              Followers: Array.isArray(prev.data.Followers)
+                ? [followers, ...prev.data.Followers]
+                : [followers],
+              IsFollowed: true,
+            },
+          }));
+          return;
+        }
         setProfileData((prev) => ({
           ...prev,
           data: {...prev.data, IsPending: true},
@@ -370,11 +397,27 @@ export const AuthContextProvider = (props) => {
 
         break;
       case "unfollow":
+        if (profileData.data?.Owner?.PrivacySetting === "public") {
+          setProfileData((prev) => ({
+            ...prev,
+            data: {
+              ...prev.data,
+              Followers: data.Followers?.filter((el) => el.Id !== user.Id),
+              IsFollowed: false,
+            },
+          }));
+          return;
+        }
+
         setProfileData((prev) => ({
           ...prev,
           data: {
             ...prev.data,
             IsFollowed: false,
+
+            Followers: Array.isArray(prev.data.Followers)
+              ? prev.data.Followers.filter((item) => item.Id !== data.whatever)
+              : [],
           },
         }));
 
@@ -388,7 +431,7 @@ export const AuthContextProvider = (props) => {
   useEffect(() => {
     if (isWsReady) {
       const data = JSON.parse(wsVal);
-
+      console.log(data);
       if (data?.type === "error") {
         handleWebsocketErrors(data);
         return;

@@ -20,15 +20,16 @@ func HanddleToggleProfilePrivacy(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "405 Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	fmt.Println("privacy setting", privacy)
+
 	err := json.NewDecoder(r.Body).Decode(&privacy)
+
 	if err != nil {
 		errorMessage := fmt.Sprintf("error decoding userId: %v", err.Error())
 		fmt.Println(err.Error(), "60")
 		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
-
+	fmt.Println("privacy setting", privacy)
 	err = dbfuncs.UpdatePrivacySetting(privacy.UserId, privacy.Privacy)
 	if err != nil {
 		errorMessage := fmt.Sprintf("error updating privacy setting: %v", err.Error())

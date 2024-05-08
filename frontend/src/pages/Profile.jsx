@@ -42,9 +42,11 @@ const Profile = () => {
       ? true
       : false;
 
+  console.log(isPrivate, data?.Owner?.PrivacySetting);
+
   // const [hasMorePosts, setHasMorePosts] = useState(true);
   const toggleProfileVisibility = () => {
-    toggleProfilePrivacy(data?.Owner.PrivacySetting);
+    toggleProfilePrivacy();
   };
 
   const toggleActionModel = (active) => {

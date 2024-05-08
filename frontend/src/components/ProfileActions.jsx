@@ -29,13 +29,13 @@ const ProfileActions = ({
     >
       <ul className={classes.actions}>
         <Action
-          numberAction={Followers.length}
+          numberAction={Followers?.length}
           actionName={"Followers"}
           toggleAction={toggleAction}
           active={isActive}
         />
         <Action
-          numberAction={Following.length}
+          numberAction={Following?.length}
           actionName={"Following"}
           toggleAction={toggleAction}
           active={isActive}
