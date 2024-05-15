@@ -93,7 +93,6 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check Follows table to see if there's a row with FollowerId = userId and FollowingId = ownerId.
-
 	profile.IsFollowed, err = dbfuncs.IsFollowing(userId, ownerId)
 	if err != nil {
 		fmt.Printf("failed to execute query: %v\n", err)
@@ -172,6 +171,55 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err.Error(), "90")
 		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
+	}
+
+	if usersOwnProfile {
+		profile.Posts, err = dbfuncs.GetPostsByCreatorId(ownerId)
+		if err != nil {
+			errorMessage := fmt.Sprintf("error getting posts: %v", err.Error())
+			http.Error(w, errorMessage, http.StatusInternalServerError)
+			return
+		}
+	} else {
+		if profile.IsFollowed {
+			a, err := dbfuncs.GetPostsByCreatorId(ownerId)
+			if err != nil {
+				errorMessage := fmt.Sprintf("error getting posts: %v", err.Error())
+				http.Error(w, errorMessage, http.StatusInternalServerError)
+				return
+			}
+			for _, post := range a {
+				if post.PrivacyLevel == "public" || post.PrivacyLevel == "private" {
+					profile.Posts = append(profile.Posts, post)
+				}
+				if post.PrivacyLevel == "superprivate" {
+					b, err := dbfuncs.GetPostChosenFollowerIdsByPostId(post.Id)
+					if err != nil {
+						errorMessage := fmt.Sprintf("error getting posts: %v", err.Error())
+						http.Error(w, errorMessage, http.StatusInternalServerError)
+						return
+					}
+					for _, followerId := range b {
+						if followerId == userId {
+							profile.Posts = append(profile.Posts, post)
+						}
+					}
+				} else {
+					a, err := dbfuncs.GetPostsByCreatorId(ownerId)
+					if err != nil {
+						errorMessage := fmt.Sprintf("error getting posts: %v", err.Error())
+						http.Error(w, errorMessage, http.StatusInternalServerError)
+						return
+					}
+					for _, post := range a {
+						if post.PrivacyLevel == "public" {
+							profile.Posts = append(profile.Posts, post)
+						}
+					}
+				}
+			}
+
+		}
 	}
 
 	acceptedFollowers, err := dbfuncs.GetAcceptedFollowerIdsByFollowingId(ownerId)

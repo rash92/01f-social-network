@@ -1,6 +1,5 @@
 import React, {useState, useEffect, useCallback, useRef} from "react";
 import {getJson} from "../helpers/helpers";
-import User from "../components/User";
 
 const userObj = {
   Id: "",
@@ -51,6 +50,7 @@ export const AuthContextProvider = (props) => {
     notifications: [],
     groups: [],
     chat: [],
+    Posts: [],
   });
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [isWsReady, setIsWsReady] = useState(false);
@@ -350,6 +350,7 @@ export const AuthContextProvider = (props) => {
           }));
           return;
         }
+
         setProfileData((prev) => ({
           ...prev,
           data: {...prev.data, IsPending: true},
@@ -428,6 +429,61 @@ export const AuthContextProvider = (props) => {
     }
   };
 
+  const addPostToFeed = (data) => {
+    const {
+      body: Body,
+      title: Title,
+      createAt: CreatedAt,
+      creatorId: CreatorId,
+      groupId: GroupId,
+      id: Id,
+      privacyLevel: PrivacyLevel,
+      image: Image,
+    } = data.message;
+    if (
+      profileData.isComponentVisible &&
+      CreatorId === profileData.data.Owner.Id
+    ) {
+      console.log(data.message.CreatorId);
+      setProfileData((prev) => ({
+        ...prev,
+        data: {
+          ...prev.data,
+          Posts: [
+            ...prev.data.Posts,
+            {
+              Body,
+              Title,
+              CreatedAt,
+              CreatorId,
+              GroupId,
+              Id,
+              privacyLevel: PrivacyLevel,
+              image: Image,
+            },
+          ],
+        },
+      }));
+    } else {
+      setDashBoardData((prev) => ({
+        ...prev,
+        Posts: [
+          ...prev?.Posts,
+          {
+            Body,
+            Title,
+            CreatedAt,
+            CreatorId,
+            GroupId,
+            Id,
+            privacyLevel: PrivacyLevel,
+            image: Image,
+          },
+        ],
+      }));
+    }
+  };
+
   useEffect(() => {
     if (isWsReady) {
       const data = JSON.parse(wsVal);
@@ -458,6 +514,12 @@ export const AuthContextProvider = (props) => {
         case "online":
           setOnlineUsers(data);
           break;
+        case "post":
+          console.log(data, "this the post got back from websocket");
+          addPostToFeed(data);
+
+          break;
+
         default:
           // console.log("no action", data);
           break;

@@ -27,6 +27,7 @@ const Profile = () => {
 
   const {id} = useParams();
 
+  console.log(data.Posts, "posts");
   useEffect(() => {
     fetchProfileData(id);
   }, [id, fetchProfileData]);

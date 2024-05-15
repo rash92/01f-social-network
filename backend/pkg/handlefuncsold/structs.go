@@ -44,7 +44,6 @@ type Post struct {
 	UserId       uuid.UUID `json:"userid"`
 	Title        string    `json:"title"`
 	Body         string    `json:"body"`
-	Categories   []string  `json:"categories"`
 	CreatedAt    time.Time `json:"createdAt"`
 	Comments     []Comment `json:"comments"`
 	Likes        int       `json:"likes"`
@@ -52,8 +51,8 @@ type Post struct {
 	PrivacyLevel string    `json:"privacyLevel"`
 	CreatorId    string    `json:"creatorId "`
 	Image    *Image    `json:"avatar,omitempty"`  
-	
-	 
+	GroupId uuid.UUID `json:"groupId"`
+	ChosenFollowers []string `json:"chosenFollowers"`
 }
 type Comment struct {
 	ID        string    `json:"id"`

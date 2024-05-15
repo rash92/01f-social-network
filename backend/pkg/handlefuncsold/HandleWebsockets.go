@@ -38,6 +38,7 @@ package handlefuncs
 import (
 	"backend/pkg/db/dbfuncs"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -94,6 +95,18 @@ func unmarshalBody[T any](signalBody []byte, receivedData T) {
 // 	Message   string `json:"Message"`
 // 	CreatedAt string `json:"CreatedAt"`
 // }
+
+type PostFromClient struct {
+	Id                  string    `json:"id"`
+	Title               string    `json:"title"`
+	Body                string    `json:"body"`
+	CreatedAt           time.Time `json:"createdAt"`
+	PrivacyLevel        string    `json:"privacyLevel"`
+	CreatorId           string    `json:"creatorId"`
+	Image               *Image    `json:"avatar,omitempty"`
+	PostChosenFollowers []string  `json:"postChosenFollowers,omitempty"`
+	GroupId             string    `json:"groupId,omitempty"`
+}
 
 // func (receivedData Post) parseForDB() *dbfuncs.Post {
 // 	return &dbfuncs.Post{
@@ -365,6 +378,11 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		var receivedData Unfollow
 		unmarshalBody(signal.Body, &receivedData)
 		err = unfollow(receivedData)
+
+	case "post":
+		var receivedData PostFromClient
+		unmarshalBody(signal.Body, &receivedData)
+		err = post(receivedData)
 
 	case "createGroup":
 		var receivedData Group
@@ -767,4 +785,121 @@ func createGroup(receivedData Group) error {
 	log.Println("err:", err)
 	notifyClientOfError(err, "createGroup", receivedData.CreatorId, nil)
 	return err
+}
+
+func post(receivedData PostFromClient) error {
+	err := validateContent(receivedData.Body)
+	if err != nil {
+		return err
+	}
+
+	dbPost := dbfuncs.Post{
+		Title:        receivedData.Title,
+		Body:         receivedData.Body,
+		CreatorId:    receivedData.CreatorId,
+		PrivacyLevel: receivedData.PrivacyLevel,
+	}
+
+	if receivedData.Image != nil {
+		dbPost.Image = receivedData.Image.Data
+	}
+
+	err = dbfuncs.AddPost(&dbPost)
+	if err != nil {
+		log.Println("error adding post to database", err)
+		notifyClientOfError(err, "post", receivedData.CreatorId, nil)
+		return err
+	}
+
+	receivedData.Id = dbPost.Id
+
+	signalBody, err := json.Marshal(receivedData)
+	if err != nil {
+		log.Println("error marshalling receivedData", err)
+		notifyClientOfError(err, "post", receivedData.CreatorId, nil)
+		return err
+	}
+
+	signal := SignalReceived{
+		Type: "post",
+		Body: signalBody,
+	}
+
+	switch receivedData.PrivacyLevel {
+	case "public":
+		connectionLock.RLock()
+		for user := range activeConnections {
+			log.Println("user", user, "creatorId", receivedData.CreatorId)
+			for _, c := range activeConnections[user] {
+				fmt.Println(c, "c", signal, "signal")
+				err = c.WriteJSON(signal)
+				if err != nil {
+					log.Println("error sending new post to clients", err)
+				}
+			}
+		}
+		connectionLock.RUnlock()
+	case "private":
+		for _, c := range activeConnections[receivedData.CreatorId] {
+			err = c.WriteJSON(signal)
+			if err != nil {
+				log.Println("error sending new post to self", err)
+			}
+		}
+		followers, err := dbfuncs.GetAcceptedFollowerIdsByFollowingId(receivedData.CreatorId)
+		if err != nil {
+			log.Println("error getting followers from database", err)
+			notifyClientOfError(err, "post", receivedData.CreatorId, nil)
+		}
+		for _, followerId := range followers {
+			for _, c := range activeConnections[followerId] {
+				err = c.WriteJSON(signal)
+				if err != nil {
+					log.Println("error sending new post to client", err)
+				}
+			}
+		}
+	case "superprivate":
+		for _, c := range activeConnections[receivedData.CreatorId] {
+			err = c.WriteJSON(signal)
+			if err != nil {
+				log.Println("error sending new post to self", err)
+			}
+		}
+		for _, followerId := range receivedData.PostChosenFollowers {
+			postChosenFollower := dbfuncs.PostChosenFollower{
+				PostId:     dbPost.Id,
+				FollowerId: followerId,
+			}
+			err = dbfuncs.AddPostChosenFollower(&postChosenFollower)
+			if err != nil {
+				log.Println("error adding postChosenFollower to database", err)
+				notifyClientOfError(err, "post", receivedData.CreatorId, nil)
+				return err
+			}
+			for _, c := range activeConnections[followerId] {
+				err = c.WriteJSON(signal)
+				if err != nil {
+					log.Println("error sending new post to client", err)
+				}
+			}
+		}
+	}
+
+	notifyClientOfError(err, "post", receivedData.CreatorId, nil)
+	return err
+}
+
+func validateContent(content string) error {
+	if len(content) > CharacterLimit {
+		err := errors.New("413 Payload Too Large")
+		log.Println(err)
+		return err
+	}
+	if len(content) == 0 {
+		err := errors.New("204 No Content")
+		log.Println(err)
+		return err
+	}
+	return nil
 }

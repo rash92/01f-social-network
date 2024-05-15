@@ -1,65 +1,67 @@
-import React, {useState, useEffect} from "react";
+import React, {useState, useCallback, useContext} from "react";
 import MyModal from "./Modal";
 import {Form, Button} from "react-bootstrap";
 import useInput from "../hooks/use-input";
 import classes from "./AddPost.module.css";
 import {getJson} from "../helpers/helpers";
-import User from "./User";
-import {Link} from "react-router-dom";
 import FormGroup from "./FormGroup";
+import SearchUser from "./SearchUser";
+import AuthContext from "../store/authContext";
+import {Link} from "react-router-dom";
+import User from "./User";
 
-const AddPost = ({show, setShow}) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [suggestions, setSuggestions] = useState([]);
-  const [chosenFollowers, setChosenFollowers] = useState([]);
-  const [searchInputTouch, setsearchInputTouch] = useState(false);
+const AddPost = ({show, setShow, type = "profile", groupId = ""}) => {
+  const {
+    user,
+    isWsReady,
+
+    wsMsgToServer,
+  } = useContext(AuthContext);
+
   const [errorAddPost, setErrorAddpost] = useState({
     message: "",
     isError: false,
   });
-
   const [postImgValue, setPostImgValue] = useState({value: "", file: null});
-
   const [privacy, setPrivacy] = useState("public");
-
-  const searchBlurHandler = (e) => {
-    setsearchInputTouch(true);
+  const handlePrivacyChange = (e) => {
+    setPrivacy(e.target.value);
   };
-
-  const followerClickHandler = (user, e) => {
-    if (chosenFollowers.some((el) => el.id === user.id)) {
-      return;
+  const [seachList, setSeachList] = useState([]);
+  const [typingTimeout, setTypingTimeout] = useState(null);
+  const [chosenFollowers, setChosenFollowers] = useState([]);
+  const [searchInputTouch, setSearchInputTouch] = useState(false);
+  const fetchSearch = async ({query, id}) => {
+    try {
+      const data = await getJson("search-Follower", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({search: query, id}),
+      });
+      setSeachList(data);
+    } catch (err) {
+      console.log(err);
     }
-
-    setChosenFollowers((prev) => [...prev, user]);
-    setSearchTerm("");
-    setSuggestions([]);
+  };
+  const searchInputTouchHandler = (input) => {
+    setSearchInputTouch(input);
   };
 
-  const options = [
-    {id: 1, username: "abdi2", name: "abdi"},
-    {id: 2, username: "ahmed34", name: "ahmed"},
-  ];
+  const handleSearch = useCallback(
+    (query) => {
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+      }
 
-  const handleSearch = (event) => {
-    const searchTerm = event.target.value;
-    setSearchTerm(searchTerm);
-
-    // Filter options based on the search term
-    const filteredSuggestions = options.filter((option) =>
-      option.username.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    setSuggestions(filteredSuggestions);
-  };
-
-  const handlePrivacyChange = (event) => {
-    setPrivacy(event.target.value);
-  };
-  // const handleClose = () => setShow(false);
-  // const handleShow = () => {
-  //   setShow(true);
-  // };
+      setTypingTimeout(
+        setTimeout(fetchSearch.bind(null, {query, id: user.Id}), 500)
+      );
+    },
+    [typingTimeout, user.Id]
+  );
 
   const {
     isValid: titleIsValid,
@@ -80,6 +82,7 @@ const AddPost = ({show, setShow}) => {
   } = useInput((value) => value.trim() !== "");
 
   let formIsValid = titleIsValid && enterePostIsValid ? true : false;
+
   formIsValid =
     privacy === "almost" && chosenFollowers.length === 0 ? false : formIsValid;
 
@@ -87,42 +90,77 @@ const AddPost = ({show, setShow}) => {
     event.preventDefault();
 
     if (!formIsValid) return;
-    const data = {
-      title: titleValue,
-      body: enterePost,
+    const allowedImageTypes = {
+      "image/png": true,
+      "image/jpeg": true,
+      "image/giff": true,
     };
-    try {
-      const res = await getJson("add-post", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          user_token: document.cookie,
-        },
-        credentials: "include",
-        body: JSON.stringify(data),
+
+    if (
+      postImgValue?.file?.type &&
+      !allowedImageTypes[postImgValue?.file?.type]
+    ) {
+      console.log(postImgValue?.file?.type);
+      console.log("this here");
+      setErrorAddpost({
+        message: "image type  allowed png , jpeg giff ",
+        isError: false,
       });
-      if (res.success) {
-        resetTitleInput();
-        resetPostInput();
-        setPrivacy("puplic");
-        setsearchInputTouch([]);
-        chosenFollowers([]);
-        // OnAddPost(res.post);
-        handleClose();
-        setErrorAddpost({message: "", isError: false});
-      }
-    } catch (error) {
-      setErrorAddpost({message: error.message, isError: true});
+      return;
     }
+    const convertImageToBase64 = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = (error) => reject(error);
+      });
+    };
+
+    const data = {
+      type: "post",
+      message: {
+        title: titleValue,
+        body: enterePost,
+        PostChosenFollowers: chosenFollowers.map((el) => el.Id),
+        privacyLevel: privacy,
+        groupId: "",
+        creatorId: user.Id,
+        createdAt: new Date(),
+        image: postImgValue.file
+          ? await convertImageToBase64(postImgValue.file)
+          : null,
+        isWholeForum: type === "profile" ? true : false,
+        id: "",
+      },
+    };
+
+    if (isWsReady) {
+      console.log(data, " post that we sending");
+      wsMsgToServer(JSON.stringify(data));
+    }
+
+    resetTitleInput();
+    resetPostInput();
+    setChosenFollowers([]);
+    setPrivacy("puplic");
+    handleClose();
+    setErrorAddpost({message: "", isError: false});
   };
 
   const titleInputClasses = titleInputHassError ? `${classes.invalid} ` : "";
   const pastInputClasses = postInputHassError ? `${classes.invalid} ` : "";
   const searchInputClasses =
-    chosenFollowers.length < 0 && searchInputTouch ? `${classes.invalid} ` : "";
+    !chosenFollowers.length && searchInputTouch ? `${classes.invalid} ` : "";
 
   const handleClose = () => setShow(false);
-
+  const addChosen = (id) => {
+    if (chosenFollowers.some((el) => el.Id === id)) return;
+    setChosenFollowers([
+      ...chosenFollowers,
+      seachList.find((el) => el.Id === id),
+    ]);
+  };
   return (
     <MyModal handleClose={handleClose} show={show} flag={false}>
       <Form onSubmit={handleSubmit} className="py-3">
@@ -161,16 +199,57 @@ const AddPost = ({show, setShow}) => {
           )}
         </Form.Group>
 
-        <Form.Group controlId="privacy">
-          <Form.Label>Choose Privacy:</Form.Label>
-          <Form.Select value={privacy} onChange={handlePrivacyChange}>
-            <option selected value="public">
-              Public
-            </option>
-            <option value="private">Private</option>
-            <option value="almost">Almost private</option>
-          </Form.Select>
-        </Form.Group>
+        {type === "profile" && (
+          <Form.Group controlId="privacy">
+            <Form.Label>Choose Privacy:</Form.Label>
+            <Form.Select value={privacy} onChange={handlePrivacyChange}>
+              <option selected value="public">
+                Public
+              </option>
+              <option value="private">Private</option>
+              <option value="almost">Almost private</option>
+            </Form.Select>
+          </Form.Group>
+        )}
+
+        {privacy === "almost" && type !== "group" && (
+          <>
+            {searchInputClasses && (
+              <p className={classes["error-text"]}>
+                please choose a Followers.
+              </p>
+            )}
+            <SearchUser
+              addChosen={addChosen}
+              onSearch={handleSearch}
+              searchList={seachList}
+              className={classes.NavLink}
+              Blur={searchInputTouchHandler}
+              type={"follower"}
+            />
+
+            <div
+              style={{
+                margin: "4rem 0",
+              }}
+            >
+              <div>Chosen followers</div>
+              {chosenFollowers?.map((chosen, index) => (
+                <Link
+                  to={`/profile/${chosen.Id}`}
+                  className={classes.chosen}
+                  key={index}
+                >
+                  <User
+                    Avatar={chosen.Avatar}
+                    Nickname={chosen.Nickname}
+                    isLoggedIn={true}
+                  />
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
 
         <div style={{margin: "1rem 0rem"}}>
           <FormGroup
@@ -182,60 +261,6 @@ const AddPost = ({show, setShow}) => {
             Text="JPG, PNG, GIF."
           />
         </div>
-        {privacy === "almost" && (
-          <>
-            <Form.Group
-              controlId="formBasicText"
-              className={searchInputClasses}
-            >
-              <Form.Label className="mt-2">Search follower</Form.Label>
-              <Form.Control
-                as="input"
-                type="text"
-                placeholder="please search follower to add"
-                value={searchTerm}
-                onChange={handleSearch}
-                onBlur={searchBlurHandler}
-              />
-
-              {searchInputClasses && (
-                <p className={classes["error-text"]}>
-                  input text must not be search.
-                </p>
-              )}
-            </Form.Group>
-
-            <ul className={classes.sectionsList}>
-              {suggestions.map((suggestion, index) => (
-                <li
-                  key={index}
-                  onClick={followerClickHandler.bind(null, suggestion)}
-                >
-                  <User name={suggestion.username} isLoggedIn={true} />
-                </li>
-              ))}
-            </ul>
-
-            {
-              <div classes={classes.fellowers}>
-                <div>Chosen followers</div>
-                {chosenFollowers.map((chosen, index) => (
-                  <Link
-                    to={`/profile/${chosen.id}`}
-                    className={classes.chosen}
-                    key={index}
-                  >
-                    <User
-                      name={chosen.name}
-                      userName={chosen.username}
-                      isLoggedIn={true}
-                    />
-                  </Link>
-                ))}
-              </div>
-            }
-          </>
-        )}
 
         <Button variant="primary my-3 " type="submit" disabled={!formIsValid}>
           Submit

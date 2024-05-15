@@ -193,6 +193,19 @@ func GetPostsByCreatorId(creatorId string) ([]Post, error) {
 	return posts, err
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 //TO DO: get 10 at a time? decide if doing it through SQL or get all and do in handlefunc
 
 //rewrite?

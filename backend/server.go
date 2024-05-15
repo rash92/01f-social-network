@@ -74,6 +74,7 @@ func main() {
 	http.HandleFunc("/search", wrapperHandler(handlefuncs.HandleSearchUser))
 	http.HandleFunc("/toggle-privacy", wrapperHandler(handlefuncs.HanddleToggleProfilePrivacy))
 	http.Handle("/images/", http.StripPrefix("/images", http.FileServer(http.Dir("./pkg/db/images"))))
+	http.Handle("/search-Follower", wrapperHandler(handlefuncs.HandleSearchFollower))
 
 	fmt.Println("Starting server on http://localhost:8000")
 	err := http.ListenAndServe(":8000", nil)

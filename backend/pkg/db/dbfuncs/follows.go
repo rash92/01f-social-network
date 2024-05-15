@@ -156,6 +156,8 @@ func GetPendingFollowingIdsByFollowerId(followerId string) ([]string, error) {
 	return followingIds, err
 }
 
+// search for follower by nickname or firstname or last name
+
 //TO DO: get 10 at a time? decide if doing it through SQL or get all and do in handlefunc
 
 // rewrite?

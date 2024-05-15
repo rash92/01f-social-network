@@ -69,6 +69,7 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 		"chats":         users,
 		"groups":        group,
 		"notifications": []Notification{},
+		"Posts":         []Post{},
 	}
 
 	err = json.NewEncoder(w).Encode(response)

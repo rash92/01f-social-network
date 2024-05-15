@@ -39,20 +39,19 @@ const Posts = ({posts, onAddLikeDislikePost}) => {
   };
   return (
     <>
-      {posts?.map((el, i) => (
+      {posts?.map((el) => (
         <Post
-          id={i}
-          title={el.title}
-          body={el.body}
-          categories={el.categories}
-          created_at={el.created_at}
-          comments={el.comments}
-          likes={el.likes}
-          dislikes={el.dislikes}
-          username={el.username}
+          title={el.Title}
+          body={el.Body}
+          // categories={el.categories}
+          createdAt={el.CreatedAt}
+          comments={el?.comments}
+          likes={el?.likes}
+          dislikes={el?.dislikes}
+          username={el?.username}
           likeHandler={likeHandler}
           disLikeHandler={disLikeHandler}
-          key={i}
+          key={el.Id}
         />
       ))}
     </>
