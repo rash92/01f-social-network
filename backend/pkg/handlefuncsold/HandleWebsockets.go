@@ -124,7 +124,8 @@ type Notification struct {
 	Id         string                 `json:"Id"`
 	ReceiverId string                 `json:"ReceiverId"` // I changed this from RecieverId 4 Apr
 	SenderId   string                 `json:"SenderId"`
-	Body       map[string]interface{} `json:"Body"`
+	Payload    map[string]interface{} `json:"payload"`
+	Body       string                 `json:"Body"`
 	Type       string                 `json:"type"`
 	CreatedAt  time.Time              `json:"CreatedAt"`
 	Seen       bool                   `json:"Seen"`
@@ -388,6 +389,7 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		var receivedData Group
 		unmarshalBody(signal.Body, &receivedData)
 		err = createGroup(receivedData)
+
 	}
 
 	log.Println("end of broker")
@@ -521,8 +523,8 @@ func requestToFollow(receivedData Follow) error {
 	}
 	notification.Id = notificationId
 	log.Println("notification.Id", notification.Id)
-
-	notification.Body = map[string]interface{}{
+	notification.Body = message
+	notification.Payload = map[string]interface{}{
 		"Message":   message,
 		"Data":      data,
 		"IsPrivate": private,
@@ -602,8 +604,8 @@ func answerRequestToFollow(receivedData AnswerRequestToFollow) error {
 
 	following, err := dbfuncs.GetUserById(receivedData.SenderId)
 	message := fmt.Sprintf("%s has said %s to your request to follow", following.Nickname, receivedData.Reply)
-
-	notificationToSend.Body = map[string]interface{}{
+	notificationToSend.Body = message
+	notificationToSend.Payload = map[string]interface{}{
 		"Message": message,
 		"Data":    receivedData,
 	}
@@ -669,8 +671,8 @@ func unfollow(receivedData Unfollow) error {
 	}
 	notification.Id = notificationId
 	log.Println("unfollow notification.Id", notification.Id)
-
-	notification.Body = map[string]interface{}{
+	notification.Body = message
+	notification.Payload = map[string]interface{}{
 		"Message": message,
 		"Data":    data,
 	}
@@ -766,7 +768,8 @@ func createGroup(receivedData Group) error {
 	// We don't need to add this notification to the database. It's only relevant to users who are currently online and looking at the list of group.
 
 	message := fmt.Sprintf("%s has created a new group, %s", group.CreatorId, group.Title)
-	notification.Body = map[string]interface{}{
+	notification.Body = message
+	notification.Payload = map[string]interface{}{
 		"Message": message,
 		"Data":    group,
 	}

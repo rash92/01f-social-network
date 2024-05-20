@@ -9,6 +9,7 @@ import SearchUser from "./SearchUser";
 import AuthContext from "../store/authContext";
 import {Link} from "react-router-dom";
 import User from "./User";
+import {convertImageToBase64} from "../helpers/helpers";
 
 const AddPost = ({show, setShow, type = "profile", groupId = ""}) => {
   const {
@@ -84,7 +85,9 @@ const AddPost = ({show, setShow, type = "profile", groupId = ""}) => {
   let formIsValid = titleIsValid && enterePostIsValid ? true : false;
 
   formIsValid =
-    privacy === "almost" && chosenFollowers.length === 0 ? false : formIsValid;
+    privacy === "superprivate" && chosenFollowers.length === 0
+      ? false
+      : formIsValid;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -108,14 +111,6 @@ const AddPost = ({show, setShow, type = "profile", groupId = ""}) => {
       });
       return;
     }
-    const convertImageToBase64 = (file) => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = (error) => reject(error);
-      });
-    };
 
     const data = {
       type: "post",
@@ -168,7 +163,7 @@ const AddPost = ({show, setShow, type = "profile", groupId = ""}) => {
           <Form.Label className="mt-2">title</Form.Label>
           <Form.Control
             type="text"
-            placeholder="Enter Email"
+            placeholder="Enter Title"
             value={titleValue}
             onBlur={titleBlurHandler}
             onChange={titleChangeHandler}
@@ -186,7 +181,7 @@ const AddPost = ({show, setShow, type = "profile", groupId = ""}) => {
           <Form.Control
             as="textarea"
             type="text"
-            placeholder="please add post"
+            placeholder="please add Text"
             value={enterePost}
             onChange={postChangeHandler}
             onBlur={postBlurHandler}
@@ -207,12 +202,12 @@ const AddPost = ({show, setShow, type = "profile", groupId = ""}) => {
                 Public
               </option>
               <option value="private">Private</option>
-              <option value="almost">Almost private</option>
+              <option value="superprivate">Almost private</option>
             </Form.Select>
           </Form.Group>
         )}
 
-        {privacy === "almost" && type !== "group" && (
+        {privacy === "superprivate" && type !== "group" && (
           <>
             {searchInputClasses && (
               <p className={classes["error-text"]}>

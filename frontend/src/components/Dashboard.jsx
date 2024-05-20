@@ -21,7 +21,7 @@ function Dashboard() {
 
   useEffect(() => {
     fetchDashboard();
-  }, [fetchDashboard]);
+  }, []);
 
   const handleSectionClick = (section, e) => {
     setActiveSection(section);
@@ -92,7 +92,9 @@ function Dashboard() {
             <Groups groups={dashBoardData?.groups} />
           )}
           {activeSection === "notifications" && (
-            <NotificationContainer notifications={notifications} />
+            <NotificationContainer
+              notifications={dashBoardData?.notifications}
+            />
           )}
         </Col>
       </Row>

@@ -52,6 +52,7 @@ export const AuthContextProvider = (props) => {
     chat: [],
     Posts: [],
   });
+
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [isWsReady, setIsWsReady] = useState(false);
   const [wsVal, setWsVal] = useState(null);
@@ -63,6 +64,15 @@ export const AuthContextProvider = (props) => {
     data: {},
     error: {type: "", message: ""},
   });
+
+  const setDashBoardDataOutside = () => {
+    setDashBoardData({
+      notifications: [],
+      groups: [],
+      chat: [],
+      Posts: [],
+    });
+  };
 
   // dash broad stuff
   const fetchDashboard = useCallback(async () => {
@@ -83,6 +93,7 @@ export const AuthContextProvider = (props) => {
     }
   }, [user.Id]);
 
+  console.log(dashBoardData);
   // profile
 
   const fetchProfileData = useCallback(async (id) => {
@@ -103,13 +114,10 @@ export const AuthContextProvider = (props) => {
   }, []);
 
   const toggleProfilePrivacy = async () => {
-    console.log(profileData.data?.Owner?.PrivacySetting, "before toggle");
     let s =
       profileData.data?.Owner?.PrivacySetting === "private"
         ? "public"
         : "private";
-
-    console.log("after toggle ", s);
 
     try {
       const res = await getJson("toggle-privacy", {
@@ -211,11 +219,12 @@ export const AuthContextProvider = (props) => {
   // notifications
 
   const handleWebsocketNotification = useCallback(() => {
+    console.log();
     if (dashBoardData?.notifications.length === 0) return;
     switch (dashBoardData.notifications[0].type) {
       case "notification requestToFollow":
         if (profileData.isComponentVisible) {
-          if (profileData.data.Owner.PrivacySetting === "public") {
+          if (profileData?.data?.Owner?.PrivacySetting === "public") {
             setProfileData((prev) => ({
               ...prev,
               data: {
@@ -223,7 +232,7 @@ export const AuthContextProvider = (props) => {
 
                 Followers: Array.isArray(prev.data.Followers)
                   ? [
-                      dashBoardData.notifications[0].Body.Data,
+                      dashBoardData.notifications[0].payload.Data,
                       ...prev.data.Followers,
                     ]
                   : [dashBoardData.notifications[0].Body.Data],
@@ -240,7 +249,9 @@ export const AuthContextProvider = (props) => {
                 ...prev,
                 data: {
                   ...prev.data,
-                  PendingFollowers: [dashBoardData.notifications[0].Body.Data],
+                  PendingFollowers: [
+                    dashBoardData.notifications[0].payload.Data,
+                  ],
                 },
               };
             }
@@ -250,27 +261,28 @@ export const AuthContextProvider = (props) => {
                 ...prev.data,
                 PendingFollowers: Array.isArray(prev.data.PendingFollowers)
                   ? [
-                      dashBoardData.notifications[0].Body.Data,
+                      dashBoardData.notifications[0].payload.Data,
                       ...prev.data.PendingFollowers,
                     ]
-                  : [dashBoardData.notifications[0].Body.Data],
+                  : [dashBoardData.notifications[0].payload.Data],
               },
             };
           });
-          return;
         }
         break;
 
       case "notification answerRequestToFollow":
         if (profileData.isComponentVisible) {
-          if (dashBoardData.notifications[0].Body.Data.Reply === "no") {
+          if (dashBoardData.notifications[0].payload.Data.Reply === "no") {
             setProfileData((prev) => ({
               ...prev,
               data: {...prev.data, IsPending: false},
             }));
             return;
           }
-          fetchProfileData(dashBoardData.notifications[0].Body.Data.SenderId);
+          fetchProfileData(
+            dashBoardData.notifications[0].payload.Data.SenderId
+          );
         }
         break;
 
@@ -282,7 +294,7 @@ export const AuthContextProvider = (props) => {
             Followers: Array.isArray(prev.data.Followers)
               ? prev.data.Followers.filter(
                   (item) =>
-                    item.Id !== dashBoardData.notifications[0].Body.Data.Id
+                    item.Id !== dashBoardData.notifications[0].payload.Data.Id
                 )
               : [],
           },
@@ -290,7 +302,11 @@ export const AuthContextProvider = (props) => {
 
         break;
       default:
-        console.log("unknow nofication type", dashBoardData.notifications);
+        console.log(
+          "unknow nofication type",
+          dashBoardData.notifications,
+          "hehhere"
+        );
         break;
     }
     // setNotification({
@@ -310,7 +326,7 @@ export const AuthContextProvider = (props) => {
 
   //websocket actions errors
 
-  const handleWebsocketErrors = (data) => {
+  const handleWebsocketErrors = useCallback((data) => {
     switch (data.message) {
       case "requestToFollow":
         setProfileData((prev) => ({
@@ -324,133 +340,156 @@ export const AuthContextProvider = (props) => {
       default:
         break;
     }
-  };
+  }, []);
 
-  const handleWebsocketSucess = (data) => {
-    const followers = {
-      Id: user.Id,
-      Nickname: user.Nickname,
-      Avatar: user.Avatar,
-      FirstName: user.FirstName,
-      LastName: user.LastName,
-      PrivacySetting: user.Privicy_setting,
-    };
-    switch (data.message) {
-      case "requestToFollow":
-        if (profileData.data?.Owner?.PrivacySetting === "public") {
+  const handleWebsocketSucess = useCallback(
+    (data) => {
+      const followers = {
+        Id: user.Id,
+        Nickname: user.Nickname,
+        Avatar: user.Avatar,
+        FirstName: user.FirstName,
+        LastName: user.LastName,
+        PrivacySetting: user.Privicy_setting,
+      };
+      switch (data.message) {
+        case "requestToFollow":
+          //  we need to broadcast the when ever privacy changes any profile we viewing then that profilr needs
+          // to be updated and refetched.
+          // fetchProfileData(profileData?.data?.Owner?.Id);
+          if (profileData.data?.Owner?.PrivacySetting === "public") {
+            setProfileData((prev) => ({
+              ...prev,
+              data: {
+                ...prev.data,
+                Followers: Array.isArray(prev.data.Followers)
+                  ? [followers, ...prev.data.Followers]
+                  : [followers],
+                IsFollowed: true,
+              },
+            }));
+            return;
+          }
+
+          setProfileData((prev) => ({
+            ...prev,
+            data: {...prev.data, IsPending: true},
+          }));
+          break;
+        case "answerRequestToFollow no":
+          //  remove the user from the pending list
+
           setProfileData((prev) => ({
             ...prev,
             data: {
               ...prev.data,
-              Followers: Array.isArray(prev.data.Followers)
-                ? [followers, ...prev.data.Followers]
-                : [followers],
-              IsFollowed: true,
+              PendingFollowers: prev.data.PendingFollowers.filter(
+                (item) => item.Id !== data.whatever
+              ),
             },
           }));
-          return;
-        }
 
-        setProfileData((prev) => ({
-          ...prev,
-          data: {...prev.data, IsPending: true},
-        }));
-        break;
-      case "answerRequestToFollow no":
-        //  remove the user from the pending list
+          break;
 
-        setProfileData((prev) => ({
-          ...prev,
-          data: {
-            ...prev.data,
-            PendingFollowers: prev.data.PendingFollowers.filter(
-              (item) => item.Id !== data.whatever
-            ),
-          },
-        }));
+        case "answerRequestToFollow yes":
+          //  add the user to the followers list and remove from the pending list
 
-        break;
+          fetchProfileData(profileData?.data?.Owner?.Id);
 
-      case "answerRequestToFollow yes":
-        //  add the user to the followers list and remove from the pending list
+          break;
+        case "unfollow":
+          // fetchProfileData(profileData?.data?.Owner?.Id);
+          if (profileData.data?.Owner?.PrivacySetting === "public") {
+            setProfileData((prev) => ({
+              ...prev,
+              data: {
+                ...prev.data,
+                Followers: data.Followers?.filter((el) => el.Id !== user.Id),
+                IsFollowed: false,
+              },
+            }));
+            return;
+          }
 
-        setProfileData((prev) => ({
-          ...prev,
-          data: {
-            ...prev.data,
-            Followers: Array.isArray(prev.data.Followers)
-              ? [
-                  prev.data.PendingFollowers.find(
-                    (el) => el.Id === data.whatever
-                  ),
-                  ...prev.data.Followers,
-                ]
-              : [
-                  prev.data.PendingFollowers.find(
-                    (el) => el.Id === data.whatever
-                  ),
-                ],
-            PendingFollowers: prev.data.PendingFollowers.filter(
-              (item) => item.Id !== data.whatever
-            ),
-          },
-        }));
-
-        break;
-      case "unfollow":
-        if (profileData.data?.Owner?.PrivacySetting === "public") {
           setProfileData((prev) => ({
             ...prev,
             data: {
               ...prev.data,
-              Followers: data.Followers?.filter((el) => el.Id !== user.Id),
               IsFollowed: false,
+
+              Followers: Array.isArray(prev.data.Followers)
+                ? prev.data.Followers.filter(
+                    (item) => item.Id !== data.whatever
+                  )
+                : [],
             },
           }));
-          return;
-        }
 
+          break;
+        default:
+          console.log("unknown websocket message");
+          break;
+      }
+    },
+    [user.Id, profileData.data?.Owner?.PrivacySetting, fetchProfileData]
+  );
+
+  const currentProfilePrivacyChanged = useCallback(
+    (data) => {
+      if (
+        profileData.isComponentVisible &&
+        data.Id === profileData.data.Owner.Id
+      ) {
+        fetchProfileData(profileData.data.Owner.Id);
+      }
+    },
+    [
+      profileData.isComponentVisible,
+      profileData.data?.Owner?.Id,
+      fetchProfileData,
+    ]
+  );
+
+  const addPostToFeed = useCallback(
+    (data) => {
+      const {
+        body: Body,
+        title: Title,
+        createAt: CreatedAt,
+        creatorId: CreatorId,
+        groupId: GroupId,
+        id: Id,
+        privacyLevel: PrivacyLevel,
+        image: Image,
+      } = data.message;
+      if (
+        profileData.isComponentVisible &&
+        CreatorId === profileData.data.Owner.Id
+      ) {
+        console.log(data.message.CreatorId);
         setProfileData((prev) => ({
           ...prev,
           data: {
             ...prev.data,
-            IsFollowed: false,
-
-            Followers: Array.isArray(prev.data.Followers)
-              ? prev.data.Followers.filter((item) => item.Id !== data.whatever)
-              : [],
+            Posts: [
+              {
+                Body,
+                Title,
+                CreatedAt,
+                CreatorId,
+                GroupId,
+                Id,
+                privacyLevel: PrivacyLevel,
+                image: Image,
+              },
+              ...prev.data.Posts,
+            ],
           },
         }));
-
-        break;
-      default:
-        console.log("unknown websocket message");
-        break;
-    }
-  };
-
-  const addPostToFeed = (data) => {
-    const {
-      body: Body,
-      title: Title,
-      createAt: CreatedAt,
-      creatorId: CreatorId,
-      groupId: GroupId,
-      id: Id,
-      privacyLevel: PrivacyLevel,
-      image: Image,
-    } = data.message;
-    if (
-      profileData.isComponentVisible &&
-      CreatorId === profileData.data.Owner.Id
-    ) {
-      console.log(data.message.CreatorId);
-      setProfileData((prev) => ({
-        ...prev,
-        data: {
-          ...prev.data,
+      } else {
+        setDashBoardData((prev) => ({
+          ...prev,
           Posts: [
-            ...prev.data.Posts,
             {
               Body,
               Title,
@@ -461,33 +500,23 @@ export const AuthContextProvider = (props) => {
               privacyLevel: PrivacyLevel,
               image: Image,
             },
+            ...prev?.Posts,
           ],
-        },
-      }));
-    } else {
-      setDashBoardData((prev) => ({
-        ...prev,
-        Posts: [
-          ...prev?.Posts,
-          {
-            Body,
-            Title,
-            CreatedAt,
-            CreatorId,
-            GroupId,
-            Id,
-            privacyLevel: PrivacyLevel,
-            image: Image,
-          },
-        ],
-      }));
-    }
-  };
+        }));
+      }
+    },
+    [
+      profileData.isComponentVisible,
+      profileData.data?.Owner?.Id,
+      setProfileData,
+      setDashBoardData,
+    ]
+  );
 
   useEffect(() => {
     if (isWsReady) {
       const data = JSON.parse(wsVal);
-      console.log(data);
+
       if (data?.type === "error") {
         handleWebsocketErrors(data);
         return;
@@ -498,8 +527,10 @@ export const AuthContextProvider = (props) => {
         return;
       }
 
-      if (data?.type?.includes("notification")) {
-        console.log("notification", data);
+      if (
+        data?.type?.includes("notification") &&
+        dashBoardData.notifications.some((el) => el.Id === data.Id) === false
+      ) {
         setDashBoardData((prev) => ({
           ...prev,
           notifications: [data, ...prev.notifications],
@@ -517,7 +548,9 @@ export const AuthContextProvider = (props) => {
         case "post":
           console.log(data, "this the post got back from websocket");
           addPostToFeed(data);
-
+          break;
+        case "privacyChanged":
+          currentProfilePrivacyChanged(data);
           break;
 
         default:
@@ -525,7 +558,15 @@ export const AuthContextProvider = (props) => {
           break;
       }
     }
-  }, [isWsReady, wsVal, logoutHandler]);
+  }, [
+    isWsReady,
+    wsVal,
+    logoutHandler,
+    addPostToFeed,
+    currentProfilePrivacyChanged,
+    handleWebsocketErrors,
+    handleWebsocketSucess,
+  ]);
 
   return (
     <AuthContext.Provider
@@ -556,6 +597,7 @@ export const AuthContextProvider = (props) => {
         fetchDashboard,
         dashBoardData,
         toggleProfilePrivacy,
+        setDashBoardDataOutside,
       }}
     >
       {props.children}

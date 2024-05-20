@@ -162,6 +162,10 @@ func GetPostChosenFollowerIdsByPostId(id string) ([]string, error) {
 func GetPostById(id string) (Post, error) {
 	var post Post
 	err := db.QueryRow("SELECT Id, Title, Body, CreatorId, GroupId, CreatedAt, Image, PrivacyLevel FROM Posts WHERE Id=?", id).Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
+
+
+
+	
 	return post, err
 }
 
@@ -193,18 +197,96 @@ func GetPostsByCreatorId(creatorId string) ([]Post, error) {
 	return posts, err
 }
 
+func GetVisiblePosts(userId string) ([]Post, error) {
+	query := `
+	SELECT * FROM Posts
+	WHERE 
+			(PrivacyLevel = 'public') OR 
+			(PrivacyLevel = 'private' AND CreatorId IN (SELECT FollowingId FROM Follows WHERE FollowerId = ?)) OR 
+			(PrivacyLevel = 'superprivate' AND Id IN (SELECT PostId FROM PostChosenFollowers WHERE FollowerId = ?)) OR
+			CreatorId = ?
+	`
+	rows, err := db.Query(query, userId, userId, userId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
+	var posts []Post
+	for rows.Next() {
+		var post Post
+		err := rows.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
+		if err != nil {
+			return nil, err
+		}
 
+		post.Dislikes, post.Likes, err = CountPostReacts(post.Id)
+		if err != nil {
+			return nil, err
+		}
+		user, err := GetUserById(post.CreatorId)
+		if err != nil {
+			return nil, err
+		}
+		post.CreatorNickname = user.Nickname
+		post.UserLikeDislike, err = GetUserLikeDislike(userId, post.Id)
+		if err != nil {
+			return nil, err
+		}
 
+		posts = append(posts, post)
+	}
 
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
 
+	return posts, nil
+}
 
+func GetVisiblePostsForProfile(userId, profileOwnerId string) ([]Post, error) {
+	query := `
+	SELECT * FROM Posts
+	WHERE 
+			(CreatorId = ?) AND
+			((PrivacyLevel = 'public') OR 
+			(PrivacyLevel = 'private' AND CreatorId IN (SELECT FollowingId FROM Follows WHERE FollowerId = ?)) OR 
+			(PrivacyLevel = 'superprivate' AND Id IN (SELECT PostId FROM PostChosenFollowers WHERE FollowerId = ?)))
+	`
+	rows, err := db.Query(query, profileOwnerId, userId, userId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
+	var posts []Post
+	for rows.Next() {
+		var post Post
+		err := rows.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
+		if err != nil {
+			return nil, err
+		}
+		posts = append(posts, post)
+	}
 
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
 
+	return posts, nil
+}
 
-
-
+func GetUserLikeDislike(userId, postId string) (int, error) {
+	var like int
+	err := db.QueryRow("SELECT Liked FROM PostLikes WHERE UserId=? AND PostId=?", userId, postId).Scan(&like)
+	if err == sql.ErrNoRows {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return like, nil
+}
 
 //TO DO: get 10 at a time? decide if doing it through SQL or get all and do in handlefunc
 

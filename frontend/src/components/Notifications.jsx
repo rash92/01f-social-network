@@ -9,9 +9,9 @@ const NotificationList = ({notifications}) => {
       }}
     >
       <ListGroup>
-        {notifications.map((notification, index) => (
+        {notifications.map((notification) => (
           <ListGroup.Item
-            key={index}
+            key={notification.Id}
             style={{
               display: "flex",
               alignItems: "center",
@@ -19,7 +19,7 @@ const NotificationList = ({notifications}) => {
             }}
           >
             <Image
-              src={notification.avatar}
+              src={`http://localhost:8000/images/${notification.SenderAvatar}`}
               roundedCircle
               style={{marginRight: "10px", width: "50px", height: "50px"}}
             />
@@ -28,7 +28,7 @@ const NotificationList = ({notifications}) => {
                 fontSize: "0.9rem",
               }}
             >
-              {notification.message}
+              {notification.Body}
             </span>
           </ListGroup.Item>
         ))}

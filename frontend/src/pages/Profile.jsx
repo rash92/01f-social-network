@@ -7,8 +7,6 @@ import {Container} from "react-bootstrap";
 import ProfileActions from "../components/ProfileActions";
 import Posts from "../components/Posts";
 
-import {getJson} from "../helpers/helpers";
-
 import PrivateProfile from "../components/PrivateProfile";
 import {useRouteError, useParams} from "react-router";
 import PostInput from "../components/PostInput";
@@ -43,15 +41,28 @@ const Profile = () => {
       ? true
       : false;
 
-  console.log(isPrivate, data?.Owner?.PrivacySetting);
-
   // const [hasMorePosts, setHasMorePosts] = useState(true);
   const toggleProfileVisibility = () => {
+    // this need to be romeved when when handle this in the websocket
     toggleProfilePrivacy();
+    // this the code when add code the backend websocket
+    // if (isWsReady) {
+    //   wsMsgToServer(
+    //     JSON.stringify({
+    //       Type: "togglePrivacy",
+    //       message: {
+    //         SenderId: user.Id,
+    //         PrivacySetting:
+    //           data?.Owner?.PrivacySetting === "private" ? "public" : "private",
+    //       },
+    //     })
+    //   );
+
+    //   return;
+    // }
   };
 
   const toggleActionModel = (active) => {
-    console.log(active);
     setIsActive(active);
   };
   const handleClose = () => setShow(false);
@@ -210,18 +221,6 @@ const Profile = () => {
             fellowUserHandler={requestFollowHandler}
           />
         ) : (
-          // <InfiniteScroll
-          //   dataLength={data.posts?.length || 0}
-          //   next={fetchMorePosts}
-          //   hasMore={hasMorePosts}
-          //   loader={<h4>Loading...</h4>}
-          //   endMessage={
-          //     <p style={{textAlign: "center"}}>
-          //       <b>Yay! You have seen it all</b>
-          //     </p>
-          //   }
-          // >
-
           <>
             {data.Owner && (
               <ProfileCard
@@ -253,9 +252,12 @@ const Profile = () => {
             )}
 
             <div>
-              <div style={{width: "50vw", margin: "2rem 0 3rem 0"}}>
-                <PostInput src={user.Profile} id={user.Id} />
-              </div>
+              {user?.Id === data?.Owner?.Id && (
+                <div style={{width: "50vw", margin: "2rem 0 3rem 0"}}>
+                  <PostInput src={user.Profile} id={user.Id} />
+                </div>
+              )}
+
               <section id="posts" ref={postRef}>
                 {<Posts posts={data.Posts} postref={postRef} />}
               </section>

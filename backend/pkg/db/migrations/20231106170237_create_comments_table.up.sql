@@ -1,10 +1,10 @@
--- CREATE TABLE IF NOT EXISTS Comments (
--- Id TEXT NOT NULL PRIMARY KEY,
--- Body TEXT NOT NULL ,
--- CreatorId TEXT,
--- PostId TEXT,
--- CreatedAt DATETIME NOT NULL,
--- Image TEXT,
--- FOREIGN KEY (CreatorId) REFERENCES Users(Id),
--- FOREIGN KEY (PostId) REFERENCES Posts(Id)
--- );
+CREATE TABLE IF NOT EXISTS Comments (
+Id TEXT NOT NULL PRIMARY KEY,
+Body TEXT NOT NULL ,
+CreatorId TEXT,
+PostId TEXT,
+CreatedAt DATETIME NOT NULL,
+Image TEXT,
+FOREIGN KEY (CreatorId) REFERENCES Users(Id),
+FOREIGN KEY (PostId) REFERENCES Posts(Id)
+);

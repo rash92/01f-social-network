@@ -1,33 +1,32 @@
-import React, {useEffect, useContext} from "react";
+import React, {useEffect, useContext, useCallback} from "react";
 import {ToastContainer, toast} from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {Link} from "react-router-dom";
 import AuthContext from "../store/authContext";
 
-const formatUrl = (data) => {
-  const options = {
-    "notification requestToFollow": `/profile/${data?.ReceiverId}`,
-    "notification answerRequestToFollow": `/profile/${data?.SenderId}`,
-  };
-  return options[data?.type] || "/";
-};
+const NotificationComponent = React.memo(() => {
+  const formatUrl = useCallback((data) => {
+    const options = {
+      "notification requestToFollow": `/profile/${data?.ReceiverId}`,
+      "notification answerRequestToFollow": `/profile/${data?.SenderId}`,
+    };
+    return options[data?.type] || "/";
+  }, []);
 
-const NotificationComponent = () => {
-  console.log("NotificationComponent");
   const {dashBoardData} = useContext(AuthContext);
-  const message =
-    dashBoardData.notifications.length > 0
-      ? dashBoardData.notifications[0]?.Body.Message
-      : "";
 
-  const formatedUrl = formatUrl(dashBoardData.notifications[0]);
-  const id = dashBoardData?.notifications[0]?.Id;
   useEffect(() => {
     const handleNotification = () => {
-      if (message) {
+      if (
+        dashBoardData.notifications.length > 0 &&
+        dashBoardData.notifications[0]?.payload?.Message
+      ) {
         toast.info(
-          <Link style={{textDecoration: "none"}} to={formatedUrl}>
-            {message}
+          <Link
+            style={{textDecoration: "none"}}
+            to={formatUrl(dashBoardData.notifications[0])}
+          >
+            {dashBoardData.notifications[0]?.payload?.Message}
           </Link>,
           {
             position: "top-center",
@@ -38,13 +37,13 @@ const NotificationComponent = () => {
     };
 
     handleNotification();
-  }, [message, formatedUrl, id]);
+  }, [dashBoardData?.notifications, formatUrl]);
 
   return (
     <div>
       <ToastContainer />
     </div>
   );
-};
+});
 
 export default NotificationComponent;

@@ -43,14 +43,14 @@ const Posts = ({posts, onAddLikeDislikePost}) => {
         <Post
           title={el.Title}
           body={el.Body}
-          // categories={el.categories}
-          createdAt={el.CreatedAt}
-          comments={el?.comments}
-          likes={el?.likes}
-          dislikes={el?.dislikes}
-          username={el?.username}
+          CreatedAt={el.CreatedAt}
+          comments={el?.Comments}
+          likes={el?.Likes}
+          dislikes={el?.Dislikes}
+          CreatorNickname={el?.CreatorNickname}
           likeHandler={likeHandler}
           disLikeHandler={disLikeHandler}
+          id={el.Id}
           key={el.Id}
         />
       ))}
