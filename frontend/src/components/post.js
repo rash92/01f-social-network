@@ -7,10 +7,11 @@ import {
 import moment from "moment";
 import classes from "./Post.module.css";
 import {Col} from "react-bootstrap";
-import CommentForm from "./CommentForm";
+// import CommentForm from "./CommentForm";
 import {useState, useContext} from "react";
 import {getJson} from "../helpers/helpers";
 import AuthContext from "../store/authContext";
+import {Link} from "react-router-dom";
 
 const removePostHandler = async (postId) => {
   try {
@@ -34,15 +35,15 @@ const Post = ({
   id,
   title,
   body,
-  created_at,
+  CreatedAt,
   comments,
   likes,
   dislikes,
-  username,
   likeHandler,
   disLikeHandler,
+  CreatorNickname,
+  Image,
 }) => {
-  const [ShowComment, setShowComment] = useState(false);
   const {
     isLoggedIn,
     username: LoggedInUser,
@@ -57,15 +58,16 @@ const Post = ({
     }
   };
 
-  const timeago = moment(created_at).fromNow();
+  const timeago = moment(CreatedAt).fromNow();
+
   return (
     <Col xs={12} key={id}>
       <div className={`${classes.post}`}>
         <div className={classes["post-head"]}>
           <span className="user name">
-            posted by {username} {timeago}
+            posted by {CreatorNickname} {timeago}
           </span>
-          {isLoggedIn && LoggedInUser === username && (
+          {isLoggedIn && LoggedInUser === CreatorNickname && (
             <button onClick={deleteHandler}>
               <AiFillDelete />
             </button>
@@ -73,14 +75,17 @@ const Post = ({
         </div>
 
         <div className={classes["post-title"]}>
-          <h4>
-            {" "}
-            {title} post {id}
-          </h4>
+          <h4>{title}</h4>
         </div>
 
         <div className={classes["post-body"]}>
           <p> {body}</p>
+
+          {
+            <div>
+              <image src={Image} />
+            </div>
+          }
         </div>
 
         <div
@@ -89,10 +94,9 @@ const Post = ({
           {likes > 0 && <span>{likes} likes</span>}
           {dislikes > 0 && <span> {dislikes} dislikes</span>}
           {comments?.length > 0 && (
-            <span onClick={() => setShowComment(true)}>
-              {" "}
-              {comments?.length} comments
-            </span>
+            <Link to={`post/${id}`} style={{textDecoration: "none"}}>
+              <span>{comments?.length} comments</span>
+            </Link>
           )}
         </div>
 
@@ -112,15 +116,16 @@ const Post = ({
             </div>
           </button>
 
-          <button onClick={() => setShowComment(true)}>
+          <Link
+            to={`post/${id}`}
+            style={{textDecoration: "none", color: "black"}}
+          >
             <div className={classes["post-reaction-info-reaction"]}>
               <AiOutlineComment size={24} />
               <span>comment</span>
             </div>
-          </button>
+          </Link>
         </div>
-
-        {ShowComment && <CommentForm id={id} comments={comments} />}
       </div>
     </Col>
   );

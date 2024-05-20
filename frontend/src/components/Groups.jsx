@@ -1,19 +1,30 @@
-import React from "react";
+import React, {useState} from "react";
 import {ListGroup} from "react-bootstrap";
 import {Link} from "react-router-dom";
+import AddGroup from "./AddGroup";
+import {Button} from "react-bootstrap";
 
 function Groups({groups}) {
-  console.log(groups);
+  const [show, setShow] = useState(false);
+
   return (
     <div>
+      <Button
+        onClick={() => {
+          setShow(true);
+        }}
+      >
+        add Group
+      </Button>
+      <AddGroup show={show} setShow={setShow} />
       <ListGroup style={{marginTop: "4rem"}}>
-        {groups.map((group, index) => (
+        {groups?.map((group, index) => (
           <ListGroup.Item
-            key={group.id}
+            key={group.Id}
             style={{marginTop: index !== 0 ? "2rem" : " 0"}}
           >
             <Link
-              to={`groups/${group.id}`}
+              to={`groups/${group.Id}`}
               style={{textDecoration: "none", color: "black"}}
             >
               <div
@@ -23,11 +34,8 @@ function Groups({groups}) {
                 }}
               >
                 <div>
-                  <h5>{group.title}</h5>
-                  <p>{group.description}</p>
-                </div>
-                <div>
-                  <span>{group.status}</span>
+                  <h5>{group.Title}</h5>
+                  <p>{group.Description}</p>
                 </div>
               </div>
             </Link>

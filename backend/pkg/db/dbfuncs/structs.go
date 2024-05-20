@@ -2,6 +2,7 @@ package dbfuncs
 
 import (
 	"database/sql"
+
 	"log"
 	"sync"
 	"time"
@@ -46,14 +47,19 @@ type PrivateMessage struct {
 }
 
 type Post struct {
-	Id           string
-	Title        string
-	Body         string
-	CreatorId    string
-	GroupId      string
-	CreatedAt    time.Time
-	Image        string
-	PrivacyLevel string
+	Id              string
+	Title           string
+	Body            string
+	CreatorId       string
+	GroupId         string
+	CreatedAt       time.Time
+	Image           string
+	PrivacyLevel    string
+	Likes           int
+	Dislikes        int
+	CreatorNickname string
+	UserLikeDislike int
+	Comments        []Comment
 }
 
 type Comment struct {
@@ -137,11 +143,12 @@ type GroupMessage struct {
 
 // misspelled in database - fix reciever to receiver
 type Notification struct {
-	Id         string
-	Body       string
-	Type       string
-	CreatedAt  time.Time
-	ReceiverId string
-	SenderId   string
-	Seen       bool
+	Id           string
+	Body         string
+	Type         string
+	CreatedAt    time.Time
+	ReceiverId   string
+	SenderId     string
+	Seen         bool
+	SenderAvatar string
 }

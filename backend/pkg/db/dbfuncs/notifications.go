@@ -7,21 +7,21 @@ import (
 	"github.com/google/uuid"
 )
 
-func AddNotification(notification *Notification) error {
+func AddNotification(notification *Notification) (string, error) {
 	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
 	if err != nil {
-		return err
+		return "", err
 	}
 	notification.Id = id.String()
 	notification.CreatedAt = time.Now()
-	statement, err := db.Prepare("INSERT INTO notification VALUES (?,?,?,?,?,?,?)")
+	statement, err := db.Prepare("INSERT INTO Notifications VALUES (?,?,?,?,?,?,?)")
 	if err != nil {
-		return err
+		return "", err
 	}
 	_, err = statement.Exec(notification.Id, notification.Body, notification.Type, notification.CreatedAt, notification.ReceiverId, notification.SenderId, notification.Seen)
 
-	return err
+	return notification.Id, err
 }
 
 // updates notification to seen
@@ -36,7 +36,7 @@ func NotificationSeen(notificationId string) error {
 
 func GetAllNotificationsByRecieverId(recieverId string) ([]Notification, error) {
 	var notifications []Notification
-	rows, err := db.Query("SELECT * FROM Notifications WHERE RecieverId=?", recieverId)
+	rows, err := db.Query("SELECT n.*, u.Avatar FROM Notifications n JOIN Users u ON n.SenderId = u.Id WHERE n.ReceiverId=? ORDER BY n.CreatedAt DESC", recieverId)
 	if err == sql.ErrNoRows {
 		return notifications, nil
 	}
@@ -46,7 +46,7 @@ func GetAllNotificationsByRecieverId(recieverId string) ([]Notification, error) 
 	defer rows.Close()
 	for rows.Next() {
 		var notification Notification
-		err := rows.Scan(&notification.Id, &notification.Body, &notification.Type, &notification.CreatedAt, &notification.ReceiverId, &notification.SenderId, &notification.Seen)
+		err := rows.Scan(&notification.Id, &notification.Body, &notification.Type, &notification.CreatedAt, &notification.ReceiverId, &notification.SenderId, &notification.Seen, &notification.SenderAvatar)
 		if err != nil {
 			return notifications, err
 		}

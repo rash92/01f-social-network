@@ -39,9 +39,9 @@ const ProfileCard = ({
         )}
         <Card.Body>
           <div className={classes.image}>
-            {user.Profile && (
+            {user?.Avatar && (
               <RoundImage
-                src={user.Profile}
+                src={user?.Avatar}
                 alt="Profile Picture"
                 size={"100px"}
               />

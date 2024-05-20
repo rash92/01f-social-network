@@ -7,6 +7,7 @@ import Chats from "./ChatLists";
 import {getJson} from "../helpers/helpers";
 import AuthContext from "../store/authContext";
 import NotificationContainer from "./Notifications";
+
 const notifications = [
   {message: "Notification 1", variant: "success"},
   {message: "Notification 2", variant: "info"},
@@ -15,30 +16,12 @@ const notifications = [
 ];
 function Dashboard() {
   const [activeSection, setActiveSection] = useState("posts");
-  const [dashBoardData, setDashBoardData] = useState({});
-  const {user} = useContext(AuthContext);
-  const fetchDashboard = useCallback(async () => {
-    try {
-      console.log(user.Id, "dashboard");
-      const data = await getJson("dashboard", {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
 
-        body: JSON.stringify(user.Id),
-      });
-
-      setDashBoardData(data);
-    } catch (err) {
-      console.log(err);
-    }
-  }, [user]);
+  const {fetchDashboard, dashBoardData} = useContext(AuthContext);
 
   useEffect(() => {
     fetchDashboard();
-  }, [fetchDashboard]);
+  }, []);
 
   const handleSectionClick = (section, e) => {
     setActiveSection(section);
@@ -103,11 +86,15 @@ function Dashboard() {
         }}
       >
         <Col>
-          {activeSection === "posts" && <Posts posts={dummyPosts} />}
+          {activeSection === "posts" && <Posts posts={dashBoardData.Posts} />}
           {activeSection === "chats" && <Chats chats={dashBoardData?.chats} />}
-          {activeSection === "groups" && <Groups groups={groups} />}
+          {activeSection === "groups" && (
+            <Groups groups={dashBoardData?.groups} />
+          )}
           {activeSection === "notifications" && (
-            <NotificationContainer notifications={notifications} />
+            <NotificationContainer
+              notifications={dashBoardData?.notifications}
+            />
           )}
         </Col>
       </Row>

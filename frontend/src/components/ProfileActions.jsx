@@ -29,13 +29,13 @@ const ProfileActions = ({
     >
       <ul className={classes.actions}>
         <Action
-          numberAction={Followers.length}
+          numberAction={Followers?.length}
           actionName={"Followers"}
           toggleAction={toggleAction}
           active={isActive}
         />
         <Action
-          numberAction={Following.length}
+          numberAction={Following?.length}
           actionName={"Following"}
           toggleAction={toggleAction}
           active={isActive}
@@ -51,28 +51,9 @@ const ProfileActions = ({
       </ul>
       <div>
         <ul>
-          {/* <InfiniteScroll
-            dataLength={
-              user[
-                `NumberOf${isActive.charAt(0).toUpperCase()}${isActive.slice(
-                  1
-                )}`
-              ] || 0
-            }
-            next={fetchMoreFellowers}
-            hasMore={hasMoreFellowers[isActive]}
-            loader={<h4>Loading...</h4>}
-            height={400}
-            endMessage={
-              <p style={{textAlign: "center"}}>
-                <b>Yay! You have seen it all</b>
-              </p>
-            }
-            className={classes.followers}
-          > */}
           {active?.map((user, i) => (
             <li key={i} className={classes.item}>
-              <Link to={`/profile/${user.UserId}`} className={classes.links}>
+              <Link to={`/profile/${user.Id}`} className={classes.links}>
                 <User
                   Avatar={user.Avatar}
                   Nickname={`${user.Nickname}`}
@@ -82,25 +63,29 @@ const ProfileActions = ({
               {
                 isActive === "PendingFollowers" && (
                   <>
-                    <Button
-                      className={classes.itemButton}
-                      onClick={accepOrRejectRequestHandler.bind(null, {
-                        id: user.Id,
-                        flag: "yes",
-                      })}
-                    >
-                      Accept
-                    </Button>
+                    <div>
+                      <Button
+                        className={classes.itemButton}
+                        onClick={accepOrRejectRequestHandler.bind(null, {
+                          id: user.Id,
+                          flag: "yes",
+                        })}
+                      >
+                        Accept
+                      </Button>
+                    </div>
 
-                    <Button
-                      onClick={accepOrRejectRequestHandler.bind(null, {
-                        id: user.Id,
-                        flag: "no",
-                      })}
-                      className={classes.itemButton}
-                    >
-                      Reject
-                    </Button>
+                    <div>
+                      <Button
+                        onClick={accepOrRejectRequestHandler.bind(null, {
+                          id: user.Id,
+                          flag: "no",
+                        })}
+                        className={classes.itemButton}
+                      >
+                        Reject
+                      </Button>
+                    </div>
                   </>
                 )
 

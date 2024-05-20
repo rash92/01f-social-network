@@ -127,4 +127,27 @@ func GetCommentById(id string) (Comment, error) {
 	return comment, err
 }
 
+
+func GetAllCommentsByPostId(postId string) ([]Comment, error) {
+	rows, err := db.Query("SELECT Id, Body, CreatorId, PostId, CreatedAt, Image FROM Comments WHERE PostId=?", postId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var comments []Comment
+	for rows.Next() {
+		var comment Comment
+		err = rows.Scan(&comment.Id, &comment.Body, &comment.CreatorId, &comment.PostId, &comment.CreatedAt, &comment.Image)
+		if err != nil {
+			return nil, err
+		}
+		comments = append(comments, comment)
+	}
+	return comments, nil
+}
+
+
+
+
+
 //TO DO: get 10 at a time? decide if doing it through SQL or get all and do in handlefunc

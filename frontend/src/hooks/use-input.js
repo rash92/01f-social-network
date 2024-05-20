@@ -13,6 +13,7 @@ const useInput = (ValidateValue) => {
 
   const valueInputBlurHandler = (e) => {
     setIsTouch(true);
+    
   };
 
   const reset = () => {

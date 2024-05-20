@@ -4,6 +4,7 @@ import Home from "./pages/Home";
 import PrivateRoutes from "./components/PrivateRoutes";
 import Profile, {profileLoader} from "./pages/Profile";
 import Group from "./pages/Group";
+import Post from "./pages/post";
 
 const router = createBrowserRouter([
   {
@@ -27,7 +28,14 @@ const router = createBrowserRouter([
         path: "/profile/:id",
         errorElement: <Profile />,
         element: <PrivateRoutes component={Profile} />,
-        loader: profileLoader,
+        // loader: profileLoader,
+      },
+
+      {
+        path: "/post/:id",
+        errorElement: <Post />,
+        element: <PrivateRoutes component={Post} />,
+        // loader: profileLoader,
       },
 
       // {

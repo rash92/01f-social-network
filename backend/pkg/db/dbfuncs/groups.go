@@ -212,3 +212,26 @@ func GetInvitedGroupMemberIdsByGroupId(groupId string) ([]string, error) {
 	}
 	return GroupMemberIds, nil
 }
+
+//  get all groups   
+
+func GetAllGroups() ([]Group, error) {	
+	var groups []Group
+	row, err := db.Query("SELECT Id, Title, Description, CreatorId, CreatedAt FROM Groups")
+	if err == sql.ErrNoRows {
+		return groups, nil
+	}
+	if err != nil {
+		return groups, err
+	}
+	defer row.Close()
+	for row.Next() {
+		var group Group
+		err = row.Scan(&group.Id, &group.Title, &group.Description, &group.CreatorId, &group.CreatedAt)
+		if err != nil {
+			return groups, err
+		}
+		groups = append(groups, group)
+	}
+	return groups, err
+}

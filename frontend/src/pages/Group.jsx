@@ -9,7 +9,7 @@ import Posts from "../components/Posts";
 import {dummyPosts, group} from "../store/dummydata";
 import {getJson} from "../helpers/helpers";
 import InfiniteScroll from "react-infinite-scroll-component";
-import {useLoaderData, useRouteError} from "react-router";
+import {useRouteError} from "react-router";
 
 const Group = () => {
   const {user} = React.useContext(AuthContext);
