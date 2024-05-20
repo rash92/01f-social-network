@@ -219,7 +219,6 @@ export const AuthContextProvider = (props) => {
   // notifications
 
   const handleWebsocketNotification = useCallback(() => {
-    console.log();
     if (dashBoardData?.notifications.length === 0) return;
     switch (dashBoardData.notifications[0].type) {
       case "notification requestToFollow":
@@ -431,22 +430,40 @@ export const AuthContextProvider = (props) => {
           break;
       }
     },
-    [user.Id, profileData.data?.Owner?.PrivacySetting, fetchProfileData]
+    [
+      user.Id,
+      profileData.data?.Owner?.PrivacySetting,
+      fetchProfileData,
+      profileData.data?.Owner?.Id,
+    ]
   );
 
   const currentProfilePrivacyChanged = useCallback(
     (data) => {
       if (
         profileData.isComponentVisible &&
-        data.Id === profileData.data.Owner.Id
+        data.Id === profileData.data.Owner.Id &&
+        profileData.data.Owner.PrivacyLevel === "private"
       ) {
         fetchProfileData(profileData.data.Owner.Id);
+      } else {
+        setProfileData((prev) => ({
+          ...prev,
+          data: {
+            ...prev.data,
+            Owner: {
+              ...prev.data.Owner,
+              PrivacyLevel: data.PrivacySetting,
+            },
+          },
+        }));
       }
     },
     [
       profileData.isComponentVisible,
       profileData.data?.Owner?.Id,
       fetchProfileData,
+      profileData.data?.Owner?.PrivacyLevel,
     ]
   );
 
@@ -566,6 +583,7 @@ export const AuthContextProvider = (props) => {
     currentProfilePrivacyChanged,
     handleWebsocketErrors,
     handleWebsocketSucess,
+    dashBoardData.notifications,
   ]);
 
   return (

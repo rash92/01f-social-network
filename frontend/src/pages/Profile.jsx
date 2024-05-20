@@ -44,22 +44,22 @@ const Profile = () => {
   // const [hasMorePosts, setHasMorePosts] = useState(true);
   const toggleProfileVisibility = () => {
     // this need to be romeved when when handle this in the websocket
-    toggleProfilePrivacy();
+    // toggleProfilePrivacy();
     // this the code when add code the backend websocket
-    // if (isWsReady) {
-    //   wsMsgToServer(
-    //     JSON.stringify({
-    //       Type: "togglePrivacy",
-    //       message: {
-    //         SenderId: user.Id,
-    //         PrivacySetting:
-    //           data?.Owner?.PrivacySetting === "private" ? "public" : "private",
-    //       },
-    //     })
-    //   );
+    if (isWsReady) {
+      wsMsgToServer(
+        JSON.stringify({
+          Type: "togglePrivacy",
+          message: {
+            SenderId: user.Id,
+            PrivacySetting:
+              data?.Owner?.PrivacySetting === "private" ? "public" : "private",
+          },
+        })
+      );
 
-    //   return;
-    // }
+      return;
+    }
   };
 
   const toggleActionModel = (active) => {

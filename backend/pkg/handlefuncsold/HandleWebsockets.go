@@ -108,6 +108,11 @@ type PostFromClient struct {
 	GroupId             string    `json:"groupId,omitempty"`
 }
 
+type TogglePrivacy struct {
+	UserId         string `json:"UserId"`
+	PrivacySetting string `json:"PrivacySetting"`
+}
+
 // func (receivedData Post) parseForDB() *dbfuncs.Post {
 // 	return &dbfuncs.Post{
 // 		Title:        receivedData.Title,
@@ -359,6 +364,12 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 	case "logout":
 		logout(userID, conn, w)
 		err = fmt.Errorf("logout")
+		return err
+
+	case "togglePrivacySetting":
+		var receivedData TogglePrivacy
+		unmarshalBody(signal.Body, &receivedData)
+		err = TogglePrivacySetting(receivedData)
 		return err
 
 	case "requestToFollow":
@@ -905,4 +916,27 @@ func validateContent(content string) error {
 		return err
 	}
 	return nil
+}
+
+func TogglePrivacySetting(receivedData TogglePrivacy) error {
+	err := dbfuncs.UpdatePrivacySetting(receivedData.UserId, receivedData.PrivacySetting)
+	if err != nil {
+		log.Println("error updating privacy setting", err)
+		notifyClientOfError(err, "TogglePrivacySetting", receivedData.UserId, nil)
+		return err
+	}
+
+	connectionLock.RLock()
+	for user := range activeConnections {
+		for _, c := range activeConnections[user] {
+			err = c.WriteJSON(receivedData)
+			if err != nil {
+				log.Println("error sending new privacy setting to client", err)
+			}
+		}
+	}
+	connectionLock.RUnlock()
+
+	notifyClientOfError(err, "TogglePrivacySetting", receivedData.UserId, nil)
+	return err
 }

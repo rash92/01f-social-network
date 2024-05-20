@@ -66,6 +66,8 @@ func main() {
 	// http.HandleFunc("/react-Post-like-dislike", handlefuncs.HandlePostLikeDislike)
 	// http.HandleFunc("/react-comment-like-dislike", handlefuncs.HandleCommenttLikeDislike)
 	// http.HandleFunc("/removePost", handlefuncs.HandleRemovePost)
+
+	http.HandleFunc("/newUser", handlefuncs.HandleNewUser)
 	http.HandleFunc("/logout", handlefuncs.HandleLogout)
 	http.HandleFunc("/dashboard", wrapperHandler(handlefuncs.HandleDashboard))
 	http.HandleFunc("/profile", wrapperHandler(handlefuncs.HandleGetProfile))
