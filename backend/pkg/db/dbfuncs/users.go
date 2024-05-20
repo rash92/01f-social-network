@@ -86,11 +86,11 @@ func IsUserPrivate(userId string) (bool, error) {
 	if privacySetting == "public" {
 		return false, nil
 	}
-	if privacySetting == "private" || privacySetting == "" {
-	if privacySetting == "private" || privacySetting == "" {
+	if privacySetting == "private" {
 		return true, nil
 	}
 	return false, errors.New("privacy setting not recognized, should be either 'private' or 'public'")
+
 }
 
 func GetUserById(id string) (User, error) {
@@ -124,7 +124,7 @@ func GetUsers() ([]User, error) {
 
 // togle PrivacySetting
 func UpdatePrivacySetting(userId string, privacySetting string) error {
-	
+
 	statement, err := db.Prepare("UPDATE Users SET PrivacySetting=? WHERE Id=?")
 	if err != nil {
 		return err

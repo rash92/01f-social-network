@@ -213,9 +213,9 @@ func GetInvitedGroupMemberIdsByGroupId(groupId string) ([]string, error) {
 	return GroupMemberIds, nil
 }
 
-//  get all groups   
+//  get all groups
 
-func GetAllGroups() ([]Group, error) {	
+func GetAllGroups() ([]Group, error) {
 	var groups []Group
 	row, err := db.Query("SELECT Id, Title, Description, CreatorId, CreatedAt FROM Groups")
 	if err == sql.ErrNoRows {
@@ -234,4 +234,64 @@ func GetAllGroups() ([]Group, error) {
 		groups = append(groups, group)
 	}
 	return groups, err
+}
+
+func GetGroupStatus(groupId string, userId string) (string, error) {
+	var status string
+	err := db.QueryRow("SELECT Status FROM GroupMembers WHERE GroupId=? AND UserId=?", groupId, userId).Scan(&status)
+	return status, err
+}
+
+func GetGroupByGroupId(groupId string) (Group, error) {
+	var group Group
+	err := db.QueryRow("SELECT * FROM Groups WHERE Id=?", groupId).Scan(&group.Id, &group.Title, &group.Description, &group.CreatorId, &group.CreatedAt)
+
+	return group, err
+}
+
+func GetPostsByGroupId(groupId string) ([]Post, error) {
+	var posts []Post
+	rows, err := db.Query("SELECT * FROM Posts WHERE GroupId=?", groupId)
+	if err == sql.ErrNoRows {
+		return posts, nil
+	}
+	if err != nil {
+		return posts, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var post Post
+		err = rows.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
+		if err != nil {
+			return posts, err
+		}
+		posts = append(posts, post)
+	}
+
+	err = rows.Err()
+
+	return posts, err
+}
+
+func GetEventParticipantIdsByEventId(eventId string) ([]string, error) {
+	var participants []string
+	rows, err := db.Query("SELECT UserId FROM GroupEventParticipants WHERE EventId=?", eventId)
+	if err == sql.ErrNoRows {
+		return participants, nil
+	}
+	if err != nil {
+		return participants, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var participant string
+		err = rows.Scan(&participant)
+		if err != nil {
+			return participants, err
+		}
+		participants = append(participants, participant)
+	}
+	err = rows.Err()
+
+	return participants, err
 }

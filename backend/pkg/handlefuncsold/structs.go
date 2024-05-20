@@ -32,36 +32,27 @@ type Image struct {
 // 	Avatar     *Image    `json:"avatar,omitempty"`
 // }
 
-type Categories struct {
-	Id          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Created_at  time.Time `json:"created_at"`
-}
-
 type Post struct {
-	Id           uuid.UUID `json:"id"`
-	UserId       uuid.UUID `json:"userid"`
-	Title        string    `json:"title"`
-	Body         string    `json:"body"`
-	CreatedAt    time.Time `json:"createdAt"`
-	Comments     []Comment `json:"comments"`
-	Likes        int       `json:"likes"`
-	Dislikes     int       `json:"dislikes"`
-	PrivacyLevel string    `json:"privacyLevel"`
-	CreatorId    string    `json:"creatorId "`
-	Image    *Image    `json:"avatar,omitempty"`  
-	GroupId uuid.UUID `json:"groupId"`
-	ChosenFollowers []string `json:"chosenFollowers"`
+	Id              string    `json:"id"`
+	Title           string    `json:"title"`
+	Body            string    `json:"body"`
+	CreatedAt       time.Time `json:"createdAt"`
+	Comments        []Comment `json:"comments"`
+	Likes           int       `json:"likes"`
+	Dislikes        int       `json:"dislikes"`
+	PrivacyLevel    string    `json:"privacyLevel"`
+	CreatorId       string    `json:"creatorId "`
+	Image           string    `json:"avatar,omitempty"`
+	GroupId         string    `json:"groupId"`
+	ChosenFollowers []string  `json:"chosenFollowers"`
 }
 type Comment struct {
-	ID        string    `json:"id"`
+	Id        string    `json:"id"`
 	Body      string    `json:"body"`
-	UserID    string    `json:"user_id"`
-	PostID    string    `json:"post_id"`
+	UserId    string    `json:"user_id"`
+	PostId    string    `json:"post_id"`
 	CreatedAt time.Time `json:"created_at"`
-	Likes     int       `json:"likes"`
-	Dislikes  int       `json:"dislikes"`
+	Image     string    `json:"image"`
 	Username  string    `json:"username"`
 }
 type Session struct {
@@ -69,19 +60,6 @@ type Session struct {
 	Username string
 	Expires  time.Time
 	UserID   string
-}
-
-type PostFontEnd struct {
-	Id         string    `json:"id"`
-	Title      string    `json:"title"`
-	Body       string    `json:"body"`
-	Categories []string  `json:"categories"`
-	Created_at time.Time `json:"created_at"`
-	Comments   []Comment `json:"comments"`
-	Likes      int       `json:"likes"`
-	Dislikes   int       `json:"dislikes"`
-	Username   string    `json:"username"`
-	Userlikes  []string  `json:"userlikes"`
 }
 
 type Message struct {
@@ -92,4 +70,13 @@ type Message struct {
 	Created     string `json:"created"`
 	Type        string `json:"type"`
 	Typing      bool   `json:"typing"`
+}
+
+type BasicUserInfo struct {
+	Avatar         string `json:"Avatar"`
+	Id             string `json:"Id"`
+	FirstName      string `json:"FirstName"`
+	LastName       string `json:"LastName"`
+	Nickname       string `json:"Nickname"`
+	PrivacySetting string `json:"PrivacySetting"`
 }
