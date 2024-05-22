@@ -174,7 +174,7 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if usersOwnProfile {
-		profile.Posts, err = dbfuncs.GetPostsByCreatorId(ownerId)
+		profile.Posts, err = dbfuncs.GetAllPostsByCreatorId(ownerId)
 		if err != nil {
 			errorMessage := fmt.Sprintf("error getting posts: %v", err.Error())
 			http.Error(w, errorMessage, http.StatusInternalServerError)

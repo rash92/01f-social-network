@@ -2,7 +2,8 @@ package dbfuncs
 
 import (
 	"fmt"
-
+	"log"
+	"sort"
 )
 
 // type BasicUserInfo struct {
@@ -34,19 +35,14 @@ func GetFollowersOrFollowing(ownerId string, itemId string, offset int) ([]strin
 		if err != nil {
 			return nil, err
 		}
-		items = append(items, GetNicknameFromId(item))
+		nickname, err := GetNicknameFromId(item)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, nickname)
 	}
 	sort.Strings(items)
 	return items, nil
-}
-
-func GetNicknameFromId(userId string) string {
-	var nickname string
-	err := db.QueryRow("SELECT Nickname FROM users WHERE id = ?", userId).Scan(&nickname)
-	if err != nil {
-		return ""
-	}
-	return nickname
 }
 
 func GetPosts(userId string, page int, batchSize int, usersOwnProfile bool) ([]Post, error) {
@@ -147,28 +143,6 @@ func GetNumberOfFollowersAndFollowing(flag string, ownerId string) (int, error) 
 // 	}
 // 	return nil
 // }
-
-func SearchUsers(query string) ([]User, error) {
-	var users []User
-	rows, err := db.Query("SELECT Id,  Nickname, Avatar  FROM users WHERE FirstName LIKE ? OR LastName LIKE ? OR Nickname LIKE ?", "%"+query+"%", "%"+query+"%", "%"+query+"%")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var user User
-		if err := rows.Scan(&user.Id, &user.Nickname, &user.Avatar); err != nil {
-			return nil, err
-		}
-		users = append(users, user)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return users, nil
-}
 
 func SearchFollowers(query, ownerId string) ([]User, error) {
 	var users []User

@@ -3,8 +3,10 @@ package handlefuncs
 import (
 	"backend/pkg/db/dbfuncs"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 )
 
@@ -33,6 +35,11 @@ type GroupEvent struct {
 	Participants []BasicUserInfo `json:"Participants"`
 }
 
+type GroupEventCard struct {
+	Event GroupEvent `json:"Id"`
+	Going bool       `json:"Going"`
+}
+
 type GroupMessage struct {
 	Id        string    `json:"Id"`
 	SenderId  string    `json:"SenderId"`
@@ -42,13 +49,14 @@ type GroupMessage struct {
 }
 
 type DetailedGroupInfo struct {
-	BasicInfo        BasicGroupInfo  `json:"BasicInfo"`
-	InvitedMembers   []BasicUserInfo `json:"InvitedMembers"`
-	RequestedMembers []BasicUserInfo `json:"RequestedMembers"`
-	Members          []BasicUserInfo `json:"Members"`
-	Posts            []Post          `json:"Posts"`
-	Events           []GroupEvent    `json:"Events"`
-	Messages         []GroupMessage  `json:"Messages"`
+	BasicInfo        BasicGroupInfo   `json:"BasicInfo"`
+	InvitedMembers   []BasicUserInfo  `json:"InvitedMembers"`
+	RequestedMembers []BasicUserInfo  `json:"RequestedMembers"`
+	Members          []BasicUserInfo  `json:"Members"`
+	Posts            []Post           `json:"Posts"`
+	EventCards       []GroupEventCard `json:"Events"`
+	Messages         []GroupMessage   `json:"Messages"`
+	Status           string           `json:"Status"`
 }
 
 type GroupDash struct {
@@ -57,91 +65,233 @@ type GroupDash struct {
 
 //
 
+func HandleGroup(w http.ResponseWriter, r *http.Request) {
+	var userId string
+	var groupId string
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "405 Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&groupId)
+	if err != nil {
+		errorMessage := fmt.Sprintf("error decoding groupId: %v", err.Error())
+		fmt.Println(err.Error(), errorMessage)
+		http.Error(w, errorMessage, http.StatusInternalServerError)
+		return
+	}
+
+	cookie, err := r.Cookie("user_token")
+	if err != nil {
+		errorMessage := fmt.Sprintf("error retrieving cookie: %v", err.Error())
+		fmt.Println(err.Error(), errorMessage)
+		http.Error(w, errorMessage, http.StatusForbidden)
+	}
+	userId, err = dbfuncs.GetUserIdFromCookie(cookie.Value)
+	if err != nil {
+		errorMessage := fmt.Sprintf("error getting user from cookie: %v", err.Error())
+		fmt.Println(err.Error(), errorMessage)
+		http.Error(w, errorMessage, http.StatusInternalServerError)
+	}
+
+	group, err := GetGroup(groupId, userId)
+	if err != nil {
+		errorMessage := fmt.Sprintf("error getting group: %v", err.Error())
+		fmt.Println(err.Error(), errorMessage)
+		http.Error(w, errorMessage, http.StatusInternalServerError)
+	}
+
+	fmt.Println(group, "group")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(group)
+}
+
+func HandleGroupDash(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "405 Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	cookie, err := r.Cookie("user_token")
+	if err != nil {
+		errorMessage := fmt.Sprintf("error retrieving cookie: %v", err.Error())
+		fmt.Println(err.Error(), errorMessage)
+		http.Error(w, errorMessage, http.StatusForbidden)
+	}
+	userId, err := dbfuncs.GetUserIdFromCookie(cookie.Value)
+	if err != nil {
+		errorMessage := fmt.Sprintf("error getting user from cookie: %v", err.Error())
+		fmt.Println(err.Error(), errorMessage)
+		http.Error(w, errorMessage, http.StatusInternalServerError)
+	}
+	groupDash, err := GetGroupDash(userId)
+	if err != nil {
+		errorMessage := fmt.Sprintf("error getting group dash: %v", err.Error())
+		fmt.Println(err.Error(), errorMessage)
+		http.Error(w, errorMessage, http.StatusInternalServerError)
+	}
+	fmt.Println(groupDash, "group")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(groupDash)
+}
+
+func GetGroupEventCards(groupId string, userId string) ([]GroupEventCard, error) {
+	groupEvents, err := GetGroupEventsByGroupId(groupId)
+	if err != nil {
+		return []GroupEventCard{}, err
+	}
+
+	var eventCards []GroupEventCard
+	for _, event := range groupEvents {
+		eventCards = append(eventCards, GetGroupEventCard(event, userId))
+	}
+	return eventCards, err
+}
+
+func GetGroupEventCard(event GroupEvent, userId string) GroupEventCard {
+	for _, participant := range event.Participants {
+		if participant.Id == userId {
+			return GroupEventCard{event, true}
+		}
+	}
+	return GroupEventCard{event, false}
+}
+
+func GetGroupEventsByGroupId(groupId string) ([]GroupEvent, error) {
+	groupDbEvents, err := dbfuncs.GetGroupEventsByGroupId(groupId)
+	if err != nil {
+		return []GroupEvent{}, err
+	}
+	groupEvents, err := DbGroupEventsToFrontend(groupDbEvents)
+	if err != nil {
+		return []GroupEvent{}, err
+	}
+	return groupEvents, err
+}
+
+func GetGroupDash(userId string) (GroupDash, error) {
+	allGroups, err := dbfuncs.GetAllGroups()
+	var groupDash GroupDash
+	if err != nil {
+		return GroupDash{}, err
+	}
+
+	for _, group := range allGroups {
+		groupCard, err := GetGroupCard(group.Id, userId)
+		if err != nil {
+			return GroupDash{}, err
+		}
+		//should be fine?
+		groupDash.GroupCards = append(groupDash.GroupCards, groupCard)
+	}
+
+	return groupDash, err
+}
+
+// gets basic group info, and based on the viewer's user Id finds out their status wrt that group
+// (accepted, invited, requested, or not in the database, which is recorded as none)
+func GetGroupCard(groupId string, userId string) (GroupCard, error) {
+	basicInfo, err := GetBasicGroupInfo(groupId)
+	if err != nil {
+		return GroupCard{}, err
+	}
+	status, err := dbfuncs.GetGroupStatus(groupId, userId)
+	if err == sql.ErrNoRows {
+		status = "none"
+	}
+	if err != nil {
+		return GroupCard{}, err
+	}
+	return GroupCard{basicInfo, status}, err
+}
+
 func GetGroup(groupId string, userId string) (DetailedGroupInfo, error) {
-	groupInfo := DetailedGroupInfo{}
+
 	status, err := dbfuncs.GetGroupStatus(groupId, userId)
 	if err == sql.ErrNoRows {
 		fmt.Println("User is not a member of this group")
-		return groupInfo, err
+		return DetailedGroupInfo{}, err
 	}
 	if err != nil {
 		fmt.Println("Error getting group status: ", err)
-		return groupInfo, err
+		return DetailedGroupInfo{}, err
 	}
-	if status != "accepted" {
+	if status != "accepted" && status != "creator" {
 		fmt.Println("user is not a member of the group")
-		return groupInfo, errors.New("User is not a member of the group, status is: " + status)
-	}
-
-	group, err := dbfuncs.GetGroupByGroupId(groupId)
-	if err != nil {
-		return groupInfo, err
+		return DetailedGroupInfo{}, errors.New("User is not a member of the group, status is: " + status)
 	}
 
 	invitedMembers, err := dbfuncs.GetInvitedGroupMemberIdsByGroupId(groupId)
 	if err != nil {
-		return groupInfo, err
+		return DetailedGroupInfo{}, err
 	}
 
 	invitedMembersBasicInfo, err := GetBasicUserInfoFromUsers(invitedMembers)
 	if err != nil {
-		return groupInfo, err
+		return DetailedGroupInfo{}, err
 	}
 
 	requestedMembers, err := dbfuncs.GetRequestedGroupMemberIdsByGroupId(groupId)
 	if err != nil {
-		return groupInfo, err
+		return DetailedGroupInfo{}, err
 	}
 
 	requestedMembersBasicInfo, err := GetBasicUserInfoFromUsers(requestedMembers)
 	if err != nil {
-		return groupInfo, err
-	}
-	members, err := dbfuncs.GetGroupMemberIdsByGroupId(groupId)
-	if err != nil {
-		return groupInfo, err
-	}
-	membersBasicInfo, err := GetBasicUserInfoFromUsers(members)
-	if err != nil {
-		return groupInfo, err
-	}
-	groupDbPosts, err := dbfuncs.GetPostsByGroupId(groupId)
-	if err != nil {
-		return groupInfo, err
-	}
-	groupPosts, err := DbPostsToFrontend(groupDbPosts)
-	if err != nil {
-		return groupInfo, err
+		return DetailedGroupInfo{}, err
 	}
 
-	groupDbEvents, err := dbfuncs.GetGroupEventsByGroupId(groupId)
+	members, err := dbfuncs.GetGroupMemberIdsByGroupId(groupId)
 	if err != nil {
-		return groupInfo, err
+		return DetailedGroupInfo{}, err
 	}
-	groupEvents, err := DbGroupEventsToFrontend(groupDbEvents)
+
+	membersBasicInfo, err := GetBasicUserInfoFromUsers(members)
 	if err != nil {
-		return groupInfo, err
+		return DetailedGroupInfo{}, err
+	}
+
+	groupDbPosts, err := dbfuncs.GetPostsByGroupId(groupId)
+	if err != nil {
+		return DetailedGroupInfo{}, err
+	}
+
+	groupPosts, err := DbPostsToFrontend(groupDbPosts)
+	if err != nil {
+		return DetailedGroupInfo{}, err
+	}
+
+	groupEventCards, err := GetGroupEventCards(groupId, userId)
+	if err != nil {
+		return DetailedGroupInfo{}, err
 	}
 
 	dbGroupMessages, err := dbfuncs.GetAllGroupMessagesByGroupId(groupId)
 	if err != nil {
-		return groupInfo, err
+		return DetailedGroupInfo{}, err
 	}
+
 	groupMessages := DbGroupMessagesToFrontend(dbGroupMessages)
 
-	groupInfo.BasicInfo = BasicGroupInfo{
-		Id:          group.Id,
-		CreatorId:   group.CreatorId,
-		Name:        group.Title,
-		Description: group.Description,
-		CreatedAt:   group.CreatedAt,
+	basicInfo, err := GetBasicGroupInfo(groupId)
+	if err != nil {
+		return DetailedGroupInfo{}, err
 	}
-	groupInfo.InvitedMembers = invitedMembersBasicInfo
-	groupInfo.RequestedMembers = requestedMembersBasicInfo
-	groupInfo.Members = membersBasicInfo
-	groupInfo.Posts = groupPosts
-	groupInfo.Events = groupEvents
-	groupInfo.Messages = groupMessages
+
+	groupInfo := DetailedGroupInfo{
+		BasicInfo:        basicInfo,
+		InvitedMembers:   invitedMembersBasicInfo,
+		RequestedMembers: requestedMembersBasicInfo,
+		Members:          membersBasicInfo,
+		Posts:            groupPosts,
+		EventCards:       groupEventCards,
+		Messages:         groupMessages,
+		Status:           status,
+	}
+
 	return groupInfo, err
 }
 
@@ -172,6 +322,23 @@ func GetGroup(groupId string, userId string) (DetailedGroupInfo, error) {
 // }
 
 // CONVERSIONS SECTION
+
+func GetBasicGroupInfo(groupId string) (BasicGroupInfo, error) {
+
+	group, err := dbfuncs.GetGroupByGroupId(groupId)
+	if err != nil {
+		return BasicGroupInfo{}, err
+	}
+	basicInfo := BasicGroupInfo{
+		Id:          group.Id,
+		CreatorId:   group.CreatorId,
+		Name:        group.Title,
+		Description: group.Description,
+		CreatedAt:   group.CreatedAt,
+	}
+
+	return basicInfo, err
+}
 
 func DbGroupMessagesToFrontend(dbGroupMessages []dbfuncs.GroupMessage) []GroupMessage {
 	var frontendGroupMessages []GroupMessage
