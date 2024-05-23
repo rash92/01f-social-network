@@ -6,7 +6,8 @@ import {
 } from "react-icons/ai";
 import moment from "moment";
 import classes from "./Post.module.css";
-import {Col} from "react-bootstrap";
+import {Col, Image} from "react-bootstrap";
+
 // import CommentForm from "./CommentForm";
 import {useState, useContext} from "react";
 import {getJson} from "../helpers/helpers";
@@ -39,11 +40,12 @@ const Post = ({
   comments,
   likes,
   dislikes,
-  likeHandler,
-  disLikeHandler,
+  likeDislikeHandler,
   CreatorNickname,
-  Image,
+  UserLikeDislike,
+  Image: image,
 }) => {
+  console.log("  UserLikeDislike", UserLikeDislike);
   const {
     isLoggedIn,
     username: LoggedInUser,
@@ -59,7 +61,6 @@ const Post = ({
   };
 
   const timeago = moment(CreatedAt).fromNow();
-
   return (
     <Col xs={12} key={id}>
       <div className={`${classes.post}`}>
@@ -81,11 +82,15 @@ const Post = ({
         <div className={classes["post-body"]}>
           <p> {body}</p>
 
-          {
+          {image && (
             <div>
-              <image src={Image} />
+              <Image
+                src={`http://localhost:8000/images/${image}`}
+                width={500}
+                height={500}
+              />
             </div>
-          }
+          )}
         </div>
 
         <div
@@ -103,13 +108,18 @@ const Post = ({
         <div
           className={`${classes["post-reaction"]} d-flex justify-content-between`}
         >
-          <button onClick={likeHandler.bind(null, id)}>
+          <button
+            onClick={likeDislikeHandler.bind(null, {id, query: "like"})}
+            className={`${UserLikeDislike === 1 ? "primary" : ""}`}
+          >
             <div className={classes["post-reaction-info-reaction"]}>
               <AiOutlineLike size={24} />
               <span>like</span>
             </div>
           </button>
-          <button onClick={disLikeHandler.bind(null, id)}>
+          <button
+            onClick={likeDislikeHandler.bind(null, {id, query: "dislike"})}
+          >
             <div className={classes["post-reaction-info-reaction"]}>
               <AiOutlineDislike size={24} />
               <span>dislike</span>

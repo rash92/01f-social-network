@@ -129,6 +129,7 @@ const AddPost = ({show, setShow, type = "profile", groupId = ""}) => {
         id: "",
       },
     };
+    console.log(data);
 
     if (isWsReady) {
       console.log(data, " post that we sending");

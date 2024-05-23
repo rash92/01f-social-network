@@ -63,7 +63,7 @@ func main() {
 	// Commented out because definition change to placeholder for the sake of the
 	// web sockets.
 	// http.HandleFunc("/add-Comment", handlefuncs.HandleAddComment)
-	// http.HandleFunc("/react-Post-like-dislike", handlefuncs.HandlePostLikeDislike)
+	http.HandleFunc("/react-Post-like-dislike", wrapperHandler(handlefuncs.HandlePostLikeDislike))
 	// http.HandleFunc("/react-comment-like-dislike", handlefuncs.HandleCommenttLikeDislike)
 	// http.HandleFunc("/removePost", handlefuncs.HandleRemovePost)
 
@@ -72,7 +72,7 @@ func main() {
 	http.HandleFunc("/dashboard", wrapperHandler(handlefuncs.HandleDashboard))
 	http.HandleFunc("/profile", wrapperHandler(handlefuncs.HandleGetProfile))
 	http.HandleFunc("/get-users", wrapperHandler(handlefuncs.HandleGetUsers))
-	http.HandleFunc("/get-messages", handlefuncs.MessagesHandler)
+	http.HandleFunc("/get-messages", wrapperHandler(handlefuncs.MessagesHandler))
 	http.HandleFunc("/search", wrapperHandler(handlefuncs.HandleSearchUser))
 	http.HandleFunc("/toggle-privacy", wrapperHandler(handlefuncs.HanddleToggleProfilePrivacy))
 	http.Handle("/images/", http.StripPrefix("/images", http.FileServer(http.Dir("./pkg/db/images"))))

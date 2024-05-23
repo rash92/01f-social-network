@@ -147,6 +147,13 @@ func GetAllCommentsByPostId(postId string) ([]Comment, error) {
 }
 
 
+// get number of comments by by a postId
+func GetNumberOfCommentsByPostId(postId string) (int, error) {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM Comments WHERE PostId=?", postId).Scan(&count)
+	return count, err
+}
+
 
 
 

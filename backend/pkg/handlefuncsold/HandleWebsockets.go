@@ -97,20 +97,25 @@ func unmarshalBody[T any](signalBody []byte, receivedData T) {
 // }
 
 type PostFromClient struct {
-	Id                  string    `json:"id"`
-	Title               string    `json:"title"`
-	Body                string    `json:"body"`
-	CreatedAt           time.Time `json:"createdAt"`
-	PrivacyLevel        string    `json:"privacyLevel"`
-	CreatorId           string    `json:"creatorId"`
-	Image               *Image    `json:"avatar,omitempty"`
-	PostChosenFollowers []string  `json:"postChosenFollowers,omitempty"`
-	GroupId             string    `json:"groupId,omitempty"`
+	Id                  string    `json:"Id"`
+	Title               string    `json:"Title"`
+	Body                string    `json:"Body"`
+	CreatedAt           time.Time `json:"CreatedAt"`
+	PrivacyLevel        string    `json:"PrivacyLevel"`
+	CreatorId           string    `json:"CreatorId"`
+	Image               string    `json:"Image,omitempty"`
+	PostChosenFollowers []string  `json:"PostChosenFollowers,omitempty"`
+	GroupId             string    `json:"GroupId,omitempty"`
+	Likes               int       `json:"Likes,omitempty"`
+	Dislikes            int       `json:"Dislikes,omitempty"`
+	CreatorNickname     string    `json:"CreatorNickname,omitempty"`
+	UserLikeOrDislike   string    `json:"UserLikeOrDislike,omitempty"`
+	CommentSorter       []string  `json:"Comments,omitempty"`
 }
 
 type TogglePrivacy struct {
-	UserId         string `json:"UserId"`
-	PrivacySetting string `json:"PrivacySetting"`
+	UserId         string `json:"senderId"`
+	PrivacySetting string `json:"privacySetting"`
 }
 
 // func (receivedData Post) parseForDB() *dbfuncs.Post {
@@ -395,6 +400,15 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		var receivedData PostFromClient
 		unmarshalBody(signal.Body, &receivedData)
 		err = post(receivedData)
+
+	case "privateMessage":
+		var receivedData PrivateMessage
+		unmarshalBody(signal.Body, &receivedData)
+		err = privateMessage(receivedData)
+	case "groupMessage":
+		var receivedData GroupMessage
+		unmarshalBody(signal.Body, &receivedData)
+		err = groupMessage(receivedData)
 
 	case "createGroup":
 		var receivedData Group
@@ -807,15 +821,19 @@ func post(receivedData PostFromClient) error {
 		return err
 	}
 
+	imageUUID, err := dbfuncs.ConvertBase64ToImage(receivedData.Image, "./pkg/db/images")
+	if err != nil {
+		log.Println("error converting base64 to image", err)
+		notifyClientOfError(err, "post", receivedData.CreatorId, nil)
+		return err
+	}
+
 	dbPost := dbfuncs.Post{
 		Title:        receivedData.Title,
 		Body:         receivedData.Body,
 		CreatorId:    receivedData.CreatorId,
+		Image:        imageUUID,
 		PrivacyLevel: receivedData.PrivacyLevel,
-	}
-
-	if receivedData.Image != nil {
-		dbPost.Image = receivedData.Image.Data
 	}
 
 	err = dbfuncs.AddPost(&dbPost)
@@ -826,7 +844,7 @@ func post(receivedData PostFromClient) error {
 	}
 
 	receivedData.Id = dbPost.Id
-
+	receivedData.Image = imageUUID
 	signalBody, err := json.Marshal(receivedData)
 	if err != nil {
 		log.Println("error marshalling receivedData", err)
@@ -926,10 +944,15 @@ func TogglePrivacySetting(receivedData TogglePrivacy) error {
 		return err
 	}
 
+	signal := map[string]any{
+		"type": "togglePrivacySetting",
+		"body": receivedData,
+	}
+
 	connectionLock.RLock()
 	for user := range activeConnections {
 		for _, c := range activeConnections[user] {
-			err = c.WriteJSON(receivedData)
+			err = c.WriteJSON(signal)
 			if err != nil {
 				log.Println("error sending new privacy setting to client", err)
 			}
@@ -938,5 +961,102 @@ func TogglePrivacySetting(receivedData TogglePrivacy) error {
 	connectionLock.RUnlock()
 
 	notifyClientOfError(err, "TogglePrivacySetting", receivedData.UserId, nil)
+	return err
+}
+
+type PrivateMessage struct {
+	Id         string    `json:"Id"`
+	SenderId   string    `json:"SenderId"`
+	RecipientId string    `json:"ReceiverId"`
+	Message    string    `json:"Message"`
+	CreatedAt  time.Time `json:"CreatedAt"`
+}
+
+type GroupMessage struct {
+	Id        string    `json:"Id"`
+	SenderId  string    `json:"SenderId"`
+	GroupId   string    `json:"GroupId"`
+	Message   string    `json:"Message"`
+	CreatedAt time.Time `json:"CreatedAt"`
+}
+
+func privateMessage(receivedData PrivateMessage) error {
+	dbPM := dbfuncs.PrivateMessage{
+		SenderId:   receivedData.SenderId,
+		RecipientId: receivedData.RecipientId,
+		Message:    receivedData.Message,
+	}
+	err := dbfuncs.AddPrivateMessage(&dbPM)
+	if err != nil {
+		log.Println("error adding message to database", err)
+		notifyClientOfError(err, "error adding message to database", receivedData.SenderId, receivedData.RecipientId)
+		return err
+	}
+	receivedData.Id = dbPM.Id
+	receivedData.CreatedAt = dbPM.CreatedAt
+
+	isRecipientOnline := false
+	connectionLock.RLock()
+	for _, c := range activeConnections[receivedData.RecipientId] {
+		err := c.WriteJSON(receivedData)
+		if err != nil {
+			log.Println("error sending private message to recipient", err)
+		} else {
+			isRecipientOnline = true
+		}
+	}
+	connectionLock.RUnlock()
+
+	if !isRecipientOnline {
+		notification := dbfuncs.Notification{
+			Type: "privateMessage",
+			SenderId: receivedData.SenderId,
+			ReceiverId: receivedData.RecipientId,
+			Body: Sprintf("%s has sent you a private message", receivedData.SenderId)
+		}
+
+		err := dbfuncs.AddNotification(notification)
+		if err != nil {
+			log.Println("Error adding notification to database")
+		}
+	}
+
+	notifyClientOfError(err, "privateMessage", receivedData.Message, nil)
+	return err
+}
+
+func groupMessage(receivedData GroupMessage) error {
+	dbGM := dbfuncs.GroupMessage{
+		SenderId: receivedData.SenderId,
+		GroupId:  receivedData.GroupId,
+		Message:  receivedData.Message,
+	}
+	err := dbfuncs.AddGroupMessage(&dbGM)
+	if err != nil {
+		log.Println("error adding message to database", err)
+		notifyClientOfError(err, "error adding message to database", receivedData.SenderId, nil)
+		return err
+	}
+	receivedData.Id = dbGM.Id
+	receivedData.CreatedAt = dbGM.CreatedAt
+
+	connectionLock.RLock()
+	defer connectionLock.RUnlock()
+	recipients, err := dbfuncs.GetGroupMemberIdsByGroupId(receivedData.GroupId)
+	if err != nil {
+		log.Println("error getting group members from database", err)
+		notifyClientOfError(err, "error getting group members from database", receivedData.SenderId, nil)
+		return err
+	}
+	for _, recipient := range recipients {
+		for _, c := range activeConnections[recipient] {
+			err := c.WriteJSON(receivedData)
+			if err != nil {
+				log.Println("error sending group message to recipient", err)
+			}
+		}
+	}
+
+	notifyClientOfError(err, "groupMessage", receivedData.Message, nil)
 	return err
 }

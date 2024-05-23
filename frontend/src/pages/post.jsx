@@ -9,11 +9,7 @@ const Post = () => {
 
   const location = useLocation();
   console.log(location, "loacation");
-  return (
-    <div>
-      <Posts />
-    </div>
-  );
+  return <div>hello world</div>;
 };
 
 export default Post;

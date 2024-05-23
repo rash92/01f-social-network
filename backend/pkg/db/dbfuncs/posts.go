@@ -3,6 +3,7 @@ package dbfuncs
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -93,6 +94,7 @@ func GetPostLikes(PostId string) (likeUserIds, dislikeUserIds []string, err erro
 
 // likeOrDislike can only take values "like" or "dislike"
 func LikeDislikePost(UserId, PostId, likeOrDislike string) error {
+	fmt.Println("likeOrDislike", likeOrDislike)
 	addLike := false
 	addDislike := false
 	if likeOrDislike == "like" {
@@ -163,9 +165,6 @@ func GetPostById(id string) (Post, error) {
 	var post Post
 	err := db.QueryRow("SELECT Id, Title, Body, CreatorId, GroupId, CreatedAt, Image, PrivacyLevel FROM Posts WHERE Id=?", id).Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
 
-
-
-	
 	return post, err
 }
 
@@ -177,7 +176,7 @@ func GetPostIdByCommentId(commentId string) (string, error) {
 
 func GetPostsByCreatorId(creatorId string) ([]Post, error) {
 	var posts []Post
-	rows, err := db.Query("SELECT * FROM Posts WHERE CreatorId=?", creatorId)
+	rows, err := db.Query("SELECT * FROM Posts WHERE CreatorId=? ORDER BY CreatedAt DESC ", creatorId)
 	if err == sql.ErrNoRows {
 		return posts, nil
 	}
@@ -190,6 +189,26 @@ func GetPostsByCreatorId(creatorId string) ([]Post, error) {
 		err = rows.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
 		if err != nil {
 			return posts, err
+		}
+
+		post.Likes, post.Dislikes, err = CountPostReacts(post.Id)
+		if err != nil {
+			return nil, err
+		}
+		user, err := GetUserById(post.CreatorId)
+		if err != nil {
+			return nil, err
+		}
+
+		post.CreatorNickname = user.Nickname
+		post.UserLikeDislike, err = GetUserLikeDislike(creatorId, post.Id)
+		if err != nil {
+			return nil, err
+		}
+
+		post.Ncomment, err = GetNumberOfCommentsByPostId(post.Id)
+		if err != nil {
+			return nil, err
 		}
 		posts = append(posts, post)
 	}
@@ -204,7 +223,8 @@ func GetVisiblePosts(userId string) ([]Post, error) {
 			(PrivacyLevel = 'public') OR 
 			(PrivacyLevel = 'private' AND CreatorId IN (SELECT FollowingId FROM Follows WHERE FollowerId = ?)) OR 
 			(PrivacyLevel = 'superprivate' AND Id IN (SELECT PostId FROM PostChosenFollowers WHERE FollowerId = ?)) OR
-			CreatorId = ?
+			CreatorId = ? 
+ORDER BY CreatedAt DESC
 	`
 	rows, err := db.Query(query, userId, userId, userId)
 	if err != nil {
@@ -220,7 +240,7 @@ func GetVisiblePosts(userId string) ([]Post, error) {
 			return nil, err
 		}
 
-		post.Dislikes, post.Likes, err = CountPostReacts(post.Id)
+		post.Likes, post.Dislikes, err = CountPostReacts(post.Id)
 		if err != nil {
 			return nil, err
 		}
@@ -229,11 +249,15 @@ func GetVisiblePosts(userId string) ([]Post, error) {
 			return nil, err
 		}
 		post.CreatorNickname = user.Nickname
+
 		post.UserLikeDislike, err = GetUserLikeDislike(userId, post.Id)
 		if err != nil {
 			return nil, err
 		}
-
+		post.Ncomment, err = GetNumberOfCommentsByPostId(post.Id)
+		if err != nil {
+			return nil, err
+		}
 		posts = append(posts, post)
 	}
 
@@ -252,6 +276,7 @@ func GetVisiblePostsForProfile(userId, profileOwnerId string) ([]Post, error) {
 			((PrivacyLevel = 'public') OR 
 			(PrivacyLevel = 'private' AND CreatorId IN (SELECT FollowingId FROM Follows WHERE FollowerId = ?)) OR 
 			(PrivacyLevel = 'superprivate' AND Id IN (SELECT PostId FROM PostChosenFollowers WHERE FollowerId = ?)))
+	ORDER BY CreatedAt DESC
 	`
 	rows, err := db.Query(query, profileOwnerId, userId, userId)
 	if err != nil {
@@ -266,6 +291,25 @@ func GetVisiblePostsForProfile(userId, profileOwnerId string) ([]Post, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		post.Likes, post.Dislikes, err = CountPostReacts(post.Id)
+		if err != nil {
+			return nil, err
+		}
+		user, err := GetUserById(post.CreatorId)
+		if err != nil {
+			return nil, err
+		}
+
+		post.CreatorNickname = user.Nickname
+		post.UserLikeDislike, err = GetUserLikeDislike(userId, post.Id)
+		if err != nil {
+			return nil, err
+		}
+		post.Ncomment, err = GetNumberOfCommentsByPostId(post.Id)
+		if err != nil {
+			return nil, err
+		}
 		posts = append(posts, post)
 	}
 
@@ -277,7 +321,7 @@ func GetVisiblePostsForProfile(userId, profileOwnerId string) ([]Post, error) {
 }
 
 func GetUserLikeDislike(userId, postId string) (int, error) {
-	var like int
+	var like bool
 	err := db.QueryRow("SELECT Liked FROM PostLikes WHERE UserId=? AND PostId=?", userId, postId).Scan(&like)
 	if err == sql.ErrNoRows {
 		return 0, nil
@@ -285,8 +329,13 @@ func GetUserLikeDislike(userId, postId string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return like, nil
+	if like {
+		return 1, nil
+	}
+	return -1, nil
 }
+
+// find number of comments
 
 //TO DO: get 10 at a time? decide if doing it through SQL or get all and do in handlefunc
 

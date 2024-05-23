@@ -1,8 +1,10 @@
 import Post from "./post.js";
 
 import {getJson} from "../helpers/helpers";
+import {useContext} from "react";
+import AuthContext from "../store/authContext.js";
 
-const reactlikeDislike = async (postId, quary) => {
+const reactlikeDislike = async ({postId, query, id}) => {
   try {
     return await getJson("react-Post-like-dislike", {
       method: "POST",
@@ -13,30 +15,26 @@ const reactlikeDislike = async (postId, quary) => {
       credentials: "include",
       body: JSON.stringify({
         postId,
-        quary,
+        query,
+        id,
       }),
     });
   } catch (err) {
     throw err;
   }
 };
-const Posts = ({posts, onAddLikeDislikePost}) => {
-  const likeHandler = async (id, e) => {
+const Posts = ({posts}) => {
+  const {user, onAddLikeDislikePost} = useContext(AuthContext);
+  const likeDislikeHandler = async ({id, query}) => {
     try {
-      const res = await reactlikeDislike(id, "like");
-      onAddLikeDislikePost(id, res, "like");
+      const res = await reactlikeDislike({id: user.Id, query, postId: id});
+
+      onAddLikeDislikePost(id, res);
     } catch (err) {
       console.log(err);
     }
   };
-  const disLikeHandler = async (id, e) => {
-    try {
-      const res = await reactlikeDislike(id, "dislike");
-      onAddLikeDislikePost(id, res, "dislike");
-    } catch (err) {
-      console.log(err);
-    }
-  };
+
   return (
     <>
       {posts?.map((el) => (
@@ -48,8 +46,9 @@ const Posts = ({posts, onAddLikeDislikePost}) => {
           likes={el?.Likes}
           dislikes={el?.Dislikes}
           CreatorNickname={el?.CreatorNickname}
-          likeHandler={likeHandler}
-          disLikeHandler={disLikeHandler}
+          likeDislikeHandler={likeDislikeHandler}
+          UserLikeDislike={el.UserLikeDislike}
+          Image={el.Image}
           id={el.Id}
           key={el.Id}
         />

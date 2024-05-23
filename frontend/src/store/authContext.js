@@ -1,5 +1,6 @@
 import React, {useState, useEffect, useCallback, useRef} from "react";
 import {getJson} from "../helpers/helpers";
+import User from "../components/User";
 
 const userObj = {
   Id: "",
@@ -57,8 +58,13 @@ export const AuthContextProvider = (props) => {
   const [isWsReady, setIsWsReady] = useState(false);
   const [wsVal, setWsVal] = useState(null);
   const ws = useRef(null);
-  const [showChat, setShowChat] = useState(false);
-  const [openChatDetails, setOpenChatDetails] = useState({});
+
+  const [openChatDetails, setOpenChatDetails] = useState({
+    messages: [],
+    isChatOpen: false,
+    openChatId: "",
+    type: "",
+  });
   const [profileData, setProfileData] = useState({
     isComponentVisible: false,
     data: {},
@@ -93,7 +99,6 @@ export const AuthContextProvider = (props) => {
     }
   }, [user.Id]);
 
-  console.log(dashBoardData);
   // profile
 
   const fetchProfileData = useCallback(async (id) => {
@@ -154,13 +159,33 @@ export const AuthContextProvider = (props) => {
     setUser({...user.user, isLogIn: true});
   };
 
-  const openChat = (data) => {
-    setOpenChatDetails(data);
-    setShowChat(true);
+  const openChat = async (id) => {
+    try {
+      const res = await getJson("get-messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          currUser: User.Id
+           
+
+        }),
+      });
+
+      setOpenChatDetails({
+        messages: res,
+        isChatOpen: true,
+        openChatId: id,
+      });
+    } catch (er) {
+      console.log();
+    }
   };
 
   const closeChat = () => {
-    setShowChat(false);
+    setOpenChatDetails({messages: [], isChatOpen: false, openChatId: ""});
   };
 
   // web socket states
@@ -440,50 +465,50 @@ export const AuthContextProvider = (props) => {
 
   const currentProfilePrivacyChanged = useCallback(
     (data) => {
-      if (
-        profileData.isComponentVisible &&
-        data.Id === profileData.data.Owner.Id &&
-        profileData.data.Owner.PrivacyLevel === "private"
-      ) {
-        fetchProfileData(profileData.data.Owner.Id);
-      } else {
+      if (!profileData.isComponentVisible) {
+        return;
+      }
+
+      if (data.body.senderId === user.Id) {
         setProfileData((prev) => ({
           ...prev,
           data: {
             ...prev.data,
             Owner: {
               ...prev.data.Owner,
-              PrivacyLevel: data.PrivacySetting,
+              PrivacySetting: data.body.privacySetting,
             },
           },
         }));
+      } else {
+        fetchProfileData(profileData?.data?.Owner?.Id);
       }
     },
     [
       profileData.isComponentVisible,
-      profileData.data?.Owner?.Id,
       fetchProfileData,
-      profileData.data?.Owner?.PrivacyLevel,
+      profileData?.data?.Owner?.Id,
+      user.Id,
     ]
   );
 
   const addPostToFeed = useCallback(
     (data) => {
       const {
-        body: Body,
-        title: Title,
-        createAt: CreatedAt,
-        creatorId: CreatorId,
-        groupId: GroupId,
-        id: Id,
-        privacyLevel: PrivacyLevel,
-        image: Image,
+        Body,
+        Title,
+        CreatedAt,
+        CreatorId,
+        GroupId,
+        Id,
+        PrivacyLevel,
+        Image,
       } = data.message;
+
       if (
         profileData.isComponentVisible &&
         CreatorId === profileData.data.Owner.Id
       ) {
-        console.log(data.message.CreatorId);
         setProfileData((prev) => ({
           ...prev,
           data: {
@@ -497,7 +522,7 @@ export const AuthContextProvider = (props) => {
                 GroupId,
                 Id,
                 privacyLevel: PrivacyLevel,
-                image: Image,
+                Image: Image,
               },
               ...prev.data.Posts,
             ],
@@ -515,7 +540,7 @@ export const AuthContextProvider = (props) => {
               GroupId,
               Id,
               privacyLevel: PrivacyLevel,
-              image: Image,
+              Image: Image,
             },
             ...prev?.Posts,
           ],
@@ -533,6 +558,7 @@ export const AuthContextProvider = (props) => {
   useEffect(() => {
     if (isWsReady) {
       const data = JSON.parse(wsVal);
+      console.log(data, "data from websocket");
 
       if (data?.type === "error") {
         handleWebsocketErrors(data);
@@ -563,10 +589,10 @@ export const AuthContextProvider = (props) => {
           setOnlineUsers(data);
           break;
         case "post":
-          console.log(data, "this the post got back from websocket");
+          console.log(data.message);
           addPostToFeed(data);
           break;
-        case "privacyChanged":
+        case "togglePrivacySetting":
           currentProfilePrivacyChanged(data);
           break;
 
@@ -585,6 +611,41 @@ export const AuthContextProvider = (props) => {
     handleWebsocketSucess,
     dashBoardData.notifications,
   ]);
+
+  const onAddLikeDislikePost = (id, data) => {
+    if (profileData.isComponentVisible) {
+      console.log(data, id, "if profile PostlikeDislike");
+      setProfileData((prev) => ({
+        ...prev,
+        data: {
+          ...prev.data,
+          Posts: prev.data.Posts.map((el) =>
+            el.Id === id
+              ? {...el, Likes: data.Likes, Dislikes: data.Dislikes}
+              : el
+          ),
+        },
+      }));
+    } else {
+      setDashBoardData((prev) => ({
+        ...prev,
+        Posts: prev.Posts.map((el) =>
+          el.Id === id
+            ? {...el, Likes: data.Likes, Dislikes: data.Dislikes}
+            : el
+        ),
+      }));
+    }
+  };
+
+  //   if(quary === "like"){
+  //   const { likes, dislikes , userlikes,  ...rest} = posts.find(el => el.id ===id)
+  //      SetPosts( posts.map(el=> el.id === id ? {likes: data.likes, dislikes: data.dislikes, userlikes: data.userlikes, ...rest}   : el  ))
+  //   }else{
+  //     const { likes, dislikes,  userlikes,  ...rest} = posts.find(el => el.id ===id)
+  //     SetPosts( posts.map(el=> el.id === id ? {likes: data.likes, dislikes: data.dislikes,  userlikes: data.userlikes, ...rest}   : el  ))
+  //   }
+  // }
 
   return (
     <AuthContext.Provider
@@ -605,7 +666,6 @@ export const AuthContextProvider = (props) => {
         // onAddLikeDislikeComment,
         // onRemovePost,
         closeChat,
-        showChat,
         openChat,
         openChatDetails,
         onlineUsers,
@@ -616,6 +676,7 @@ export const AuthContextProvider = (props) => {
         dashBoardData,
         toggleProfilePrivacy,
         setDashBoardDataOutside,
+        onAddLikeDislikePost,
       }}
     >
       {props.children}

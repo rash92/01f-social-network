@@ -60,6 +60,7 @@ type Post struct {
 	CreatorNickname string
 	UserLikeDislike int
 	Comments        []Comment
+	Ncomment       int
 }
 
 type Comment struct {

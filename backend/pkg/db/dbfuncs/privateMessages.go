@@ -99,8 +99,30 @@ func GetUnmessagedUserIdsSortedAlphabetically(userId string) ([]string, error) {
 	return unmessagedUserIds, err
 }
 
-func GetAllPrivateMessagesByUserId(userId string) ([]PrivateMessage, error) {
-	return []PrivateMessage{}, nil
+func GetAllPrivateMessagesByUserId(CurrUser, OtherUser string) ([]PrivateMessage, error) {
+	messages := []PrivateMessage{}
+	query := `
+	SELECT * FROM Messages
+	WHERE (senderId = ? AND RecipientId = ?) OR (SenderId = ? AND RecipientId = ?)
+	ORDER BY CreatedAt DEC
+`
+	rows, err := db.Query(query, CurrUser, OtherUser, OtherUser, CurrUser)
+	if err != nil {
+
+		return messages, err
+	}
+
+	for rows.Next() {
+		var message PrivateMessage
+		err := rows.Scan(&message.Id, &message.SenderId, &message.RecipientId, &message.Message, &message.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		messages = append(messages, message)
+	}
+
+	return messages, nil
+
 }
 
 func GetRecentPrivateMessagesByUserId(userId string, numberOfMessages, offset int) ([]PrivateMessage, error) {
