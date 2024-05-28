@@ -124,12 +124,11 @@ const AddPost = ({show, setShow, type = "profile", groupId = ""}) => {
         createdAt: new Date(),
         image: postImgValue.file
           ? await convertImageToBase64(postImgValue.file)
-          : null,
+          : "",
         isWholeForum: type === "profile" ? true : false,
         id: "",
       },
     };
-    console.log(data);
 
     if (isWsReady) {
       console.log(data, " post that we sending");

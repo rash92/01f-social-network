@@ -4,46 +4,46 @@ import {Card, Button} from "react-bootstrap";
 import classes from "./ProfileCard.module.css";
 import Action from "./Action";
 
-const GroupCard = ({group, toggleAction, owner = true}) => {
+const GroupCard = ({group, toggleAction, owner}) => {
   return (
     <Card className={classes.card}>
       <div className={classes.profileContainer}>
         <Card.Body>
           <div className={classes.image}>
             <Card.Title>
-              <span>{group.title}</span>
+              <span>{group?.BasicInfo?.Title}</span>
             </Card.Title>
             <ul className={`${classes["profile-action"]}   `}>
               <Action
-                numberAction={group.NumberOfPosts}
+                numberAction={group?.Posts?.length || 0}
                 actionName={"Posts"}
                 toggleAction={toggleAction}
               />
 
               <Action
-                numberAction={group.NumberOfMembers}
+                numberAction={group?.Members?.length || 0}
                 actionName={"Members"}
                 toggleAction={toggleAction}
               />
 
               <Action
-                numberAction={group.NumberOfEvents}
+                numberAction={group?.Events?.length || 0}
                 actionName={"Events"}
                 toggleAction={toggleAction}
               />
             </ul>
           </div>
 
-          <Card.Text>{group.description}</Card.Text>
+          <Card.Text>{group?.BasicInfo?.Description}</Card.Text>
           <div className={classes.interact}>
-            <Button onClick={toggleAction.bind(null, "ToBeInvites")}>
-              Invite
+            <Button
+              onClick={toggleAction?.bind(
+                null,
+                `${owner ? "RequestedMembers" : "create event"}`
+              )}
+            >
+              manage
             </Button>
-            {owner && (
-              <Button onClick={toggleAction.bind(null, "Requests")}>
-                manage
-              </Button>
-            )}
           </div>
         </Card.Body>
       </div>

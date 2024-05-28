@@ -1,4 +1,4 @@
-import {Form, Button} from "react-bootstrap";
+import {Form, Button, Image} from "react-bootstrap";
 import useInput from "../hooks/use-input";
 import FormGroup from "./FormGroup";
 import {getJson} from "../helpers/helpers";
@@ -29,17 +29,16 @@ const reactCommentLikeDislike = async ({commentId, postId}, quary) => {
   }
 };
 
-const Comment = ({comments, id: postId}) => {
-  const Navigate = useNavigate();
+const Comment = ({comments, id: postId, addComment}) => {
   const [addCommentErr, setAddCommentErr] = useState({
     message: "",
     isError: true,
   });
 
+  console.log(comments);
+
   const [avatarValue, setAvatarValue] = useState({value: "", file: null});
-  const {
-    user: {isLogIn: isLoggedIn},
-  } = useContext(AuthContext);
+  const {user} = useContext(AuthContext);
   // const timeago = moment(created_at).fromNow();
   const {
     isValid: enteredCommentIsValid,
@@ -54,58 +53,64 @@ const Comment = ({comments, id: postId}) => {
   const commnetInputClasses = commnetInputHassError
     ? `${classes.invalid} `
     : "";
-
+  const allowedImageTypes = {
+    "image/png": true,
+    "image/jpeg": true,
+    "image/giff": true,
+  };
   const handleSubmit = async (event) => {
     event.preventDefault();
-
     if (!formIsValid) return;
+    if (
+      avatarValue?.file?.type &&
+      !allowedImageTypes[avatarValue?.file?.type]
+    ) {
+      console.log(avatarValue?.file?.type);
+
+      return;
+    }
+
+    // Id              string    `json:"Id"`
+    // Body            string    `json:"Body"`
+    // CreatorId       string    `json:"CreatorId"`
+    // PostID          string    `json:"PostId"`
+    // CreatedAt       time.Time `json:"CreatedAt"`
+    // Likes           int       `json:"Likes"`
+    // Dislikes        int       `json:"Dislikes"`
+    // NickName        string    `json:"Nickname"`
+    // Image           string    `json:"Image"`
+    // CreatorNickname string    `json:"CreatorNickname"
 
     const data = {
-      body: entereComment,
-      postId: postId,
-      image: avatarValue.file
+      Id: "",
+      Body: entereComment,
+      CreatorId: user.Id,
+      PostId: postId,
+      Image: avatarValue.file
         ? await convertImageToBase64(avatarValue.file)
-        : null,
+        : "",
+      CreatedAt: new Date(),
+      Likes: 0,
+      Dislikes: 0,
+      CreatorNickname: user.Nickname,
     };
     try {
-      const res = await getJson("add-Comment", {
+      const res = await getJson("add-comment", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          user_token: document.cookie,
         },
         credentials: "include",
         body: JSON.stringify(data),
       });
       if (res.success) {
-        // OnAddCommentToPost(res.id, res.comments);
+        addComment(res.comment);
         setAddCommentErr({message: "", isError: false});
         resetCommentInput();
+        setAvatarValue({value: "", file: null});
       }
     } catch (error) {
       setAddCommentErr({message: error.message, isError: true});
-    }
-  };
-
-  const likeHandler = async (option, e) => {
-    try {
-      if (!isLoggedIn) {
-        Navigate("/login");
-      } else {
-        const res = await reactCommentLikeDislike(option, "like");
-        // onAddLikeDislikeComment(option, res, "like");
-      }
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  const disLikeHandler = async (option, e) => {
-    try {
-      const res = await reactCommentLikeDislike(option, "dislike");
-      // onAddLikeDislikeComment(option, res, "dislike");
-    } catch (err) {
-      console.log(err);
     }
   };
 
@@ -128,7 +133,7 @@ const Comment = ({comments, id: postId}) => {
         </Form.Group>
 
         <FormGroup
-          value={avatarValue}
+          value={avatarValue.value}
           setValue={setAvatarValue}
           type="file"
           accept="image/*"
@@ -143,33 +148,45 @@ const Comment = ({comments, id: postId}) => {
 
       <div className={classes["comment-container"]}>
         {comments?.map(
-          ({id, created_at, username, body, likes, dislikes}, i) => (
-            <div className={classes.comment} key={id}>
+          (
+            {Id, CreatedAt, CreatorNickname, Body, Likes, Lislikes, Image: img},
+            i
+          ) => (
+            <div className={classes.comment} key={Id}>
               <div className={classes["comment-header"]}>
                 <span className="user name">
-                  posted by {username} {moment(created_at).fromNow()}
+                  posted by {CreatorNickname} {moment(CreatedAt).fromNow()}
                 </span>
               </div>
 
-              <div className={classes["comment-body"]}>{body}</div>
-
-              <div className={classes["react-status"]}>
-                <span>{likes} likes</span>
-                <span>{dislikes} dislikes</span>
+              <div className={classes["comment-body"]}>{Body}</div>
+              <div>
+                {img && (
+                  <Image
+                    src={`http://localhost:8000/images/${img}`}
+                    width={"100%"}
+                    height={"100%"}
+                  />
+                )}
               </div>
 
-              <div className={classes["comment-reaction"]}>
-                <button
+              {/* <div className={classes["react-status"]}>
+                <span>{likes} likes</span>
+                <span>{dislikes} dislikes</span>
+              </div> */}
+
+              {/* <div className={classes["comment-reaction"]}> */}
+              {/* <button
                   onClick={likeHandler.bind(null, {commentId: id, postId})}
                 >
                   <AiOutlineLike /> like
-                </button>
-                <button
+                </button> */}
+              {/* <button
                   onClick={disLikeHandler.bind(null, {commentId: id, postId})}
                 >
                   <AiOutlineDislike /> dislike
-                </button>
-              </div>
+                </button> */}
+              {/* </div> */}
             </div>
           )
         )}

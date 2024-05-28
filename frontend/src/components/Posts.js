@@ -1,28 +1,9 @@
 import Post from "./post.js";
 
-import {getJson} from "../helpers/helpers";
+import {reactlikeDislike} from "../helpers/helpers";
 import {useContext} from "react";
 import AuthContext from "../store/authContext.js";
 
-const reactlikeDislike = async ({postId, query, id}) => {
-  try {
-    return await getJson("react-Post-like-dislike", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        user_token: document.cookie,
-      },
-      credentials: "include",
-      body: JSON.stringify({
-        postId,
-        query,
-        id,
-      }),
-    });
-  } catch (err) {
-    throw err;
-  }
-};
 const Posts = ({posts}) => {
   const {user, onAddLikeDislikePost} = useContext(AuthContext);
   const likeDislikeHandler = async ({id, query}) => {
@@ -39,6 +20,7 @@ const Posts = ({posts}) => {
     <>
       {posts?.map((el) => (
         <Post
+          type={false}
           title={el.Title}
           body={el.Body}
           CreatedAt={el.CreatedAt}

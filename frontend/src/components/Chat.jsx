@@ -7,27 +7,43 @@ import moment from "moment";
 
 const ChatComponent = () => {
   const [newMessage, setNewMessage] = useState("");
-  const prevScrollPosRef = useRef(0);
+
   const endMessageRef = useRef(null);
 
   const {
+    onlineUsers,
+    isWsReady,
+    wsMsgToServer,
     OpenChat: handleShow,
     closeChat: handleClose,
-    openChatDetails: {messages, isChatOpen, type, user, group},
+    user: loggedUser,
+    openChatDetails: {messages, isChatOpen, user},
   } = useContext(AuthContext);
 
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (newMessage.trim() !== "") {
+    if (newMessage.trim() !== "" && isWsReady) {
+      wsMsgToServer(
+        JSON.stringify({
+          type: user.type,
+          message: {
+            SenderId: loggedUser.Id,
+            ReceiverId: user.id,
+            message: newMessage,
+            type: user.type,
+            createAt: "",
+            Nickname: user.Nickname,
+            Avatar: user.Avatar,
+          },
+        })
+      );
+
+      setNewMessage("");
     }
   };
 
-  const helperTimeFormater = (time) => {
-    return moment(time).calendar(null, {
-      sameDay: "h:mm A",
-      lastWeek: "dddd",
-      sameElse: "MM/DD/YYYY",
-    });
+  const formatCreatedAt = (createdAt) => {
+    return moment(createdAt).format("MMM DD, YYYY hh:mm A");
   };
 
   useEffect(() => {
@@ -44,15 +60,15 @@ const ChatComponent = () => {
       flag={false}
     >
       <div style={{margin: "1rem 0 2rem 0"}}>
-        {type === "user" ? (
+        {user.type === "privateMessage" ? (
           <User
-            isOnline={user?.isOnline}
-            Nickname={user?.username}
-            avatar={user?.avatar}
+            Nickname={user?.Nickname}
+            Avatar={user?.Avatar}
+            IsOnline={onlineUsers.includes(user.id)}
           />
         ) : (
           <div>
-            <h1> {group?.title} </h1>
+            <h1> {user?.title} </h1>
           </div>
         )}
       </div>
@@ -61,24 +77,30 @@ const ChatComponent = () => {
           id="scrollableDiv"
           style={{
             display: "flex",
-            flexDirection: "column-reverse  !important",
             overflowY: "auto",
             height: "400px",
+            flexDirection: "column-reverse !important",
           }}
-          ref={prevScrollPosRef}
         >
-          {messages.map((message) => (
-            <React.Fragment key={message.id}>
-              <div className="chats">
-                <span style={{textAlign: "center", color: "#898888"}}>
-                  {helperTimeFormater(message.time)}
-                </span>
-                <ListGroup.Item action as="li">
-                  <p style={{margin: "0"}}>{message.text}</p>
-                </ListGroup.Item>
-              </div>
-            </React.Fragment>
-          ))}
+          {messages &&
+            messages?.map((message) => (
+              <React.Fragment key={message.Id}>
+                <div className="chats">
+                  <span style={{textAlign: "center", color: "#898888"}}>
+                    {formatCreatedAt(message.CreateAt)}
+                  </span>
+                  <ListGroup.Item action as="li">
+                    <User
+                      Nickname={message?.Nickname}
+                      Avatar={message?.Avatar}
+                      IsOnline={onlineUsers.includes(message.SenderId)}
+                    />
+
+                    <p style={{margin: "1rem 0"}}>{message.Message}</p>
+                  </ListGroup.Item>
+                </div>
+              </React.Fragment>
+            ))}
 
           <div ref={endMessageRef} />
         </ListGroup>

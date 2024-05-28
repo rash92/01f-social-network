@@ -3,27 +3,28 @@ package dbfuncs
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 // check if pointery way of doing it is working with * and & the right way etc., or if we want to just pass in by value
-func AddComment(comment *Comment) error {
+func AddComment(comment *Comment) (string, error) {
 	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
 	if err != nil {
-		return err
+		return "", err
 	}
 	comment.Id = id.String()
 	comment.CreatedAt = time.Now()
 	statement, err := db.Prepare("INSERT INTO Comments VALUES (?,?,?,?,?,?)")
 	if err != nil {
-		return err
+		return "", err
 	}
 	_, err = statement.Exec(comment.Id, comment.Body, comment.CreatorId, comment.PostId, comment.CreatedAt, comment.Image)
-
-	return err
+	fmt.Println(comment.Id)
+	return comment.Id, err
 }
 
 func DeleteComment(commentId string) error {
@@ -127,7 +128,6 @@ func GetCommentById(id string) (Comment, error) {
 	return comment, err
 }
 
-
 func GetAllCommentsByPostId(postId string) ([]Comment, error) {
 	rows, err := db.Query("SELECT Id, Body, CreatorId, PostId, CreatedAt, Image FROM Comments WHERE PostId=?", postId)
 	if err != nil {
@@ -141,20 +141,23 @@ func GetAllCommentsByPostId(postId string) ([]Comment, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		user, err := GetUserById(comment.CreatorId)
+		if err != nil {
+			return nil, err
+		}
+
+		comment.CreatorNickname = user.Nickname
 		comments = append(comments, comment)
 	}
 	return comments, nil
 }
 
-
 // get number of comments by by a postId
-func GetNumberOfCommentsByPostId(postId string) (int, error) {
-	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM Comments WHERE PostId=?", postId).Scan(&count)
-	return count, err
-}
-
-
-
+// func GetNumberOfCommentsByPostId(postId string) (int, error) {
+// 	var count int
+// 	err := db.QueryRow("SELECT COUNT(*) FROM Comments WHERE PostId=?", postId).Scan(&count)
+// 	return count, err
+// }
 
 //TO DO: get 10 at a time? decide if doing it through SQL or get all and do in handlefunc

@@ -210,6 +210,26 @@ type Group struct {
 	CreatedAt   time.Time `json:"CreatedAt"`
 }
 
+type PrivateMessage struct {
+	Id          string    `json:"Id"`
+	Type        string    `json:"type"`
+	SenderId    string    `json:"SenderId"`
+	RecipientId string    `json:"ReceiverId"`
+	Message     string    `json:"Message"`
+	CreatedAt   time.Time `json:"CreatedAt"`
+	Nickname    string    `json:"Nickname"`
+	Avatar      string    `json:"Avatar"`
+}
+
+type GroupMessage struct {
+	Id        string    `json:"Id"`
+	Type      string    `json:"type"`
+	SenderId  string    `json:"SenderId"`
+	GroupId   string    `json:"GroupId"`
+	Message   string    `json:"Message"`
+	CreatedAt time.Time `json:"CreatedAt"`
+}
+
 // type Event struct {
 // 	EventId     string `json:"EventId"`
 // 	GroupId     string `json:"GroupId"`
@@ -821,19 +841,20 @@ func post(receivedData PostFromClient) error {
 		return err
 	}
 
-	imageUUID, err := dbfuncs.ConvertBase64ToImage(receivedData.Image, "./pkg/db/images")
-	if err != nil {
-		log.Println("error converting base64 to image", err)
-		notifyClientOfError(err, "post", receivedData.CreatorId, nil)
-		return err
-	}
-
 	dbPost := dbfuncs.Post{
 		Title:        receivedData.Title,
 		Body:         receivedData.Body,
 		CreatorId:    receivedData.CreatorId,
-		Image:        imageUUID,
 		PrivacyLevel: receivedData.PrivacyLevel,
+	}
+	if receivedData.Image != "" {
+		imageUUID, err := dbfuncs.ConvertBase64ToImage(receivedData.Image, "./pkg/db/images")
+		if err != nil {
+			log.Println("error converting base64 to image", err)
+			notifyClientOfError(err, "post", receivedData.CreatorId, nil)
+			return err
+		}
+		dbPost.Image = imageUUID
 	}
 
 	err = dbfuncs.AddPost(&dbPost)
@@ -844,7 +865,6 @@ func post(receivedData PostFromClient) error {
 	}
 
 	receivedData.Id = dbPost.Id
-	receivedData.Image = imageUUID
 	signalBody, err := json.Marshal(receivedData)
 	if err != nil {
 		log.Println("error marshalling receivedData", err)
@@ -964,27 +984,12 @@ func TogglePrivacySetting(receivedData TogglePrivacy) error {
 	return err
 }
 
-type PrivateMessage struct {
-	Id         string    `json:"Id"`
-	SenderId   string    `json:"SenderId"`
-	RecipientId string    `json:"ReceiverId"`
-	Message    string    `json:"Message"`
-	CreatedAt  time.Time `json:"CreatedAt"`
-}
-
-type GroupMessage struct {
-	Id        string    `json:"Id"`
-	SenderId  string    `json:"SenderId"`
-	GroupId   string    `json:"GroupId"`
-	Message   string    `json:"Message"`
-	CreatedAt time.Time `json:"CreatedAt"`
-}
-
 func privateMessage(receivedData PrivateMessage) error {
+	fmt.Println(receivedData, "receivedData privateMessages")
 	dbPM := dbfuncs.PrivateMessage{
-		SenderId:   receivedData.SenderId,
+		SenderId:    receivedData.SenderId,
 		RecipientId: receivedData.RecipientId,
-		Message:    receivedData.Message,
+		Message:     receivedData.Message,
 	}
 	err := dbfuncs.AddPrivateMessage(&dbPM)
 	if err != nil {
@@ -1005,17 +1010,24 @@ func privateMessage(receivedData PrivateMessage) error {
 			isRecipientOnline = true
 		}
 	}
+	for _, c := range activeConnections[receivedData.SenderId] {
+		err := c.WriteJSON(receivedData)
+		if err != nil {
+			log.Println("error sending private message to sender", err)
+		}
+	}
+
 	connectionLock.RUnlock()
 
 	if !isRecipientOnline {
 		notification := dbfuncs.Notification{
-			Type: "privateMessage",
-			SenderId: receivedData.SenderId,
+			Type:       "privateMessage",
+			SenderId:   receivedData.SenderId,
 			ReceiverId: receivedData.RecipientId,
-			Body: Sprintf("%s has sent you a private message", receivedData.SenderId)
+			Body:       fmt.Sprintf("%s has sent you a private message", receivedData.SenderId),
 		}
 
-		err := dbfuncs.AddNotification(notification)
+		_, err := dbfuncs.AddNotification(&notification)
 		if err != nil {
 			log.Println("Error adding notification to database")
 		}

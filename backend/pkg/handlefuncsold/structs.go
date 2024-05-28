@@ -40,29 +40,30 @@ type Categories struct {
 }
 
 type Post struct {
-	Id           uuid.UUID `json:"id"`
-	UserId       uuid.UUID `json:"userid"`
-	Title        string    `json:"title"`
-	Body         string    `json:"body"`
-	CreatedAt    time.Time `json:"createdAt"`
-	Comments     []Comment `json:"comments"`
-	Likes        int       `json:"likes"`
-	Dislikes     int       `json:"dislikes"`
-	PrivacyLevel string    `json:"privacyLevel"`
-	CreatorId    string    `json:"creatorId "`
-	Image    *Image    `json:"avatar,omitempty"`  
-	GroupId uuid.UUID `json:"groupId"`
-	ChosenFollowers []string `json:"chosenFollowers"`
+	Id              string    `json:"id"`
+	UserId          string    `json:"userid"`
+	Title           string    `json:"title"`
+	Body            string    `json:"body"`
+	CreatedAt       time.Time `json:"createdAt"`
+	Comments        []Comment `json:"comments"`
+	Likes           int       `json:"likes"`
+	Dislikes        int       `json:"dislikes"`
+	PrivacyLevel    string    `json:"privacyLevel"`
+	CreatorId       string    `json:"creatorId "`
+	Image           string    `json:"avatar,omitempty"`
+	GroupId         string    `json:"groupId"`
+	ChosenFollowers []string  `json:"chosenFollowers"`
 }
 type Comment struct {
-	ID        string    `json:"id"`
-	Body      string    `json:"body"`
-	UserID    string    `json:"user_id"`
-	PostID    string    `json:"post_id"`
-	CreatedAt time.Time `json:"created_at"`
-	Likes     int       `json:"likes"`
-	Dislikes  int       `json:"dislikes"`
-	Username  string    `json:"username"`
+	Id              string    `json:"Id"`
+	Body            string    `json:"Body"`
+	CreatorId       string    `json:"CreatorId"`
+	PostID          string    `json:"PostId"`
+	CreatedAt       time.Time `json:"CreatedAt"`
+	Likes           int       `json:"Likes"`
+	Dislikes        int       `json:"Dislikes"`
+	Image           string    `json:"Image"`
+	CreatorNickname string    `json:"CreatorNickname"`
 }
 type Session struct {
 	Id       uuid.UUID

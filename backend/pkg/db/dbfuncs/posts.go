@@ -161,10 +161,33 @@ func GetPostChosenFollowerIdsByPostId(id string) ([]string, error) {
 	return followerIds, err
 }
 
-func GetPostById(id string) (Post, error) {
+func GetPostById(userId, id string) (Post, error) {
 	var post Post
 	err := db.QueryRow("SELECT Id, Title, Body, CreatorId, GroupId, CreatedAt, Image, PrivacyLevel FROM Posts WHERE Id=?", id).Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
+	if err != nil {
+		return post, err
+	}
 
+	post.Likes, post.Dislikes, err = CountPostReacts(post.Id)
+	if err != nil {
+		return post, err
+	}
+	user, err := GetUserById(post.CreatorId)
+	if err != nil {
+		return post, err
+	}
+
+	post.CreatorNickname = user.Nickname
+	post.UserLikeDislike, err = GetUserLikeDislike(userId, post.Id)
+	if err != nil {
+		return post, err
+	}
+
+	post.Comments, err = GetAllCommentsByPostId(post.Id)
+
+	if err != nil {
+		return post, err
+	}
 	return post, err
 }
 
@@ -206,10 +229,12 @@ func GetPostsByCreatorId(creatorId string) ([]Post, error) {
 			return nil, err
 		}
 
-		post.Ncomment, err = GetNumberOfCommentsByPostId(post.Id)
+		post.Comments, err = GetAllCommentsByPostId(post.Id)
+
 		if err != nil {
 			return nil, err
 		}
+
 		posts = append(posts, post)
 	}
 
@@ -254,7 +279,13 @@ ORDER BY CreatedAt DESC
 		if err != nil {
 			return nil, err
 		}
-		post.Ncomment, err = GetNumberOfCommentsByPostId(post.Id)
+		// post.Ncomment, err = GetNumberOfCommentsByPostId(post.Id)
+		// if err != nil {
+		// 	return nil, err
+		// }
+
+		post.Comments, err = GetAllCommentsByPostId(post.Id)
+
 		if err != nil {
 			return nil, err
 		}
@@ -275,7 +306,7 @@ func GetVisiblePostsForProfile(userId, profileOwnerId string) ([]Post, error) {
 			(CreatorId = ?) AND
 			((PrivacyLevel = 'public') OR 
 			(PrivacyLevel = 'private' AND CreatorId IN (SELECT FollowingId FROM Follows WHERE FollowerId = ?)) OR 
-			(PrivacyLevel = 'superprivate' AND Id IN (SELECT PostId FROM PostChosenFollowers WHERE FollowerId = ?)))
+			(PrivacyLevel = 'superprivate' AND Id IN (SELECT PostId FROM PostChosenFollowers WHERE FollowerId = ?)) OR  EXISTS(SELECT 1 FROM GroupMembers gm  where gm.GroupId = Posts.GroupId AND gm.UserId =? AND gm.Status = 'accepted')))
 	ORDER BY CreatedAt DESC
 	`
 	rows, err := db.Query(query, profileOwnerId, userId, userId)
@@ -306,7 +337,13 @@ func GetVisiblePostsForProfile(userId, profileOwnerId string) ([]Post, error) {
 		if err != nil {
 			return nil, err
 		}
-		post.Ncomment, err = GetNumberOfCommentsByPostId(post.Id)
+		// post.Ncomment, err = GetNumberOfCommentsByPostId(post.Id)
+		// if err != nil {
+		// 	return nil, err
+		// }
+
+		post.Comments, err = GetAllCommentsByPostId(post.Id)
+
 		if err != nil {
 			return nil, err
 		}

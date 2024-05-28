@@ -6,14 +6,14 @@ import {
 } from "react-icons/ai";
 import moment from "moment";
 import classes from "./Post.module.css";
-import {Col, Image} from "react-bootstrap";
+import {Col, Image, Button} from "react-bootstrap";
 
 // import CommentForm from "./CommentForm";
 import {useState, useContext} from "react";
 import {getJson} from "../helpers/helpers";
 import AuthContext from "../store/authContext";
 import {Link} from "react-router-dom";
-
+import CommentForm from "./CommentForm";
 const removePostHandler = async (postId) => {
   try {
     return await getJson("removePost", {
@@ -44,8 +44,9 @@ const Post = ({
   CreatorNickname,
   UserLikeDislike,
   Image: image,
+  type,
+  addComment,
 }) => {
-  console.log("  UserLikeDislike", UserLikeDislike);
   const {
     isLoggedIn,
     username: LoggedInUser,
@@ -59,6 +60,36 @@ const Post = ({
       console.log(err);
     }
   };
+  const [showComment, setShowComent] = useState();
+
+  const htmlComment = !type ? (
+    <Link to={`post/${id}`} style={{textDecoration: "none"}}>
+      <span>{comments?.length} comments</span>
+    </Link>
+  ) : (
+    <button>
+      <span>
+        <AiOutlineComment />
+      </span>
+      <span>{comments?.length} comments</span>
+    </button>
+  );
+
+  const htmlComment1 = !type ? (
+    <Link to={`post/${id}`} style={{textDecoration: "none"}}>
+      <span>
+        <AiOutlineComment />
+      </span>
+      <span>Comment</span>
+    </Link>
+  ) : (
+    <button>
+      <span>
+        <AiOutlineComment />
+      </span>
+      <span>Comment</span>
+    </button>
+  );
 
   const timeago = moment(CreatedAt).fromNow();
   return (
@@ -83,11 +114,12 @@ const Post = ({
           <p> {body}</p>
 
           {image && (
-            <div>
+            <div style={{width: "100%", overflow: "hidden"}}>
               <Image
                 src={`http://localhost:8000/images/${image}`}
                 width={500}
                 height={500}
+                style={{width: "100%", objectFit: "cover"}}
               />
             </div>
           )}
@@ -98,22 +130,18 @@ const Post = ({
         >
           {likes > 0 && <span>{likes} likes</span>}
           {dislikes > 0 && <span> {dislikes} dislikes</span>}
-          {comments?.length > 0 && (
-            <Link to={`post/${id}`} style={{textDecoration: "none"}}>
-              <span>{comments?.length} comments</span>
-            </Link>
-          )}
+          {comments?.length > 0 && htmlComment}
         </div>
 
         <div
           className={`${classes["post-reaction"]} d-flex justify-content-between`}
         >
-          <button
-            onClick={likeDislikeHandler.bind(null, {id, query: "like"})}
-            className={`${UserLikeDislike === 1 ? "primary" : ""}`}
-          >
+          <button onClick={likeDislikeHandler.bind(null, {id, query: "like"})}>
             <div className={classes["post-reaction-info-reaction"]}>
-              <AiOutlineLike size={24} />
+              <AiOutlineLike
+                color={UserLikeDislike === 1 ? "green" : "black"}
+                size={24}
+              />
               <span>like</span>
             </div>
           </button>
@@ -121,21 +149,20 @@ const Post = ({
             onClick={likeDislikeHandler.bind(null, {id, query: "dislike"})}
           >
             <div className={classes["post-reaction-info-reaction"]}>
-              <AiOutlineDislike size={24} />
+              <AiOutlineDislike
+                color={UserLikeDislike === -1 ? "red" : "black"}
+                size={24}
+              />
               <span>dislike</span>
             </div>
           </button>
 
-          <Link
-            to={`post/${id}`}
-            style={{textDecoration: "none", color: "black"}}
-          >
-            <div className={classes["post-reaction-info-reaction"]}>
-              <AiOutlineComment size={24} />
-              <span>comment</span>
-            </div>
-          </Link>
+          {htmlComment1}
         </div>
+
+        {type && (
+          <CommentForm id={id} comments={comments} addComment={addComment} />
+        )}
       </div>
     </Col>
   );

@@ -32,3 +32,24 @@ export const convertImageToBase64 = (file) => {
     reader.onerror = (error) => reject(error);
   });
 };
+
+
+export const reactlikeDislike = async ({postId, query, id}) => {
+  try {
+    return await getJson("react-Post-like-dislike", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        user_token: document.cookie,
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        postId,
+        query,
+        id,
+      }),
+    });
+  } catch (err) {
+    throw err;
+  }
+};

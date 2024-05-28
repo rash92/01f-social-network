@@ -1,63 +1,72 @@
 package handlefuncs
 
-// func HandleAddComment(w http.ResponseWriter, r *http.Request) {
-// 	Cors(&w, r)
+import (
+	"backend/pkg/db/dbfuncs"
+	"encoding/json"
+	"log"
+	"net/http"
+	"time"
+)
 
-// 	if r.Method == http.MethodPost {
-// 		var newComment Comment
-// 		errj := json.NewDecoder(r.Body).Decode(&newComment)
-// 		if errj != nil {
-// 			http.Error(w, `{"error": "`+errj.Error()+`"}`, http.StatusBadRequest)
-// 			return
-// 		}
-// 		cookie, err := r.Cookie("user_token")
-// 		if err != nil {
-// 			fmt.Println(err)
-// 			http.Error(w, `{"error": "something went wrong please login"}`, http.StatusUnauthorized)
-// 			return
-// 		}
-// 		if !dbfuncs.ValidateCookie(cookie.Value) {
+func HandleAddComment(w http.ResponseWriter, r *http.Request) {
 
-// 			http.Error(w, `{"error": "something went wrong please login"}`, http.StatusUnauthorized)
-// 			return
-// 		}
-// 		if len(newComment.Body) > CharacterLimit {
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error": "405 Method Not Allowed"}`, http.StatusMethodNotAllowed)
+		return
 
-// 			http.Error(w, `{"error": "413 Payload Too Large"}`, http.StatusRequestEntityTooLarge)
-// 			return
-// 		}
-// 		if len(newComment.Body) == 0 {
+	}
+	var newComment Comment
+	errj := json.NewDecoder(r.Body).Decode(&newComment)
+	if errj != nil {
+		http.Error(w, `{"error": "`+errj.Error()+`"}`, http.StatusBadRequest)
+		return
+	}
 
-// 			http.Error(w, `{"error": "204 No Content"}`, http.StatusNoContent)
-// 			return
-// 		}
+	if len(newComment.Body) > CharacterLimit {
+		http.Error(w, `{"error": "413 Payload Too Large"}`, http.StatusRequestEntityTooLarge)
+		return
+	}
+	if len(newComment.Body) == 0 {
 
-// 		PostId := newComment.PostID
-// 		PostBody := newComment.Body
+		http.Error(w, `{"error": "204 No Content"}`, http.StatusNoContent)
+		return
+	}
 
-// 		_, err = dbfuncs.AddComment(PostBody, cookie.Value, PostId)
-// 		// fmt.Println((commentId))
-// 		if err != nil {
-// 			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
-// 			return
-// 		}
+	newCommentDb := dbfuncs.Comment{
+		Body:            newComment.Body,
+		CreatorId:       newComment.CreatorId,
+		PostId:          newComment.PostID,
+		CreatedAt:       time.Now(),
+		Likes:           0,
+		Dislikes:        0,
+		CreatorNickname: newComment.CreatorNickname,
+	}
 
-// 		comment, err := FindPostsComment(PostId)
+	if newComment.Image != "" {
+		imageUUID, err := dbfuncs.ConvertBase64ToImage(newComment.Image, "./pkg/db/images")
+		if err != nil {
+			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+			log.Println("error converting base64 to image", err)
+			return
+		}
+		newCommentDb.Image = imageUUID
+	}
 
-// 		if err != nil {
-// 			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
-// 			return
-// 		}
-// 		fmt.Println(comment)
-// 		response := map[string]interface{}{
-// 			"success":  true,
-// 			"comments": comment,
-// 			"id":       PostId,
-// 		}
-// 		json.NewEncoder(w).Encode(response)
+	id, err := dbfuncs.AddComment(&newCommentDb)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+		return
+	}
 
-// 	} else {
-// 		http.Error(w, `{"error": "405 Method Not Allowed"}`, http.StatusMethodNotAllowed)
-// 		return
-// 	}
-// }
+	newCommentDb.Id = id
+
+	response := map[string]interface{}{
+		"success": true,
+		"comment": newCommentDb,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+
+}

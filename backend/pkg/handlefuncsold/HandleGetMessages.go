@@ -3,13 +3,13 @@ package handlefuncs
 import (
 	"backend/pkg/db/dbfuncs"
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
 type data struct {
 	CurrUser  string `json:"currUser"`
 	OtherUser string `json:"otherUser"`
-	GroupId   string `json:"groupdId"`
 	Type      string `json:"type"`
 }
 
@@ -26,10 +26,12 @@ func MessagesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var messages []dbfuncs.PrivateMessage
-	if entredData.Type == "user" {
+	if entredData.Type == "privateMessage" {
+		fmt.Println(entredData.Type, "entredData.Type")
+
 		messages, err = dbfuncs.GetAllPrivateMessagesByUserId(entredData.CurrUser, entredData.OtherUser)
 		if err != nil {
-			http.Error(w, `{"error": "405 Method Not Allowed"}`, http.StatusInternalServerError)
+			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 			return
 		}
 

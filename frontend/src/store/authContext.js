@@ -16,13 +16,6 @@ const userObj = {
   AboutMe: "",
 };
 
-// const logoutHandler = useCallback(() => {
-//   setUser(userObj);
-//   if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-//     ws.current.send(JSON.stringify({ type: "logout", message: "" }));
-//     ws.current.close();
-//   }
-// }, []);
 const AuthContext = React.createContext({
   user: userObj,
   OnLogin: () => {},
@@ -61,11 +54,17 @@ export const AuthContextProvider = (props) => {
 
   const [openChatDetails, setOpenChatDetails] = useState({
     messages: [],
+    user: {},
     isChatOpen: false,
-    openChatId: "",
-    type: "",
   });
+
   const [profileData, setProfileData] = useState({
+    isComponentVisible: false,
+    data: {},
+    error: {type: "", message: ""},
+  });
+
+  const [groupData, setGroupData] = useState({
     isComponentVisible: false,
     data: {},
     error: {type: "", message: ""},
@@ -118,6 +117,23 @@ export const AuthContextProvider = (props) => {
     }
   }, []);
 
+  const fetchGroupData = useCallback(async (id) => {
+    try {
+      const res = await getJson("group", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(id),
+      });
+
+      setGroupData((prev) => ({...prev, data: res}));
+    } catch (err) {
+      console.log(err);
+    }
+  }, []);
+
   const toggleProfilePrivacy = async () => {
     let s =
       profileData.data?.Owner?.PrivacySetting === "private"
@@ -158,26 +174,27 @@ export const AuthContextProvider = (props) => {
   const logintHandler = (user) => {
     setUser({...user.user, isLogIn: true});
   };
-
-  const openChat = async (id) => {
+  console.log(openChatDetails.messages);
+  const openChat = async (data) => {
     try {
       const res = await getJson("get-messages", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+
         credentials: "include",
         body: JSON.stringify({
-          currUser: User.Id
-           
-
+          currUser: user.Id,
+          otherUser: data.id,
+          type: data.type,
         }),
       });
 
       setOpenChatDetails({
-        messages: res,
+        messages: res.messages,
         isChatOpen: true,
-        openChatId: id,
+        user: data,
       });
     } catch (er) {
       console.log();
@@ -185,11 +202,10 @@ export const AuthContextProvider = (props) => {
   };
 
   const closeChat = () => {
-    setOpenChatDetails({messages: [], isChatOpen: false, openChatId: ""});
+    setOpenChatDetails({messages: [], user: {}, isChatOpen: false});
   };
 
   // web socket states
-
   const checkSession = useCallback(async () => {
     try {
       const res = await getJson("checksession", {
@@ -585,8 +601,19 @@ export const AuthContextProvider = (props) => {
         case "logout":
           logoutHandler(false);
           break;
-        case "online":
-          setOnlineUsers(data);
+
+        case "privateMessage":
+          console.log(data);
+          setOpenChatDetails((prev) => ({
+            ...prev,
+            messages: Array.isArray(prev.messages)
+              ? [...prev.messages, data]
+              : [data],
+          }));
+          break;
+        case "online-user":
+          setOnlineUsers(data.data);
+
           break;
         case "post":
           console.log(data.message);
@@ -621,7 +648,12 @@ export const AuthContextProvider = (props) => {
           ...prev.data,
           Posts: prev.data.Posts.map((el) =>
             el.Id === id
-              ? {...el, Likes: data.Likes, Dislikes: data.Dislikes}
+              ? {
+                  ...el,
+                  Likes: data.Likes,
+                  Dislikes: data.Dislikes,
+                  UserLikeDislike: data.UserLikeDislike,
+                }
               : el
           ),
         },
@@ -631,7 +663,12 @@ export const AuthContextProvider = (props) => {
         ...prev,
         Posts: prev.Posts.map((el) =>
           el.Id === id
-            ? {...el, Likes: data.Likes, Dislikes: data.Dislikes}
+            ? {
+                ...el,
+                Likes: data.Likes,
+                Dislikes: data.Dislikes,
+                UserLikeDislike: data.UserLikeDislike,
+              }
             : el
         ),
       }));
@@ -677,6 +714,8 @@ export const AuthContextProvider = (props) => {
         toggleProfilePrivacy,
         setDashBoardDataOutside,
         onAddLikeDislikePost,
+        fetchGroupData,
+        groupData,
       }}
     >
       {props.children}

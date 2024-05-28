@@ -87,14 +87,21 @@ const ProfileCard = ({
             <div className={classes.interact}>
               <Button
                 variant={`${!IsFollowed ? "primary" : "secondary"}`}
-                OnClick={() => {
-                  requestFollow();
-                }}
+                onClick={requestFollow}
               >
                 {IsFollowed ? "Unfollow" : "Follow"}
               </Button>
 
-              <Button onClick={showChat.bind(null, )}>chat</Button>
+              <Button
+                onClick={showChat.bind(null, {
+                  id: user.Id,
+                  Nickname: user.Nickname,
+                  Avatar: user.Avatar,
+                  type: "privateMessage",
+                })}
+              >
+                chat
+              </Button>
             </div>
           )}
         </Card.Body>

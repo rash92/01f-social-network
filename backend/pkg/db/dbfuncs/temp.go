@@ -199,7 +199,12 @@ func SearchFollowers(query, ownerId string) ([]User, error) {
 
 func ConvertBase64ToImage(base64String string, directoryPath string) (string, error) {
 	// Split the base64 string to isolate the MIME type and the actual data
+
 	splitData := strings.Split(base64String, ",")
+	if len(splitData) != 2 {
+		return "", fmt.Errorf("nvalid base64 string")
+	}
+
 	mimeType := strings.Split(splitData[0], ";")[0]
 	data := splitData[1]
 

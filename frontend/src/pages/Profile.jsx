@@ -19,12 +19,11 @@ const Profile = () => {
     profileData: {data, error},
     resetIsProfileComponentVisible,
     fetchProfileData,
-    openChat
+    openChat,
   } = React.useContext(AuthContext);
 
   const {id} = useParams();
 
-  console.log(data.Posts, "posts");
   useEffect(() => {
     fetchProfileData(id);
   }, [id, fetchProfileData]);
@@ -84,7 +83,6 @@ const Profile = () => {
     return () => resetIsProfileComponentVisible(false);
   }, [resetIsProfileComponentVisible]);
 
-  
   const requestFollowHandler = () => {
     console.log("unfollowing");
     if (isWsReady) {

@@ -62,12 +62,14 @@ func main() {
 	// http.HandleFunc("/get-posts", wrapperHandler(handlefuncs.HandleGetPosts))
 	// Commented out because definition change to placeholder for the sake of the
 	// web sockets.
-	// http.HandleFunc("/add-Comment", handlefuncs.HandleAddComment)
+	http.HandleFunc("/add-comment", wrapperHandler(handlefuncs.HandleAddComment))
+	http.HandleFunc("/group", wrapperHandler(handlefuncs.HandleGroup))
 	http.HandleFunc("/react-Post-like-dislike", wrapperHandler(handlefuncs.HandlePostLikeDislike))
 	// http.HandleFunc("/react-comment-like-dislike", handlefuncs.HandleCommenttLikeDislike)
 	// http.HandleFunc("/removePost", handlefuncs.HandleRemovePost)
 
 	http.HandleFunc("/newUser", handlefuncs.HandleNewUser)
+	http.HandleFunc("/get-post", wrapperHandler(handlefuncs.HandleGetPost))
 	http.HandleFunc("/logout", handlefuncs.HandleLogout)
 	http.HandleFunc("/dashboard", wrapperHandler(handlefuncs.HandleDashboard))
 	http.HandleFunc("/profile", wrapperHandler(handlefuncs.HandleGetProfile))
