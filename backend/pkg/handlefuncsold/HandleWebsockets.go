@@ -154,8 +154,14 @@ func (receivedData Notification) parseForDB(message string) *dbfuncs.Notificatio
 	}
 }
 
+type GroupMember struct {
+	GroupId string `json:"GroupId"`
+	UserId  string `json:"UserId"`
+	Status  string `json:"Status"`
+}
+
 // func (dbNotification *dbfuncs.Notification) parseForClient() Notification {
-// 	user := dbfunc.GetUserById(dbNotification.SenderId)
+// 	user := dbfunc.GetBasicUserInfoById(dbNotification.SenderId)
 // 	body := map[string]interface{}{
 // 		"message": dbNotification.Body,
 // 		"user":    user,
@@ -434,7 +440,32 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn, w http.Respons
 		var receivedData Group
 		unmarshalBody(signal.Body, &receivedData)
 		err = createGroup(receivedData)
-
+	case "requestToJoinGroup":
+		var receivedData GroupMember
+		unmarshalBody(signal.Body, &receivedData)
+		err = requestToJoinGroup(receivedData)
+	case "answerRequestToJoinGroup":
+		var receivedData AnswerRequestToJoinGroup
+		unmarshalBody(signal.Body, &receivedData)
+		err = answerRequestToJoinGroup(receivedData)
+	// case "inviteToJoinGroup":
+	// 	var receivedData InviteToJoinGroup
+	// 	unmarshalBody(signal.Body, &receivedData)
+	// 	err = inviteToJoinGroup(receivedData)
+	// case "answerInvitationToJoinGroup":
+	// 	var receivedData AnswerInvitationToJoinGroup
+	// 	unmarshalBody(signal.Body, &receivedData)
+	// 	err = answerInvitationToJoinGroup(receivedData)
+	// case "createEvent":
+	// 	var receivedData GroupEvent
+	// 	unmarshalBody(signal.Body, &receivedData)
+	// 	err = createEvent(receivedData)
+	// case "toggleAttendEvent":
+	// 	var receivedData GroupEventParticipant
+	// 	unmarshalBody(signal.Body, &receivedData)
+	// 	toggleAttendEvent(receivedData)
+	default:
+		err = errors.New("unexpected websocket message type")
 	}
 
 	log.Println("end of broker")
@@ -538,9 +569,9 @@ func requestToFollow(receivedData Follow) error {
 		return err
 	}
 
-	follower, err := dbfuncs.GetUserById(receivedData.FollowerId)
+	follower, err := dbfuncs.GetBasicUserInfoById(receivedData.FollowerId)
 	if err != nil {
-		log.Println("error getting nickname from database", err)
+		log.Println("error getting basic user info from database", err)
 		notifyClientOfError(err, "requestToFollow", receivedData.FollowerId, nil)
 		return err
 	}
@@ -551,7 +582,12 @@ func requestToFollow(receivedData Follow) error {
 		Type:       "notification requestToFollow",
 	}
 
-	data, _ := dbfuncs.GetUserById(receivedData.FollowerId)
+	data, err := dbfuncs.GetBasicUserInfoById(receivedData.FollowerId)
+	if err != nil {
+		log.Println("error getting basic user info from database", err)
+		notifyClientOfError(err, "requestToFollow", receivedData.FollowerId, nil)
+		return err
+	}
 
 	var message string
 	if private {
@@ -647,7 +683,7 @@ func answerRequestToFollow(receivedData AnswerRequestToFollow) error {
 		Seen:       false,
 	}
 
-	following, err := dbfuncs.GetUserById(receivedData.SenderId)
+	following, err := dbfuncs.GetBasicUserInfoById(receivedData.SenderId)
 	message := fmt.Sprintf("%s has said %s to your request to follow", following.Nickname, receivedData.Reply)
 	notificationToSend.Body = message
 	notificationToSend.Payload = map[string]interface{}{
@@ -668,7 +704,7 @@ func answerRequestToFollow(receivedData AnswerRequestToFollow) error {
 	fmt.Println("success string")
 	fmt.Println(receivedData.SenderId)
 	// if receivedData.Reply == "yes" {
-	// 	receiverFull, err := dbfuncs.GetUserById(receivedData.ReceiverId)
+	// 	receiverFull, err := dbfuncs.GetBasicUserInfoById(receivedData.ReceiverId)
 	// 	if err != nil {
 	// 		log.Println(err, "error getting receiver by id")
 	// 	}
@@ -705,7 +741,12 @@ func unfollow(receivedData Unfollow) error {
 		Type:       "notification unfollow",
 	}
 
-	data, _ := dbfuncs.GetUserById(receivedData.FollowerId)
+	data, err := dbfuncs.GetBasicUserInfoById(receivedData.FollowerId)
+	if err != nil {
+		log.Println("error getting basic user info from database", err)
+		notifyClientOfError(err, "requestToFollow", receivedData.FollowerId, nil)
+		return err
+	}
 	message := fmt.Sprintf("%s has unfollowed you", data.Nickname)
 
 	notificationId, err := dbfuncs.AddNotification(notification.parseForDB(message))
@@ -1072,3 +1113,443 @@ func groupMessage(receivedData GroupMessage) error {
 	notifyClientOfError(err, "groupMessage", receivedData.Message, nil)
 	return err
 }
+
+func requestToJoinGroup(receivedData GroupMember) error {
+	groupCreator, err := dbfuncs.GetGroupCreatorIdByGroupId(receivedData.GroupId)
+	if err != nil {
+		log.Println("error finding group creator")
+		notifyClientOfError(err, "error finding group creator", receivedData.UserId, nil)
+		return err
+	}
+
+	group, err := GetBasicGroupInfo(receivedData.GroupId)
+	if err != nil {
+		log.Println("error finding group name")
+		notifyClientOfError(err, "error finding group", receivedData.UserId, nil)
+		return err
+	}
+
+	groupName := group.Name
+
+	member := dbfuncs.GroupMember{
+		GroupId: receivedData.GroupId,
+		UserId:  receivedData.UserId,
+		Status:  "requested",
+	}
+	err = dbfuncs.AddGroupMember(&member)
+	if err != nil {
+		log.Println(err, "error adding new group member to database")
+		notifyClientOfError(err, "error adding new group member to database", receivedData.UserId, nil)
+		return err
+	}
+
+	applicant, err := dbfuncs.GetBasicUserInfoById(receivedData.UserId)
+	if err != nil {
+		log.Println(err, "error getting applicant name")
+		notifyClientOfError(err, "requestRequestToJoinGroup", receivedData.UserId, nil)
+		return err
+	}
+
+	message := fmt.Sprintf("%s has requested to join your group, %s", applicant.Nickname, groupName)
+
+	dbNotification := dbfuncs.Notification{
+		Type:       "requestToJoinGroup",
+		ReceiverId: groupCreator,
+		SenderId:   receivedData.UserId,
+		Body:       message,
+	}
+	notificationId, err := dbfuncs.AddNotification(&dbNotification)
+	if err != nil {
+		log.Println(err, "error adding notification to database")
+		notifyClientOfError(err, "error adding notification to database", receivedData.UserId, nil)
+		return err
+	}
+	notification := Notification{
+		Id:         notificationId,
+		Type:       "notification requestToJoinGroup",
+		ReceiverId: groupCreator,
+		SenderId:   receivedData.UserId,
+		CreatedAt:  dbNotification.CreatedAt,
+		Seen:       false,
+		Body:       dbNotification.Body,
+	}
+
+	data, err := dbfuncs.GetBasicUserInfoById(receivedData.UserId)
+	if err != nil {
+		log.Println(err, "error getting basic user by id")
+		return err
+	}
+
+	payload := map[string]any{
+		"Avatar":         data.Avatar,
+		"Id":             data.Id,
+		"FirstName":      data.FirstName,
+		"LastName":       data.LastName,
+		"Nickname":       data.Nickname,
+		"PrivacySetting": data.PrivacySetting,
+		"Message":        message,
+	}
+
+	notification.Payload = payload
+
+	connectionLock.RLock()
+	for _, c := range activeConnections[groupCreator] {
+		err := c.WriteJSON(notification)
+		if err != nil {
+			log.Println(err, "error sending request to join group to creator")
+		}
+	}
+	connectionLock.RUnlock()
+
+	notifyClientOfError(err, "requestToJoinGroup", receivedData.UserId, nil)
+	return err
+}
+
+func answerRequestToJoinGroup(receivedData AnswerRequestToJoinGroup) error {
+	fmt.Println("receiverId from the start of answer", receivedData.ReceiverId)
+	var err error
+	member := dbfuncs.GroupMember{
+		GroupId: receivedData.GroupId,
+		UserId:  receivedData.ReceiverId,
+	}
+	fmt.Println("receivedData", receivedData)
+
+	if receivedData.Accept {
+
+		member.Status = "accepted"
+		err = dbfuncs.UpdateGroupMember(&member)
+	} else {
+		err = dbfuncs.DeleteGroupMember(&member)
+	}
+	if err != nil {
+		log.Println(err, "error updating group member")
+		notifyClientOfError(err, "answerRequestToJoinGroup", receivedData.SenderId, nil)
+		return err
+	}
+
+	group, err := GetGroup(receivedData.GroupId, receivedData.ReceiverId)
+	if err != nil {
+		log.Println(err, "error getting group info")
+		notifyClientOfError(err, "answerRequestToJoinGroup", receivedData.SenderId, nil)
+		return err
+	}
+
+	creator, err := dbfuncs.GetBasicUserInfoById(group.BasicInfo.CreatorId)
+	if err != nil {
+		log.Println(err, "error getting creator name")
+		notifyClientOfError(err, "answerRequestToJoinGroup", receivedData.SenderId, nil)
+		return err
+	}
+
+	body := fmt.Sprintf("%s has %s your request to join their group, %s", creator.Nickname, func() string {
+		if receivedData.Accept {
+			return "accepted"
+		}
+		return "rejected"
+	}(), group.BasicInfo.Name)
+
+	dbNotification := dbfuncs.Notification{
+		Type:       "answerRequestToJoinGroup",
+		ReceiverId: receivedData.ReceiverId,
+		SenderId:   receivedData.SenderId,
+		Seen:       false,
+		Body:       body,
+	}
+	notificationId, err := dbfuncs.AddNotification(&dbNotification)
+	if err != nil {
+		log.Println(err, "error adding notification to database")
+		notifyClientOfError(err, "answerRequestToJoinGroup", receivedData.SenderId, nil)
+		return err
+	}
+
+	notification := Notification{
+		Id:         notificationId,
+		Type:       "notification answerRequestToJoinGroup",
+		ReceiverId: receivedData.ReceiverId,
+		SenderId:   receivedData.SenderId,
+		CreatedAt:  dbNotification.CreatedAt,
+		Seen:       false,
+		Body:       body,
+	}
+
+	payload := map[string]any{
+		"type":    receivedData.Accept,
+		"Message": body,
+		"group":   group,
+	}
+
+	notification.Payload = payload
+
+	connectionLock.RLock()
+	for _, c := range activeConnections[receivedData.ReceiverId] {
+		err := c.WriteJSON(notification)
+		if err != nil {
+			log.Println(err, "error sending answer to join group to applicant")
+		}
+	}
+	connectionLock.RUnlock()
+
+	fmt.Println("receivedData", receivedData)
+
+	whatever := map[string]any{
+		"applicantId": receivedData.ReceiverId,
+		"accept":      receivedData.Accept,
+	}
+
+	notifyClientOfError(err, "answerRequestToJoinGroup", receivedData.SenderId, whatever)
+	return err
+}
+
+// func inviteToJoinGroup(receivedData InviteToJoinGroup) error {
+// 	member := dbfuncs.GroupMember{
+// 		GroupId: receivedData.GroupId,
+// 		UserId:  receivedData.ReceiverId,
+// 		Status:  "invited",
+// 	}
+// 	err := dbfuncs.AddGroupMember(&member)
+// 	if err != nil {
+// 		log.Println(err, "error adding group member to database")
+// 		notifyClientOfError(err, "inviteToJoinGroup", receivedData.SenderId, nil)
+// 		return err
+// 	}
+
+// 	inviterData, err := dbfuncs.GetBasicUserInfoById(receivedData.SenderId)
+// 	if err != nil {
+// 		log.Println(err, "error getting user by id")
+// 		notifyClientOfError(err, "inviteToJoinGroup", receivedData.SenderId, nil)
+// 		return err
+// 	}
+
+// 	groupData, err := GetBasicGroupInfo(receivedData.GroupId)
+// 	if err != nil {
+// 		log.Println(err, "error getting group by id")
+// 		notifyClientOfError(err, "inviteToJoinGroup", receivedData.SenderId, nil)
+// 		return err
+// 	}
+
+// 	dbNotification := dbfuncs.Notification{
+// 		Type:       "inviteToJoinGroup",
+// 		ReceiverId: receivedData.ReceiverId,
+// 		SenderId:   receivedData.SenderId,
+// 		Seen:       false,
+// 		Body:       fmt.Sprintf("%s has invited you to join their group, %s", inviterData.Nickname, groupData.Name),
+// 	}
+// 	notificationId, err := dbfuncs.AddNotification(&dbNotification)
+// 	if err != nil {
+// 		log.Println(err, "error adding notification to database")
+// 		notifyClientOfError(err, "inviteToJoinGroup", receivedData.SenderId, nil)
+// 		return err
+// 	}
+
+// 	notification := Notification{
+// 		Id:         notificationId,
+// 		Type:       "notification inviteToJoinGroup",
+// 		ReceiverId: receivedData.ReceiverId,
+// 		SenderId:   receivedData.SenderId,
+// 		CreatedAt:  dbNotification.CreatedAt,
+// 		Seen:       false,
+// 		Body:       dbNotification.Body,
+// 	}
+
+// 	payload := map[string]any{
+// 		"inviter": inviterData,
+// 		"Group":   groupData,
+// 	}
+
+// 	notification.Payload = payload
+
+// 	connectionLock.RLock()
+// 	for _, c := range activeConnections[receivedData.ReceiverId] {
+// 		err := c.WriteJSON(notification)
+// 		if err != nil {
+// 			log.Println(err, "error sending invite to join group to recipient")
+// 		}
+// 	}
+// 	connectionLock.RUnlock()
+
+// 	notifyClientOfError(err, "inviteToJoinGroup", receivedData.SenderId, nil)
+// 	return err
+// }
+
+// func answerInvitationToJoinGroup(receivedData AnswerInvitationToJoinGroup) error {
+// 	var err error
+// 	member := dbfuncs.GroupMember{
+// 		GroupId: receivedData.GroupId,
+// 		UserId:  receivedData.ReceiverId,
+// 	}
+
+// 	if receivedData.Accept {
+// 		member.Status = "accepted"
+// 		dbfuncs.UpdateGroupMember(&member)
+// 	} else {
+// 		dbfuncs.DeleteGroupMember(&member)
+// 	}
+// 	if err != nil {
+// 		log.Println(err, "error updating group member")
+// 		notifyClientOfError(err, "answerInviteToJoinGroup", receivedData.ReceiverId, nil)
+// 		return err
+// 	}
+
+// 	dbNotification := dbfuncs.Notification{
+// 		Type:       "notification answerInviteToJoinGroup",
+// 		ReceiverId: receivedData.SenderId,
+// 		SenderId:   receivedData.ReceiverId,
+// 		Seen:       false,
+// 		Body: fmt.Sprintf("%s has %s your invitation to join their group", receivedData.ReceiverId, func() string {
+// 			if receivedData.Accept {
+// 				return "accepted"
+// 			}
+// 			return "rejected"
+// 		}),
+// 	}
+// 	notificationId, err := dbfuncs.AddNotification(&dbNotification)
+// 	if err != nil {
+// 		log.Println(err, "error adding notification to database")
+// 		notifyClientOfError(err, "answerInviteToJoinGroup", receivedData.ReceiverId, nil)
+// 		return err
+// 	}
+
+// 	notification := Notification{
+// 		Id:         notificationId,
+// 		Type:       "notification answerInviteToJoinGroup",
+// 		ReceiverId: receivedData.SenderId,
+// 		SenderId:   receivedData.ReceiverId,
+// 		CreatedAt:  dbNotification.CreatedAt,
+// 		Seen:       false,
+// 		Body:       dbNotification.Body,
+// 	}
+
+// 	data, err := dbfuncs.GetBasicUserInfoById(receivedData.ReceiverId)
+// 	if err != nil {
+// 		log.Println(err, "error getting user by id")
+// 		return err
+// 	}
+
+// 	payload := map[string]any{
+// 		"Avatar":         data.Avatar,
+// 		"UserId":         data.Id,
+// 		"FirstName":      data.FirstName,
+// 		"LastName":       data.LastName,
+// 		"Nickname":       data.Nickname,
+// 		"PrivacySetting": data.PrivacySetting,
+// 	}
+
+// 	notification.Payload = payload
+
+// 	connectionLock.RLock()
+// 	for _, c := range activeConnections[receivedData.ReceiverId] {
+// 		err := c.WriteJSON(notification)
+// 		if err != nil {
+// 			log.Println(err, "error sending answer to join group to sender")
+// 		}
+// 	}
+// 	connectionLock.RUnlock()
+
+// 	notifyClientOfError(err, "answerInviteToJoinGroup", receivedData.ReceiverId, nil)
+// 	return err
+// }
+
+type AnswerRequestToJoinGroup struct {
+	SenderId   string `json:"SenderId"`
+	ReceiverId string `json:"ReceiverId"`
+	GroupId    string `json:"GroupId"`
+	Accept     bool   `json:"Accept"`
+}
+
+type InviteToJoinGroup struct {
+	SenderId   string `json:"SenderId"`
+	ReceiverId string `json:"ReceiverId"`
+	GroupId    string `json:"GroupId"`
+}
+
+type AnswerInvitationToJoinGroup struct {
+	SenderId   string `json:"SenderId"`
+	ReceiverId string `json:"ReceiverId"`
+	GroupId    string `json:"GroupId"`
+	Accept     bool   `json:"Accept"`
+}
+
+type GroupEventParticipant struct {
+	UserId  string `json:"SenderId"`
+	EventId string `json:"EventId"`
+	GroupId string `json:"GroupId"`
+}
+
+// func toggleAttendEvent(receivedData GroupEventParticipant) error {
+// 	participant := dbfuncs.GroupEventParticipant{
+// 		UserId:  receivedData.UserId,
+// 		EventId: receivedData.EventId,
+// 		GroupId: receivedData.GroupId,
+// 	}
+// 	isAttending, err := dbfuncs.IsUserAttendingEvent(participant.UserId, participant.EventId)
+// 	if err != nil {
+// 		log.Println("error checking if user is attending event", err)
+// 		notifyClientOfError(err, "toggleAttendEvent", receivedData.UserId, nil)
+// 		return err
+// 	}
+
+// 	if isAttending {
+// 		err = dbfuncs.DeleteGroupEventParticipant(&participant)
+// 	} else {
+// 		err = dbfuncs.AddGroupEventParticipant(&participant)
+// 	}
+// 	if err != nil {
+// 		log.Println("error toggling event attendance", err)
+// 		notifyClientOfError(err, "toggleAttendEvent", receivedData.UserId, nil)
+// 		return err
+// 	}
+
+// 	notifyClientOfError(err, "toggleAttendEvent", receivedData.UserId, nil)
+// 	return err
+// }
+
+// func createEvent(receivedData GroupEvent) error {
+// 	dbEvent := dbfuncs.GroupEvent{
+// 		GroupId:     receivedData.GroupId,
+// 		Title:       receivedData.Title,
+// 		Description: receivedData.Description,
+// 		CreatorId:   receivedData.CreatorId,
+// 		Time:        receivedData.Time,
+// 	}
+
+// 	err := dbfuncs.AddGroupEvent(&dbEvent)
+// 	if err != nil {
+// 		log.Println("error adding event to database", err)
+// 		notifyClientOfError(err, "createEvent", receivedData.CreatorId, nil)
+// 		return err
+// 	}
+
+// 	receivedData.Id = dbEvent.Id
+
+// 	members, err := dbfuncs.GetGroupMemberIdsByGroupId(receivedData.GroupId)
+// 	if err != nil {
+// 		log.Println("error getting group members", err)
+// 		notifyClientOfError(err, "createEvent", receivedData.CreatorId, nil)
+// 		return err
+// 	}
+
+// 	eventToFront, err := DbGroupEventToFrontend(dbEvent)
+// 	if err != nil {
+// 		log.Println("error converting event to frontend format", err)
+// 		notifyClientOfError(err, "createEvent", receivedData.CreatorId, nil)
+// 		return err
+// 	}
+
+// 	newEvent := map[string]any{
+// 		"type":    "createEvent",
+// 		"payload": eventToFront,
+// 	}
+
+// 	connectionLock.RLock()
+// 	for _, member := range members {
+// 		for _, c := range activeConnections[member] {
+// 			err = c.WriteJSON(newEvent)
+// 			if err != nil {
+// 				log.Println("error sending new event to client", err)
+// 			}
+// 		}
+// 	}
+
+// 	notifyClientOfError(err, "createEvent", receivedData.CreatorId, nil)
+// 	return err
+// }

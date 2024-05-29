@@ -291,3 +291,9 @@ func GetGroupByGroupId(groupId string) (Group, error) {
 	err := db.QueryRow("SELECT * FROM Groups WHERE Id=?", groupId).Scan(&group.Id, &group.Title, &group.Description, &group.CreatorId, &group.CreatedAt)
 	return group, err
 }
+
+func IsUserAttendingEvent(userId string, eventId string) (bool, error) {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM GroupEventParticipants WHERE UserId=? AND EventId=?", userId, eventId).Scan(&count)
+	return count > 0, err
+}

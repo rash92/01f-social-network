@@ -299,6 +299,7 @@ ORDER BY CreatedAt DESC
 	return posts, nil
 }
 
+// OR  EXISTS(SELECT 1 FROM GroupMembers gm  where gm.GroupId = Posts.GroupId AND gm.UserId =? AND gm.Status = 'accepted')
 func GetVisiblePostsForProfile(userId, profileOwnerId string) ([]Post, error) {
 	query := `
 	SELECT * FROM Posts
@@ -306,7 +307,7 @@ func GetVisiblePostsForProfile(userId, profileOwnerId string) ([]Post, error) {
 			(CreatorId = ?) AND
 			((PrivacyLevel = 'public') OR 
 			(PrivacyLevel = 'private' AND CreatorId IN (SELECT FollowingId FROM Follows WHERE FollowerId = ?)) OR 
-			(PrivacyLevel = 'superprivate' AND Id IN (SELECT PostId FROM PostChosenFollowers WHERE FollowerId = ?)) OR  EXISTS(SELECT 1 FROM GroupMembers gm  where gm.GroupId = Posts.GroupId AND gm.UserId =? AND gm.Status = 'accepted')))
+			(PrivacyLevel = 'superprivate' AND Id IN (SELECT PostId FROM PostChosenFollowers WHERE FollowerId = ?)) )
 	ORDER BY CreatedAt DESC
 	`
 	rows, err := db.Query(query, profileOwnerId, userId, userId)

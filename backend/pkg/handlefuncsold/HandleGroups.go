@@ -4,7 +4,6 @@ import (
 	"backend/pkg/db/dbfuncs"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -228,9 +227,12 @@ func GetGroup(groupId string, userId string) (DetailedGroupInfo, error) {
 		return DetailedGroupInfo{}, err
 	}
 
-	if status != "accepted" && status != "creator" {
+	if status != "accepted" {
 		fmt.Println("user is not a member of the group")
-		return DetailedGroupInfo{}, errors.New("User is not a member of the group, status is: " + status)
+		return DetailedGroupInfo{
+			BasicInfo: basicInfo,
+			Status:    status,
+		}, nil
 	}
 
 	invitedMembers, err := dbfuncs.GetInvitedGroupMemberIdsByGroupId(groupId)

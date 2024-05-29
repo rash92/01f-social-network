@@ -82,6 +82,22 @@ func IsUserPrivate(userId string) (bool, error) {
 	return false, errors.New("privacy setting not recognized, should be either 'private' or 'public'")
 }
 
+type BasicUserInfo struct {
+	Avatar         string `json:"Avatar"`
+	Id             string `json:"Id"`
+	FirstName      string `json:"FirstName"`
+	LastName       string `json:"LastName"`
+	Nickname       string `json:"Nickname"`
+	PrivacySetting string `json:"PrivacySetting"`
+}
+
+func GetBasicUserInfoById(id string) (BasicUserInfo, error) {
+	var user BasicUserInfo
+	err := db.QueryRow("SELECT Avatar, Id, FirstName, LastName, Nickname, PrivacySetting FROM Users WHERE Id=?", id).Scan(&user.Avatar, &user.Id, &user.FirstName, &user.LastName, &user.Nickname, &user.PrivacySetting)
+
+	return user, err
+}
+
 func GetUserById(id string) (User, error) {
 	var user User
 	err := db.QueryRow("SELECT Id, Nickname, FirstName, LastName, Email, Password,Avatar, AboutMe, PrivacySetting, DOB, CreatedAt FROM Users WHERE Id=?", id).Scan(&user.Id, &user.Nickname, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Avatar, &user.AboutMe, &user.PrivacySetting, &user.DOB, &user.CreatedAt)
@@ -113,7 +129,7 @@ func GetUsers() ([]User, error) {
 
 // togle PrivacySetting
 func UpdatePrivacySetting(userId string, privacySetting string) error {
-	
+
 	statement, err := db.Prepare("UPDATE Users SET PrivacySetting=? WHERE Id=?")
 	if err != nil {
 		return err
