@@ -297,3 +297,18 @@ func IsUserAttendingEvent(userId string, eventId string) (bool, error) {
 	err := db.QueryRow("SELECT COUNT(*) FROM GroupEventParticipants WHERE UserId=? AND EventId=?", userId, eventId).Scan(&count)
 	return count > 0, err
 }
+
+
+
+
+
+func DeleteGroupt(groupEventParticipantId string) error {
+	statement, err := db.Prepare("DELETE FROM Groups WHERE Id=?")
+	if err != nil {
+		return err
+	}
+	_, err = statement.Exec(groupEventParticipantId)
+
+	return err
+}
+

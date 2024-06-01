@@ -70,7 +70,7 @@ func main() {
 
 	http.HandleFunc("/newUser", handlefuncs.HandleNewUser)
 	http.HandleFunc("/get-post", wrapperHandler(handlefuncs.HandleGetPost))
-	http.HandleFunc("/logout", handlefuncs.HandleLogout)
+	http.HandleFunc("/logout", wrapperHandler(handlefuncs.HandleLogout))
 	http.HandleFunc("/dashboard", wrapperHandler(handlefuncs.HandleDashboard))
 	http.HandleFunc("/profile", wrapperHandler(handlefuncs.HandleGetProfile))
 	http.HandleFunc("/get-users", wrapperHandler(handlefuncs.HandleGetUsers))

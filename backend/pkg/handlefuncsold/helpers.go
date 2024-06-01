@@ -7,6 +7,7 @@ type BasicUserInfo struct {
 	LastName       string `json:"LastName"`
 	Nickname       string `json:"Nickname"`
 	PrivacySetting string `json:"PrivacySetting"`
+	
 }
 
 // import "golang.org/x/crypto/bcrypt"

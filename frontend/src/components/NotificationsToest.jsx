@@ -18,8 +18,8 @@ const NotificationComponent = React.memo(() => {
   useEffect(() => {
     const handleNotification = () => {
       if (
-        dashBoardData.notifications.length > 0 &&
-        dashBoardData.notifications[0]?.payload?.Message
+        dashBoardData?.notifications?.length > 0 &&
+        dashBoardData?.notifications[0]?.payload?.Message
       ) {
         toast.info(
           <Link

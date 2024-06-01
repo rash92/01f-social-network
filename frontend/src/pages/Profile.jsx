@@ -133,13 +133,13 @@ const Profile = () => {
   ) : (
     <Container>
       <div className={classes.profile}>
-        {isPrivate && data.Owner.Id !== user.Id && !data.IsFollowed ? (
+        {isPrivate && data?.Owner?.Id !== user?.Id && !data?.IsFollowed ? (
           <PrivateProfile
-            IsPending={data.IsPending}
+            IsPending={data?.IsPending}
             Avatar={data?.Owner?.avatar}
             IsOnline={true}
             name={"bilal"}
-            Nickname={data.Owner.Nickname}
+            Nickname={data?.Owner?.Nickname}
             fellowUserHandler={requestFollowHandler}
           />
         ) : (

@@ -35,9 +35,11 @@ const AddGroup = ({show, setShow}) => {
       JSON.stringify({
         type: "createGroup",
         message: {
-          name: titleValue,
+          Name: titleValue,
           Description: enteredDescription,
           CreatorId: user.Id,
+          CreatedAt: new Date(),
+          Id: "",
         },
       })
     );

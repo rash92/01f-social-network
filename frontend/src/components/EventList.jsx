@@ -13,20 +13,20 @@ function EventsList({event}) {
     <Container>
       <Card className="mb-3">
         <Card.Body>
-          <Card.Title>{event.title}</Card.Title>
-          <Card.Text>{event.description}</Card.Text>
+          <Card.Title>{event.Title}</Card.Title>
+          <Card.Text>{event.Description}</Card.Text>
           <Card.Text>
-            Day/Time: {new Date(event.dateTime).toLocaleString()}
+            Day/Time: {new Date(event.Time).toLocaleString()}
           </Card.Text>
-          <Card.Text>Options: {event.options.join(", ")}</Card.Text>
-          <div className="d-flex justify-content-between align-items-center">
+          <Card.Text>Options: {event?.options.join(", ")}</Card.Text>
+          {/* <div className="d-flex justify-content-between align-items-center">
             <Button variant="primary" onClick={() => handleRSVP("going")}>
               RSVP Going
             </Button>
             <Button variant="secondary" onClick={() => handleRSVP("not going")}>
               RSVP Not Going
             </Button>
-          </div>
+          </div> */}
         </Card.Body>
       </Card>
     </Container>

@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+
 	"time"
 )
 
@@ -48,6 +50,8 @@ type DetailedGroupInfo struct {
 	EventCards       []GroupEventCard `json:"Events"`
 	Messages         []GroupMessage   `json:"Messages"`
 	Status           string           `json:"Status"`
+
+	Invite []dbfuncs.BasicUserInfo `json:"Invite"`
 }
 
 type GroupDash struct {
@@ -178,10 +182,13 @@ func GetGroupDash(userId string) (GroupDash, error) {
 	}
 
 	for _, group := range allGroups {
+
 		groupCard, err := GetGroupCard(group.Id, userId)
 		if err != nil {
+			fmt.Println(err, "err")
 			return GroupDash{}, err
 		}
+
 		//should be fine?
 		groupDash.GroupCards = append(groupDash.GroupCards, groupCard)
 	}
@@ -194,16 +201,19 @@ func GetGroupDash(userId string) (GroupDash, error) {
 func GetGroupCard(groupId string, userId string) (GroupCard, error) {
 	basicInfo, err := GetBasicGroupInfo(groupId)
 	if err != nil {
+
 		return GroupCard{}, err
+
 	}
 	status, err := dbfuncs.GetGroupStatus(groupId, userId)
 	if err == sql.ErrNoRows {
 		status = "none"
 	}
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
+		fmt.Println("eer", err)
 		return GroupCard{}, err
 	}
-	return GroupCard{basicInfo, status}, err
+	return GroupCard{basicInfo, status}, nil
 }
 
 func GetGroup(groupId string, userId string) (DetailedGroupInfo, error) {
@@ -287,6 +297,8 @@ func GetGroup(groupId string, userId string) (DetailedGroupInfo, error) {
 
 	groupMessages := DbGroupMessagesToFrontend(dbGroupMessages)
 
+	toBeInvited, err := WhoCanIInviteToThisGroup(groupId, userId)
+
 	groupInfo := DetailedGroupInfo{
 		BasicInfo:        basicInfo,
 		InvitedMembers:   invitedMembersBasicInfo,
@@ -296,6 +308,7 @@ func GetGroup(groupId string, userId string) (DetailedGroupInfo, error) {
 		EventCards:       groupEventCards,
 		Messages:         groupMessages,
 		Status:           status,
+		Invite:           toBeInvited,
 	}
 
 	return groupInfo, err
@@ -689,3 +702,63 @@ func GetBasicUserInfoFromUsers(input []string) ([]BasicUserInfo, error) {
 // 	json.NewEncoder(w).Encode(profile)
 
 // }
+
+func WhoCanIInviteToThisGroup(groupId, userId string) ([]dbfuncs.BasicUserInfo, error) {
+	var users []dbfuncs.BasicUserInfo
+	included := make(map[dbfuncs.BasicUserInfo]struct{})
+	followers, err := dbfuncs.GetAcceptedFollowerIdsByFollowingId(userId)
+	if err != nil {
+		log.Println("error getting followers from database", err)
+		return nil, err
+	}
+	for _, follower := range followers {
+		status, err := dbfuncs.GetGroupStatus(groupId, follower)
+		if err != nil && err != sql.ErrNoRows {
+			log.Println(err)
+			return users, err
+		}
+		if status == "invited" || status == "accepted" {
+			continue
+		}
+		basicInfo, err := dbfuncs.GetBasicUserInfoById(follower)
+		if err != nil {
+			log.Println(err)
+			return []dbfuncs.BasicUserInfo{}, err
+		}
+		_, ok := included[basicInfo]
+		if ok {
+			continue
+		}
+		included[basicInfo] = struct{}{}
+		users = append(users, basicInfo)
+	}
+
+	following, err := dbfuncs.GetAcceptedFollowingIdsByFollowerId(userId)
+	if err != nil {
+		log.Println("error getting following from database", err)
+		return []dbfuncs.BasicUserInfo{}, err
+	}
+	for _, following := range following {
+		status, err := dbfuncs.GetGroupStatus(groupId, following)
+		if err != nil && err != sql.ErrNoRows {
+			log.Println(err)
+			return []dbfuncs.BasicUserInfo{}, err
+		}
+		if status == "invited" || status == "accepted" {
+			continue
+		}
+		basicInfo, err := dbfuncs.GetBasicUserInfoById(following)
+		if err != nil {
+			log.Println(err)
+			return []dbfuncs.BasicUserInfo{}, err
+		}
+		_, ok := included[basicInfo]
+		if ok {
+			continue
+		}
+		included[basicInfo] = struct{}{}
+		users = append(users, basicInfo)
+	}
+
+	return users, nil
+}

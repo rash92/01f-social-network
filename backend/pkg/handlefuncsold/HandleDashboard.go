@@ -58,7 +58,7 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	group, err := dbfuncs.GetAllGroups()
+	group, err := GetGroupDash(ownerId)
 
 	if err != nil {
 		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
@@ -80,7 +80,7 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 
 	response := map[string]interface{}{
 		"chats":         users,
-		"groups":        group,
+		"groups":        group.GroupCards,
 		"notifications": nofications,
 		"Posts":         posts,
 	}

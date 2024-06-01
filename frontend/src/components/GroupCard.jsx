@@ -4,7 +4,7 @@ import {Card, Button} from "react-bootstrap";
 import classes from "./ProfileCard.module.css";
 import Action from "./Action";
 
-const GroupCard = ({group, toggleAction, owner}) => {
+const GroupCard = ({group, toggleAction, owner, showChat}) => {
   return (
     <Card className={classes.card}>
       <div className={classes.profileContainer}>
@@ -43,6 +43,17 @@ const GroupCard = ({group, toggleAction, owner}) => {
               )}
             >
               manage
+            </Button>
+
+            <Button
+              onClick={showChat.bind(null, {
+                id: group?.BasicInfo?.Id,
+                Nickname: group?.BasicInfo?.Title,
+                Avatar: "",
+                type: "groupMessage",
+              })}
+            >
+              chat
             </Button>
           </div>
         </Card.Body>

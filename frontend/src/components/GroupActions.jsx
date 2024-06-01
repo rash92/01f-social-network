@@ -17,6 +17,8 @@ const GroupActions = ({
   isActive,
   owner,
   status,
+  AcceptRefuseGroupRequestHandler,
+  inviteHandler,
 }) => {
   return (
     <MyModal
@@ -68,33 +70,57 @@ const GroupActions = ({
       </ul>
       <div>
         <ul>
-          {isActive === "create event" && <AddEvent />}
+          {isActive === "create event" && (
+            <AddEvent groupId={group?.BasicInfo?.Id} />
+          )}
 
           {isActive === "RequestedMembers" &&
             group[isActive]?.map((user, i) => (
-              <li key={i} className={classes.item}>
-                <Link to={`/profile/${i}`} className={classes.links}>
-                  <User
-                    userName={`${user.nickname} ${i + 1}`}
-                    isLoggedIn={true}
-                    name={user.name}
-                  />
+              <li key={user?.Id} className={classes.item}>
+                <Link to={`/profile/${user?.Id}`} className={classes.links}>
+                  <User Nickname={`${user?.Nickname}`} Avatar={user.Avatar} />
                 </Link>
-                <Button>approve</Button>
+                <Button
+                  onClick={AcceptRefuseGroupRequestHandler.bind(null, {
+                    id: user.Id,
+                    type: true,
+                  })}
+                >
+                  Accept
+                </Button>
+                <Button
+                  onClick={AcceptRefuseGroupRequestHandler.bind(null, {
+                    id: user.Id,
+                    type: false,
+                  })}
+                  variant="secondary"
+                >
+                  Reject
+                </Button>
+              </li>
+            ))}
+
+          {isActive === "Invite" &&
+            group[isActive]?.map((user) => (
+              <li key={user.Id} className={classes.item}>
+                <Link to={`/profile/${user.Id}`} className={classes.links}>
+                  <User Nickname={`${user.Nickname}`} Avatar={user.Avatar} />
+                </Link>
+                <Button
+                  variant={!user.isInvited ? "primary" : "secondary"}
+                  disabled={!user?.isInvited ? false : true}
+                  onClick={inviteHandler?.bind(null, user.Id)}
+                >
+                  {user?.isInvited ? "Invited" : "Invite"}
+                </Button>
               </li>
             ))}
 
           {isActive === "Members" &&
-            group[isActive]?.map((user, i) => (
-              <li key={i} className={classes.item}>
-                <Link to={`/profile/${i}`} className={classes.links}>
-                  <User
-                    userName={`${user.nickname} ${i + 1}`}
-                    isLoggedIn={true}
-                    name={user.name}
-                    avatar={user.avatar}
-                    isOnline={user.isOnline}
-                  />
+            group[isActive]?.map((user) => (
+              <li key={user?.Id} className={classes.item}>
+                <Link to={`/profile/${User?.Id}`} className={classes.links}>
+                  <User Nickname={`${user?.Nickname}`} Avatar={user?.Avatar} />
                 </Link>
               </li>
             ))}

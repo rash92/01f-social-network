@@ -5,7 +5,7 @@ import useInput from "../hooks/use-input";
 import classes from "./AddPost.module.css";
 import AuthContext from "../store/authContext";
 
-const AddEvent = () => {
+const AddEvent = ({groupId}) => {
   const {user, wsMsgToServer} = React.useContext(AuthContext);
   const {
     isValid: titleIsValid,
@@ -17,6 +17,15 @@ const AddEvent = () => {
   } = useInput((value) => value.trim() !== "");
 
   const {
+    isValid: enteredDateIsValid,
+    value: enteredDate,
+    hassError: enteredDateInputHassError,
+    valueChangeHandler: enteredDateChangeHandler,
+    valueInputBlurHandler: enteredDateBlurHandler,
+    reset: resetEnteredDateInput,
+  } = useInput((value) => value.trim() !== "");
+
+  const {
     isValid: enteredDescriptionIsValid,
     value: enteredDescription,
     hassError: descriptionInputHassError,
@@ -25,12 +34,14 @@ const AddEvent = () => {
     reset: resetPostInput,
   } = useInput((value) => value.trim() !== "");
 
-  let formIsValid = titleIsValid && enteredDescriptionIsValid ? true : false;
+  let formIsValid =
+    titleIsValid && enteredDescriptionIsValid && enteredDateIsValid
+      ? true
+      : false;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!formIsValid) return;
-
     wsMsgToServer(
       JSON.stringify({
         type: "createEvent",
@@ -38,16 +49,23 @@ const AddEvent = () => {
           Title: titleValue,
           Description: enteredDescription,
           CreatorId: user.Id,
+          Time: new Date(enteredDate),
+          GroupId: groupId,
+          Participants: [],
         },
       })
     );
 
     resetTitleInput("");
     resetPostInput("");
+    resetEnteredDateInput("");
   };
 
   const titleInputClasses = titleInputHassError ? `${classes.invalid} ` : "";
   const pastInputClasses = descriptionInputHassError
+    ? `${classes.invalid} `
+    : "";
+  const dateInputClasses = enteredDateInputHassError
     ? `${classes.invalid} `
     : "";
 
@@ -83,7 +101,17 @@ const AddEvent = () => {
           <p className={classes["error-text"]}>input text must not be emty.</p>
         )}
       </Form.Group>
+      <Form.Control
+        type="date"
+        placeholder="Enter Date"
+        value={enteredDate}
+        onChange={enteredDateChangeHandler}
+        onBlur={enteredDateBlurHandler}
+      />
 
+      {dateInputClasses && (
+        <p className={classes["error-text"]}>input text must not be emty.</p>
+      )}
       <Button variant="primary my-3 " type="submit" disabled={!formIsValid}>
         Submit
       </Button>

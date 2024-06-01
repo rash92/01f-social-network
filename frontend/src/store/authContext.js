@@ -1,6 +1,5 @@
 import React, {useState, useEffect, useCallback, useRef} from "react";
 import {getJson} from "../helpers/helpers";
-import User from "../components/User";
 
 const userObj = {
   Id: "",
@@ -27,18 +26,15 @@ const AuthContext = React.createContext({
   openChat: () => {},
   closeChat: () => {},
   openChatDetails: {},
-
-  // OnAddCommentToPost: () => {},
-  // posts: [],
-  // catogaries: [],
-  // username: "",
-  // selectedPosts: [],
-  // setSelectedPosts: () => {},
-  // OnAddPost: () => {},
 });
 
 export const AuthContextProvider = (props) => {
   const [user, setUser] = useState(userObj);
+  const [groupId, setGroupId] = useState("");
+
+  const updateGroupId = (id) => {
+    setGroupId(id);
+  };
 
   const [dashBoardData, setDashBoardData] = useState({
     notifications: [],
@@ -136,7 +132,7 @@ export const AuthContextProvider = (props) => {
 
   const toggleProfilePrivacy = async () => {
     let s =
-      profileData.data?.Owner?.PrivacySetting === "private"
+      profileData?.data?.Owner?.PrivacySetting === "private"
         ? "public"
         : "private";
 
@@ -148,7 +144,7 @@ export const AuthContextProvider = (props) => {
         },
         credentials: "include",
         body: JSON.stringify({
-          id: profileData.data.Owner.Id,
+          id: profileData?.data?.Owner?.Id,
           setting: s,
         }),
       });
@@ -157,7 +153,7 @@ export const AuthContextProvider = (props) => {
           ...prev,
           data: {
             ...prev.data,
-            Owner: {...prev.data.Owner, PrivacySetting: s},
+            Owner: {...prev?.data?.Owner, PrivacySetting: s},
           },
         }));
       }
@@ -169,12 +165,15 @@ export const AuthContextProvider = (props) => {
   const resetIsProfileComponentVisible = useCallback((value) => {
     setProfileData((prev) => ({...prev, isComponentVisible: value}));
   }, []);
+  const resetIsGroupComponentVisible = useCallback((value) => {
+    setGroupData((prev) => ({...prev, isComponentVisible: value}));
+  }, []);
 
   const [selectedPosts, setSelectedPosts] = useState([]);
   const logintHandler = (user) => {
     setUser({...user.user, isLogIn: true});
   };
-  console.log(openChatDetails.messages);
+
   const openChat = async (data) => {
     try {
       const res = await getJson("get-messages", {
@@ -224,15 +223,30 @@ export const AuthContextProvider = (props) => {
     }
   }, [user]);
 
-  const logoutHandler = useCallback((flag = true) => {
-    setUser(userObj);
+  const httpLogout = async () => {
+    try {
+      const res = await getJson("logout", {
+        method: "Get",
+        credentials: "include",
+      });
 
+      if (res.success) {
+        console.log("we logout ");
+      }
+    } catch (err) {
+      console.log("error", err);
+    }
+  };
+
+  const logoutHandler = useCallback(async (flag = true) => {
+    setUser(userObj);
     if (flag) {
       ws.current?.send.bind(ws.current)(
         JSON.stringify({type: "logout", message: ""})
       );
     }
-    ws.current?.close.bind(ws.current)();
+
+    await httpLogout();
   }, []);
   useEffect(() => {
     // Check session only when the component mounts
@@ -260,22 +274,26 @@ export const AuthContextProvider = (props) => {
   // notifications
 
   const handleWebsocketNotification = useCallback(() => {
-    if (dashBoardData?.notifications.length === 0) return;
-    switch (dashBoardData.notifications[0].type) {
+    if (
+      dashBoardData?.notifications?.length === 0 ||
+      dashBoardData?.notifications === null
+    )
+      return;
+    switch (dashBoardData?.notifications[0]?.type) {
       case "notification requestToFollow":
-        if (profileData.isComponentVisible) {
+        if (profileData?.isComponentVisible) {
           if (profileData?.data?.Owner?.PrivacySetting === "public") {
             setProfileData((prev) => ({
               ...prev,
               data: {
-                ...prev.data,
+                ...prev?.data,
 
-                Followers: Array.isArray(prev.data.Followers)
+                Followers: Array.isArray(prev?.data?.Followers)
                   ? [
-                      dashBoardData.notifications[0].payload.Data,
-                      ...prev.data.Followers,
+                      dashBoardData?.notifications[0]?.payload.Data,
+                      ...prev?.data?.Followers,
                     ]
-                  : [dashBoardData.notifications[0].Body.Data],
+                  : [dashBoardData?.notifications[0]?.Body?.Data],
                 IsFollowed: true,
               },
             }));
@@ -288,9 +306,9 @@ export const AuthContextProvider = (props) => {
               return {
                 ...prev,
                 data: {
-                  ...prev.data,
+                  ...prev?.data,
                   PendingFollowers: [
-                    dashBoardData.notifications[0].payload.Data,
+                    dashBoardData?.notifications[0]?.payload?.Data,
                   ],
                 },
               };
@@ -299,12 +317,12 @@ export const AuthContextProvider = (props) => {
               ...prev,
               data: {
                 ...prev.data,
-                PendingFollowers: Array.isArray(prev.data.PendingFollowers)
+                PendingFollowers: Array.isArray(prev?.data?.PendingFollowers)
                   ? [
-                      dashBoardData.notifications[0].payload.Data,
-                      ...prev.data.PendingFollowers,
+                      dashBoardData?.notifications[0]?.payload.Data,
+                      ...prev?.data?.PendingFollowers,
                     ]
-                  : [dashBoardData.notifications[0].payload.Data],
+                  : [dashBoardData?.notifications[0]?.payload.Data],
               },
             };
           });
@@ -312,16 +330,16 @@ export const AuthContextProvider = (props) => {
         break;
 
       case "notification answerRequestToFollow":
-        if (profileData.isComponentVisible) {
-          if (dashBoardData.notifications[0].payload.Data.Reply === "no") {
+        if (profileData?.isComponentVisible) {
+          if (dashBoardData?.notifications[0]?.payload.Data?.Reply === "no") {
             setProfileData((prev) => ({
               ...prev,
-              data: {...prev.data, IsPending: false},
+              data: {...prev?.data, IsPending: false},
             }));
             return;
           }
           fetchProfileData(
-            dashBoardData.notifications[0].payload.Data.SenderId
+            dashBoardData?.notifications[0]?.payload?.Data?.SenderId
           );
         }
         break;
@@ -331,38 +349,79 @@ export const AuthContextProvider = (props) => {
           ...prev,
           data: {
             ...prev.data,
-            Followers: Array.isArray(prev.data.Followers)
+            Followers: Array.isArray(prev?.data?.Followers)
               ? prev.data.Followers.filter(
                   (item) =>
-                    item.Id !== dashBoardData.notifications[0].payload.Data.Id
+                    item.Id !==
+                    dashBoardData?.notifications[0]?.payload?.Data?.Id
                 )
               : [],
           },
         }));
 
         break;
+      case "notification requestToJoinGroup":
+        if (dashBoardData?.notifications[0]?.payload?.groupId !== groupId)
+          return;
+        setGroupData((prev) => ({
+          ...prev,
+          data: {
+            ...prev.data,
+            RequestedMembers: Array.isArray(prev?.data?.RequestedMembers)
+              ? [
+                  ...prev.data?.RequestedMembers,
+                  dashBoardData?.notifications[0].payload,
+                ]
+              : [dashBoardData?.notifications[0]?.payload],
+          },
+        }));
+        break;
+      case "notification answerRequestToJoinGroup":
+        if (dashBoardData?.notifications[0]?.payload.groupId !== groupId)
+          return;
+
+        if (dashBoardData?.notifications[0]?.payload.type) {
+          setGroupData((prev) => ({
+            ...prev,
+            data: dashBoardData.notifications[0].payload.group,
+          }));
+        } else {
+          setGroupData((prev) => ({
+            ...prev,
+            data: {...prev.data, Status: "none"},
+          }));
+        }
+
+        break;
+
+      case "notification inviteToJoinGroup":
+        if (groupId !== dashBoardData?.notifications[0]?.payload.groupId)
+          return;
+        setGroupData((prev) => ({
+          ...prev,
+          data: {...prev.data, Status: "invited"},
+        }));
+
+        break;
       default:
         console.log(
           "unknow nofication type",
-          dashBoardData.notifications,
+          dashBoardData?.notifications,
           "hehhere"
         );
         break;
     }
-    // setNotification({
-    //   type: "requestToFollow",
-    //   message: dashBoardData.notifications[0].Body.message,
-    // });
   }, [
-    dashBoardData.notifications,
-    profileData.isComponentVisible,
+    dashBoardData?.notifications,
+    profileData?.isComponentVisible,
     fetchProfileData,
     profileData?.data?.Owner?.PrivacySetting,
+    groupId,
   ]);
 
   useEffect(() => {
     handleWebsocketNotification();
-  }, [dashBoardData.notifications, handleWebsocketNotification]);
+  }, [dashBoardData?.notifications, handleWebsocketNotification]);
 
   //websocket actions errors
 
@@ -439,7 +498,7 @@ export const AuthContextProvider = (props) => {
           break;
         case "unfollow":
           // fetchProfileData(profileData?.data?.Owner?.Id);
-          if (profileData.data?.Owner?.PrivacySetting === "public") {
+          if (profileData?.data?.Owner?.PrivacySetting === "public") {
             setProfileData((prev) => ({
               ...prev,
               data: {
@@ -466,6 +525,71 @@ export const AuthContextProvider = (props) => {
           }));
 
           break;
+        case "requestToJoinGroup":
+          setGroupData((prev) => ({
+            ...prev,
+            data: {
+              ...prev.data,
+              Status: "requested",
+            },
+          }));
+
+          break;
+        case "answerRequestToJoinGroup":
+          if (data.whatever.accept) {
+            setGroupData((prev) => {
+              const user = prev?.data?.RequestedMembers?.find(
+                (el) => el.Id === data.whatever.applicantId
+              );
+
+              return {
+                ...prev,
+                data: {
+                  ...prev.data,
+                  Members: Array.isArray(prev?.data?.Members)
+                    ? [user, ...prev?.data?.Members]
+                    : [user],
+
+                  RequestedMembers: prev?.data?.RequestedMembers.filter(
+                    (el) => el.Id !== data.whatever.applicantId
+                  ),
+                },
+              };
+            });
+          } else {
+            setGroupData((prev) => ({
+              ...prev,
+              data: {
+                ...prev.data,
+                RequestedMembers: prev?.data?.RequestedMembers.filter(
+                  (el) => el.Id !== data.whatever.applicantId
+                ),
+              },
+            }));
+          }
+
+          break;
+        case "inviteToJoinGroup":
+          if (groupId !== data.whatever.groupId) return;
+          setGroupData((prev) => ({
+            ...prev,
+            data: {
+              ...prev.data,
+              Invite: prev.data.Invite.map((el) => {
+                if (el.Id === data.whatever.receiverId) {
+                  return {...el, isInvited: true};
+                }
+                return el;
+              }),
+            },
+          }));
+
+          break;
+        case "answerInvitationToJoinGroup":
+          if (groupId !== data.whatever) return;
+          fetchGroupData(groupId);
+          break;
+
         default:
           console.log("unknown websocket message");
           break;
@@ -473,9 +597,16 @@ export const AuthContextProvider = (props) => {
     },
     [
       user.Id,
-      profileData.data?.Owner?.PrivacySetting,
+      profileData?.data?.Owner?.PrivacySetting,
       fetchProfileData,
       profileData.data?.Owner?.Id,
+      user.Avatar,
+      user.FirstName,
+      user.LastName,
+      user.Nickname,
+      user.Privicy_setting,
+      groupId,
+      fetchGroupData,
     ]
   );
 
@@ -501,10 +632,10 @@ export const AuthContextProvider = (props) => {
       }
     },
     [
-      profileData.isComponentVisible,
+      profileData?.isComponentVisible,
       fetchProfileData,
       profileData?.data?.Owner?.Id,
-      user.Id,
+      user?.Id,
     ]
   );
 
@@ -522,8 +653,8 @@ export const AuthContextProvider = (props) => {
       } = data.message;
 
       if (
-        profileData.isComponentVisible &&
-        CreatorId === profileData.data.Owner.Id
+        profileData?.isComponentVisible &&
+        CreatorId === profileData?.data?.Owner?.Id
       ) {
         setProfileData((prev) => ({
           ...prev,
@@ -564,7 +695,7 @@ export const AuthContextProvider = (props) => {
       }
     },
     [
-      profileData.isComponentVisible,
+      profileData?.isComponentVisible,
       profileData.data?.Owner?.Id,
       setProfileData,
       setDashBoardData,
@@ -599,11 +730,11 @@ export const AuthContextProvider = (props) => {
 
       switch (data?.type) {
         case "logout":
-          logoutHandler(false);
+          httpLogout();
+          setUser(userObj);
           break;
 
         case "privateMessage":
-          console.log(data);
           setOpenChatDetails((prev) => ({
             ...prev,
             messages: Array.isArray(prev.messages)
@@ -616,13 +747,72 @@ export const AuthContextProvider = (props) => {
 
           break;
         case "post":
-          console.log(data.message);
           addPostToFeed(data);
           break;
         case "togglePrivacySetting":
           currentProfilePrivacyChanged(data);
           break;
+        case "createGroup":
+          setDashBoardData((prev) => {
+            return {
+              ...prev,
+              groups: Array.isArray(prev.groups)
+                ? [
+                    ...prev.groups,
+                    {
+                      BasicInfo: data.payload.Data,
+                      Status:
+                        data.payload.Data.CreatorId === user.Id
+                          ? "accepted"
+                          : "none",
+                    },
+                  ]
+                : [
+                    {
+                      BasicInfo: data.payload.Data,
+                      Status:
+                        data.payload.Data.CreatorId === user.Id
+                          ? "accepted"
+                          : "none",
+                    },
+                  ],
+            };
+          });
 
+          break;
+        case "answerInvitationToJoinGroup":
+          if (data.GroupId !== groupId) return;
+          // addd group chech first
+          setGroupData((prev) => {
+            return {
+              ...prev,
+              data: {
+                ...prev?.data,
+                Members: Array.isArray(prev?.data.Members)
+                  ? [...prev?.data.Members, data?.newMember]
+                  : [data?.payload?.Data],
+              },
+            };
+          });
+
+          break;
+
+        case "createEvent":
+          console.log(data, "createEvent");
+          if (data?.payload.GroupId !== groupId) return;
+          setGroupData((prev) => {
+            return {
+              ...prev,
+              data: {
+                ...prev?.data,
+                Events: Array.isArray(prev?.data.Events)
+                  ? [...prev?.data.Events, data?.payload]
+                  : [data?.payload],
+              },
+            };
+          });
+
+          break;
         default:
           // console.log("no action", data);
           break;
@@ -637,11 +827,12 @@ export const AuthContextProvider = (props) => {
     handleWebsocketErrors,
     handleWebsocketSucess,
     dashBoardData.notifications,
+    user.Id,
+    groupId,
   ]);
 
   const onAddLikeDislikePost = (id, data) => {
-    if (profileData.isComponentVisible) {
-      console.log(data, id, "if profile PostlikeDislike");
+    if (profileData?.isComponentVisible) {
       setProfileData((prev) => ({
         ...prev,
         data: {
@@ -716,6 +907,8 @@ export const AuthContextProvider = (props) => {
         onAddLikeDislikePost,
         fetchGroupData,
         groupData,
+        resetIsGroupComponentVisible,
+        updateGroupId,
       }}
     >
       {props.children}
