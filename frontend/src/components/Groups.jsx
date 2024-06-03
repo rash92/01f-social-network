@@ -1,44 +1,37 @@
-import React, {useState} from "react";
-import {ListGroup} from "react-bootstrap";
+import React from "react";
+import {ListGroup, Card, Button} from "react-bootstrap";
 import {Link} from "react-router-dom";
-import AddGroup from "./AddGroup";
-import {Button} from "react-bootstrap";
 
 function Groups({groups}) {
-  const [show, setShow] = useState(false);
-
   return (
-    <div>
-      <Button
-        onClick={() => {
-          setShow(true);
-        }}
-      >
-        add Group
-      </Button>
-      <AddGroup show={show} setShow={setShow} />
-      <ListGroup style={{marginTop: "4rem"}}>
+    <div className="container mt-5">
+      <ListGroup>
         {groups?.map((group, index) => (
-          <ListGroup.Item
-            key={group.Id}
-            style={{marginTop: index !== 0 ? "2rem" : " 0"}}
-          >
-            <Link
-              to={`groups/${group.Id}`}
-              style={{textDecoration: "none", color: "black"}}
-            >
-              <div
-                className="d-flex justify-content-between align-items-center"
-                style={{
-                  gap: "8rem",
-                }}
-              >
-                <div>
-                  <h5>{group.Title}</h5>
-                  <p>{group.Description}</p>
+          <ListGroup.Item key={group.Id} className="border-0 p-0 mb-4">
+            <Card className="shadow-sm">
+              <Card.Body>
+                <div className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <Card.Title className="text-primary">
+                      {group.Title}
+                    </Card.Title>
+                    <Card.Text>
+                      <strong>Name:</strong> {group.BasicInfo.Title}
+                    </Card.Text>
+                    <Card.Text>
+                      <strong>Status:</strong> {group.Status}
+                    </Card.Text>
+                    <Card.Text>
+                      <strong>Description:</strong>
+                      {group.BasicInfo.Description}
+                    </Card.Text>
+                  </div>
+                  <Link to={`groups/${group.BasicInfo.Id}`}>
+                    <Button variant="primary">View Details</Button>
+                  </Link>
                 </div>
-              </div>
-            </Link>
+              </Card.Body>
+            </Card>
           </ListGroup.Item>
         ))}
       </ListGroup>

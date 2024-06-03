@@ -62,17 +62,19 @@ func main() {
 	// http.HandleFunc("/get-posts", wrapperHandler(handlefuncs.HandleGetPosts))
 	// Commented out because definition change to placeholder for the sake of the
 	// web sockets.
-	// http.HandleFunc("/add-Comment", handlefuncs.HandleAddComment)
-	// http.HandleFunc("/react-Post-like-dislike", handlefuncs.HandlePostLikeDislike)
+	http.HandleFunc("/add-comment", wrapperHandler(handlefuncs.HandleAddComment))
+	http.HandleFunc("/group", wrapperHandler(handlefuncs.HandleGroup))
+	http.HandleFunc("/react-Post-like-dislike", wrapperHandler(handlefuncs.HandlePostLikeDislike))
 	// http.HandleFunc("/react-comment-like-dislike", handlefuncs.HandleCommenttLikeDislike)
 	// http.HandleFunc("/removePost", handlefuncs.HandleRemovePost)
 
 	http.HandleFunc("/newUser", handlefuncs.HandleNewUser)
-	http.HandleFunc("/logout", handlefuncs.HandleLogout)
+	http.HandleFunc("/get-post", wrapperHandler(handlefuncs.HandleGetPost))
+	http.HandleFunc("/logout", wrapperHandler(handlefuncs.HandleLogout))
 	http.HandleFunc("/dashboard", wrapperHandler(handlefuncs.HandleDashboard))
 	http.HandleFunc("/profile", wrapperHandler(handlefuncs.HandleGetProfile))
 	http.HandleFunc("/get-users", wrapperHandler(handlefuncs.HandleGetUsers))
-	http.HandleFunc("/get-messages", handlefuncs.MessagesHandler)
+	http.HandleFunc("/get-messages", wrapperHandler(handlefuncs.MessagesHandler))
 	http.HandleFunc("/search", wrapperHandler(handlefuncs.HandleSearchUser))
 	http.HandleFunc("/toggle-privacy", wrapperHandler(handlefuncs.HanddleToggleProfilePrivacy))
 	http.Handle("/images/", http.StripPrefix("/images", http.FileServer(http.Dir("./pkg/db/images"))))

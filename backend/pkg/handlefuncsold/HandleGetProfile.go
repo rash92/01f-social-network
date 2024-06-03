@@ -247,7 +247,6 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 
 	profile.Following = helper(following)
 
-	fmt.Println(profile, "profile")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(profile)

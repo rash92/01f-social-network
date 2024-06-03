@@ -124,7 +124,7 @@ const AddPost = ({show, setShow, type = "profile", groupId = ""}) => {
         createdAt: new Date(),
         image: postImgValue.file
           ? await convertImageToBase64(postImgValue.file)
-          : null,
+          : "",
         isWholeForum: type === "profile" ? true : false,
         id: "",
       },

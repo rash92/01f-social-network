@@ -2,6 +2,7 @@ package dbfuncs
 
 import (
 	"database/sql"
+
 	"time"
 
 	"github.com/google/uuid"
@@ -39,8 +40,8 @@ func GetAllUserIdsSortedByLastPrivateMessage(userId string) ([]string, error) {
 				FROM PrivateMessages 
 				WHERE RecipientId=?
 		)
-    	GROUP BY UserId`,
-		userId, userId)
+		GROUP BY UserId
+		ORDER BY Max(CreatedAt) DESC`, userId, userId)
 
 	if err == sql.ErrNoRows {
 		return userIds, nil
@@ -51,7 +52,7 @@ func GetAllUserIdsSortedByLastPrivateMessage(userId string) ([]string, error) {
 	defer row.Close()
 	for row.Next() {
 		var userId string
-		var mostRecentTime time.Time
+		var mostRecentTime string
 		err = row.Scan(&userId, &mostRecentTime)
 		if err != nil {
 			return userIds, err
@@ -103,10 +104,48 @@ func GetUnmessagedUserIdsSortedAlphabetically(userId string) ([]string, error) {
 	return unmessagedUserIds, err
 }
 
-// TODO
+func GetAllPrivateMessagesByUserId(CurrUser, OtherUser string) ([]PrivateMessage, error) {
+	messages := []PrivateMessage{}
+	query := `
+		SELECT * FROM PrivateMessages
+		WHERE (senderId = ? AND RecipientId = ?) OR (SenderId = ? AND RecipientId = ?)
+		ORDER BY CreatedAt DESC
+	`
+	rows, err := db.Query(query, CurrUser, OtherUser, OtherUser, CurrUser)
+	if err != nil {
 
-func GetAllPrivateMessagesByUserId(userId string) ([]PrivateMessage, error) {
-	return []PrivateMessage{}, nil
+		return messages, err
+	}
+
+	for rows.Next() {
+		var message PrivateMessage
+		err := rows.Scan(&message.Id, &message.SenderId, &message.RecipientId, &message.Message, &message.CreatedAt)
+
+		if err != nil {
+			return nil, err
+
+		}
+
+		user, err := GetUserById(message.SenderId)
+
+		if err != nil {
+			return nil, err
+
+		}
+		message.Avatar = user.Avatar
+		message.Nickname = user.Nickname
+
+		messages = append(messages, message)
+	}
+
+	// Reverse the order of messages
+	for i := 0; i < len(messages)/2; i++ {
+		j := len(messages) - i - 1
+		messages[i], messages[j] = messages[j], messages[i]
+	}
+
+	return messages, nil
+
 }
 
 func GetRecentPrivateMessagesByUserId(userId string, numberOfMessages, offset int) ([]PrivateMessage, error) {

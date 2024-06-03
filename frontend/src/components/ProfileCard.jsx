@@ -4,7 +4,6 @@ import {Card, Form, Button} from "react-bootstrap";
 import RoundImage from "./RoundedImg";
 import classes from "./ProfileCard.module.css";
 import Action from "./Action";
-import {Link} from "react-router-dom";
 
 const ProfileCard = ({
   data,
@@ -13,6 +12,7 @@ const ProfileCard = ({
   owner,
   isPrivate,
   requestFollow,
+  showChat,
 }) => {
   const {
     Owner: user,
@@ -88,13 +88,20 @@ const ProfileCard = ({
               <Button
                 variant={`${!IsFollowed ? "primary" : "secondary"}`}
                 onClick={requestFollow}
-                OnClick={() => {
-                  requestFollow();
-                }}
               >
                 {IsFollowed ? "Unfollow" : "Follow"}
               </Button>
-              <Link to={`/chats/${user.Id}`}></Link>
+
+              <Button
+                onClick={showChat.bind(null, {
+                  id: user.Id,
+                  Nickname: user.Nickname,
+                  Avatar: user.Avatar,
+                  type: "privateMessage",
+                })}
+              >
+                chat
+              </Button>
             </div>
           )}
         </Card.Body>

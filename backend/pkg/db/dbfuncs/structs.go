@@ -44,6 +44,8 @@ type PrivateMessage struct {
 	RecipientId string
 	Message     string
 	CreatedAt   time.Time
+	Nickname    string
+	Avatar      string
 }
 
 type Post struct {
@@ -60,6 +62,7 @@ type Post struct {
 	CreatorNickname string
 	UserLikeDislike int
 	Comments        []Comment
+	Ncomment        int
 }
 
 type Comment struct {
@@ -69,6 +72,9 @@ type Comment struct {
 	PostId    string
 	CreatedAt time.Time
 	Image     string
+	Likes     int
+	Dislikes int
+	CreatorNickname string
 }
 
 type Follow struct {

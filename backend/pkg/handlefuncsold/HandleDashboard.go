@@ -14,18 +14,11 @@ func GetAllChats(ownerId string) ([]string, error) {
 
 	messaged, err := dbfuncs.GetAllUserIdsSortedByLastPrivateMessage(ownerId)
 	if err != nil {
-		fmt.Println("error getting all user ids sorted by last private message")
+		fmt.Println("error getting all user ids sorted by last private message", err)
 		return chatIds, err
 	}
 
-	unmessaged, err := dbfuncs.GetUnmessagedUserIdsSortedAlphabetically(ownerId)
-	if err != nil {
-		fmt.Println("error getting all user ids sorted alphabetically")
-		return chatIds, err
-	}
-
-	chats := append(messaged, unmessaged...)
-	return chats, nil
+	return messaged, err
 }
 
 func HandleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -49,16 +42,23 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var users []dbfuncs.User
+
 	for _, chat := range chatIDs {
-		user, err := dbfuncs.GetUserById(chat)
-		if err != nil {
-			log.Println("error getting user from id")
-			return
+		fmt.Println("chat", chat, "chatIDs", chatIDs)
+
+		if chat != "" {
+			user, err := dbfuncs.GetUserById(chat)
+			if err != nil {
+				http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+				log.Println("error getting user from id", err)
+				return
+			}
+			users = append(users, user)
 		}
-		users = append(users, user)
+
 	}
 
-	group, err := dbfuncs.GetAllGroups()
+	group, err := GetGroupDash(ownerId)
 
 	if err != nil {
 		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
@@ -80,7 +80,7 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 
 	response := map[string]interface{}{
 		"chats":         users,
-		"groups":        group,
+		"groups":        group.GroupCards,
 		"notifications": nofications,
 		"Posts":         posts,
 	}

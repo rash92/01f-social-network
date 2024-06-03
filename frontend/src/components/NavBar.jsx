@@ -13,6 +13,8 @@ const NavigationBar = () => {
 
   // Add a state variable to store the search list
   const logoutHandler = () => {
+
+    
     onLogout();
   };
 

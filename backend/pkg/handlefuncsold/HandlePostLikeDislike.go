@@ -1,83 +1,59 @@
 package handlefuncs
 
-// import (
-// 	"encoding/json"
-// 	"net/http"
-// 	dbfuncs "server/pkg/db/dbfuncs"
-// )
+import (
+	"backend/pkg/db/dbfuncs"
+	"encoding/json"
+	"net/http"
+)
 
-// type reaction struct {
-// 	Postid string `json:"postId"`
-// 	Query  string `json:"query"`
-// }
+type reaction struct {
+	Postid string `json:"postId"`
+	Query  string `json:"query"`
+	UserId string `json:"id"`
+}
 
-// func HandlePostLikeDislike(w http.ResponseWriter, r *http.Request) {
-// 	Cors(&w, r)
-// 	if r.Method == http.MethodPost {
-// 		var entredData reaction
-// 		errj := json.NewDecoder(r.Body).Decode(&entredData)
-// 		if errj != nil {
-// 			http.Error(w, `{"error": "`+errj.Error()+`"}`, http.StatusBadRequest)
-// 			return
-// 		}
+func HandlePostLikeDislike(w http.ResponseWriter, r *http.Request) {
 
-// 		cookie, err := r.Cookie("user_token")
-// 		if err != nil {
-// 			http.Error(w, `{"error": "something went wrong please login"}`, http.StatusUnauthorized)
-// 			return
-// 		}
-// 	isCookieValid, _  := dbfuncs.ValidateCookie(cookie.Value)
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error": "405 Method Not Allowed"}`, http.StatusMethodNotAllowed)
+		return
 
-// 		if  !isCookieValid{
-// 			http.Error(w, `{"error": "something went wrong please login"}`, http.StatusUnauthorized)
-// 			return
-// 		}
+	}
+	var entredData reaction
+	errj := json.NewDecoder(r.Body).Decode(&entredData)
+	if errj != nil {
+		http.Error(w, `{"error": "`+errj.Error()+`"}`, http.StatusBadRequest)
+		return
+	}
 
-// 		var userID string
+	err := dbfuncs.LikeDislikePost(entredData.UserId, entredData.Postid, entredData.Query)
 
-// 		err = database.QueryRow("SELECT UserId FROM Sessions WHERE Id=?", cookie.Value).Scan(&userID)
-// 		if err != nil {
-// 			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
-// 			return
-// 		}
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
+		return
 
-// 		if entredData.Query == "like" {
-// 			err := dbfuncs.AddLikes(userID, entredData.Postid)
-// 			if err != nil {
-// 				http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
-// 				return
-// 			}
-// 			like, dislikes := dbfuncs.CountLikesDislikes(entredData.Postid)
-// 			userlikes := dbfuncs.FindLikeUsers(entredData.Postid)
-// 			response := map[string]interface{}{
-// 				"likes":     like,
-// 				"dislikes":  dislikes,
-// 				"userlikes": userlikes,
-// 				"id":        entredData.Postid,
-// 			}
+	}
 
-// 			json.NewEncoder(w).Encode(response)
+	like, dislikes, err := dbfuncs.CountPostReacts(entredData.Postid)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+		return
 
-// 		} else {
-// 			err := dbfuncs.AddDislikes(userID, entredData.Postid)
-// 			if err != nil {
-// 				http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
-// 				return
-// 			}
-// 			like, dislikes := dbfuncs.CountLikesDislikes(entredData.Postid)
-// 			userlikes := dbfuncs.FindLikeUsers(entredData.Postid)
-// 			response := map[string]interface{}{
-// 				"likes":     like,
-// 				"dislikes":  dislikes,
-// 				"userlikes": userlikes,
-// 				"id":        entredData.Postid,
-// 			}
-// 			json.NewEncoder(w).Encode(response)
+	}
 
-// 		}
+	UserLikeDislike, err := dbfuncs.GetUserLikeDislike(entredData.UserId, entredData.Postid)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+		return
 
-// 	} else {
-// 		http.Error(w, `{"error": "405 Method Not Allowed"}`, http.StatusMethodNotAllowed)
-// 		return
-// 	}
-// }
+	}
+
+	response := map[string]interface{}{
+		"Likes":           like,
+		"Dislikes":        dislikes,
+		"UserLikeDislike": UserLikeDislike,
+		"id":              entredData.Postid,
+	}
+	json.NewEncoder(w).Encode(response)
+
+}

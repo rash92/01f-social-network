@@ -1,5 +1,5 @@
 // YourComponent.js
-import React, {useState, useRef, useEffect, useCallback} from "react";
+import React, {useState, useRef, useEffect} from "react";
 import classes from "./Profile.module.css";
 import ProfileCard from "../components/ProfileCard";
 import AuthContext from "../store/authContext";
@@ -15,17 +15,15 @@ const Profile = () => {
   const {
     user,
     isWsReady,
-
     wsMsgToServer,
-    toggleProfilePrivacy,
     profileData: {data, error},
     resetIsProfileComponentVisible,
     fetchProfileData,
+    openChat,
   } = React.useContext(AuthContext);
 
   const {id} = useParams();
 
-  console.log(data.Posts, "posts");
   useEffect(() => {
     fetchProfileData(id);
   }, [id, fetchProfileData]);
@@ -49,10 +47,10 @@ const Profile = () => {
     if (isWsReady) {
       wsMsgToServer(
         JSON.stringify({
-          Type: "togglePrivacy",
+          type: "togglePrivacySetting",
           message: {
-            SenderId: user.Id,
-            PrivacySetting:
+            senderId: user.Id,
+            privacySetting:
               data?.Owner?.PrivacySetting === "private" ? "public" : "private",
           },
         })
@@ -84,82 +82,6 @@ const Profile = () => {
     resetIsProfileComponentVisible(true);
     return () => resetIsProfileComponentVisible(false);
   }, [resetIsProfileComponentVisible]);
-
-  // useEffect(() => {
-  //   if (!isComponentVisible || !isWsReady) return;
-  //   const data = JSON.parse(wsVal);
-  //   console.log(data);
-
-  //   switch (data?.message) {
-  //     case "requestToFollow":
-  //       setData((prw) => ({...prw, IsPending: true}));
-  //       break;
-  //     default: {
-  //       break;
-  //     }
-  //   }
-
-  //   //  nofications actions
-  //   // console.log(data.Body.Data);
-  //   if (data?.Type === "notification requestToFollow") {
-  //     setData((prev) => {
-  //       if (Object.keys(prev).length === 0) {
-  //         console.log(" not prev", prev);
-  //         return {};
-  //       }
-
-  //       let arr = prev?.PendingFollowers;
-
-  //       if (!arr) {
-  //         console.log(" not arr", prev);
-  //         return {};
-  //       }
-  //       console.log("prev", prev);
-  //       return {
-  //         ...prev,
-  //         PendingFollowers: [...arr, data?.Body?.Data],
-  //       };
-  //     });
-  //   }
-  // }, [wsVal, isWsReady, isComponentVisible]);
-
-  // useEffect(() => {
-  //   console.log(isActive);
-  //   if (!(isActive === "Posts")) {
-  //     handleShow();
-  //   }
-
-  //   // return () => {
-  //   //   setIsActive("Posts");
-  //   // };
-  // }, [isActive]);
-
-  // const fetchMoreFellowers = () => {
-  //   if (
-  //     data[isActive]?.length <
-  //     data[`NumberOf${isActive.charAt(0).toUpperCase()}${isActive.slice(1)}`]
-  //   ) {
-  //     setData((prev) => ({
-  //       ...prev,
-  //       [isActive]: [...prev[isActive], ...options1],
-  //     }));
-  //   } else {
-  //     setHasMoreFellowers((pre) => ({...pre, [isActive]: false}));
-  //   }
-  // };
-
-  // const fetchMorePosts = () => {
-  //   if (data.Posts.length <= 50) {
-  //     setData((prev) => ({
-  //       ...prev,
-  //       Posts: [...prev.Posts, ...dummyPosts],
-  //     }));
-  //     console.log(data);
-  //   } else {
-  //     console.log(data);
-  //     setHasMorePosts(false);
-  //   }
-  // };
 
   const requestFollowHandler = () => {
     console.log("unfollowing");
@@ -211,13 +133,13 @@ const Profile = () => {
   ) : (
     <Container>
       <div className={classes.profile}>
-        {isPrivate && data.Owner.Id !== user.Id && !data.IsFollowed ? (
+        {isPrivate && data?.Owner?.Id !== user?.Id && !data?.IsFollowed ? (
           <PrivateProfile
-            IsPending={data.IsPending}
+            IsPending={data?.IsPending}
             Avatar={data?.Owner?.avatar}
             IsOnline={true}
             name={"bilal"}
-            Nickname={data.Owner.Nickname}
+            Nickname={data?.Owner?.Nickname}
             fellowUserHandler={requestFollowHandler}
           />
         ) : (
@@ -230,6 +152,7 @@ const Profile = () => {
                 isPrivate={isPrivate}
                 owner={user?.Id === data?.Owner?.Id}
                 requestFollow={requestFollowHandler}
+                showChat={openChat}
               />
             )}
 

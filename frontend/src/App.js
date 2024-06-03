@@ -2,7 +2,7 @@ import {createBrowserRouter, RouterProvider} from "react-router-dom";
 import Root from "./pages/Root";
 import Home from "./pages/Home";
 import PrivateRoutes from "./components/PrivateRoutes";
-import Profile, {profileLoader} from "./pages/Profile";
+import Profile from "./pages/Profile";
 import Group from "./pages/Group";
 import Post from "./pages/post";
 
@@ -16,35 +16,35 @@ const router = createBrowserRouter([
         element: <Home />,
       },
       {
-        path: "/:id",
-        element: <h1>404 Page Not Found</h1>,
-      },
-
-      {
-        path: "/groups/:id",
+        path: "groups/:id",
         element: <PrivateRoutes component={Group} />,
       },
       {
-        path: "/profile/:id",
-        errorElement: <Profile />,
-        element: <PrivateRoutes component={Profile} />,
-        // loader: profileLoader,
+        path: "profile/:id",
+        // element: <ProfileLayout />,
+        children: [
+          {
+            path: "",
+            element: <PrivateRoutes component={Profile} />,
+          },
+          {
+            path: "post/:postId",
+            element: <PrivateRoutes component={Post} />,
+          },
+        ],
       },
-
       {
-        path: "/post/:id",
-        errorElement: <Post />,
+        path: "/post/:postId",
         element: <PrivateRoutes component={Post} />,
-        // loader: profileLoader,
       },
-
-      // {
-      //   path: "/signup",
-      //   element: <SignUp />,
-      // },
     ],
   },
+  {
+    path: "*",
+    element: <h1>404 Page Not Found</h1>,
+  },
 ]);
+
 function App() {
   return <RouterProvider router={router} />;
 }

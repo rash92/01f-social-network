@@ -1,5 +1,7 @@
 import React from "react";
 import {Container, Card, Button} from "react-bootstrap";
+import {TiTick} from "react-icons/ti";
+import {FaTimesCircle} from "react-icons/fa";
 
 function EventsList({event}) {
   const handleRSVP = (status) => {
@@ -13,18 +15,29 @@ function EventsList({event}) {
     <Container>
       <Card className="mb-3">
         <Card.Body>
-          <Card.Title>{event.title}</Card.Title>
-          <Card.Text>{event.description}</Card.Text>
+          <Card.Title>{event?.event?.Title}</Card.Title>
+          <Card.Text>{event?.event?.Description}</Card.Text>
           <Card.Text>
-            Day/Time: {new Date(event.dateTime).toLocaleString()}
+            Day/Time: {new Date(event.event.Time).toLocaleString()}
           </Card.Text>
-          <Card.Text>Options: {event.options.join(", ")}</Card.Text>
+
+          <Card.Text>Going: 0</Card.Text>
+          <Card.Text>Not going: 0</Card.Text>
+
           <div className="d-flex justify-content-between align-items-center">
             <Button variant="primary" onClick={() => handleRSVP("going")}>
-              RSVP Going
+              {event.Going && <TiTick />}
+              Going
             </Button>
             <Button variant="secondary" onClick={() => handleRSVP("not going")}>
-              RSVP Not Going
+              {!event?.Going && <FaTimesCircle size={20} />}
+              <span
+                style={{
+                  marginLeft: "0.5rem",
+                }}
+              >
+                Not Going
+              </span>
             </Button>
           </div>
         </Card.Body>

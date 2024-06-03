@@ -7,6 +7,8 @@ import Chats from "./ChatLists";
 import {getJson} from "../helpers/helpers";
 import AuthContext from "../store/authContext";
 import NotificationContainer from "./Notifications";
+import {Button} from "react-bootstrap";
+import AddGroup from "./AddGroup";
 
 const notifications = [
   {message: "Notification 1", variant: "success"},
@@ -15,6 +17,8 @@ const notifications = [
   {message: "Notification 4", variant: "danger"},
 ];
 function Dashboard() {
+  const [show, setShow] = useState(false);
+
   const [activeSection, setActiveSection] = useState("posts");
 
   const {fetchDashboard, dashBoardData} = useContext(AuthContext);
@@ -75,6 +79,14 @@ function Dashboard() {
                 Notifications
               </Nav.Link>
             </Nav.Item>
+            <Button
+              variant="secondery"
+              onClick={() => {
+                setShow(true);
+              }}
+            >
+              add Group
+            </Button>
           </Nav>
         </Col>
       </Row>
@@ -86,6 +98,7 @@ function Dashboard() {
         }}
       >
         <Col>
+          <AddGroup show={show} setShow={setShow} />
           {activeSection === "posts" && <Posts posts={dashBoardData.Posts} />}
           {activeSection === "chats" && <Chats chats={dashBoardData?.chats} />}
           {activeSection === "groups" && (

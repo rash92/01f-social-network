@@ -34,6 +34,7 @@ type Image struct {
 
 type Post struct {
 	Id              string    `json:"id"`
+	UserId          string    `json:"userid"`
 	Title           string    `json:"title"`
 	Body            string    `json:"body"`
 	CreatedAt       time.Time `json:"createdAt"`
@@ -47,13 +48,15 @@ type Post struct {
 	ChosenFollowers []string  `json:"chosenFollowers"`
 }
 type Comment struct {
-	Id        string    `json:"id"`
-	Body      string    `json:"body"`
-	UserId    string    `json:"user_id"`
-	PostId    string    `json:"post_id"`
-	CreatedAt time.Time `json:"created_at"`
-	Image     string    `json:"image"`
-	Username  string    `json:"username"`
+	Id              string    `json:"Id"`
+	Body            string    `json:"Body"`
+	CreatorId       string    `json:"CreatorId"`
+	PostID          string    `json:"PostId"`
+	CreatedAt       time.Time `json:"CreatedAt"`
+	Likes           int       `json:"Likes"`
+	Dislikes        int       `json:"Dislikes"`
+	Image           string    `json:"Image"`
+	CreatorNickname string    `json:"CreatorNickname"`
 }
 type Session struct {
 	Id       uuid.UUID
