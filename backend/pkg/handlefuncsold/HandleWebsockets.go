@@ -559,7 +559,7 @@ func requestToFollow(receivedData Follow) error {
 		return err
 	}
 
-	follower, err := dbfuncs.GetBasicUserInfoById(receivedData.FollowerId)
+	follower, err := GetBasicUserInfoById(receivedData.FollowerId)
 	if err != nil {
 		log.Println("error getting basic user info from database", err)
 		notifyClientOfError(err, "requestToFollow", receivedData.FollowerId, nil)
@@ -572,7 +572,7 @@ func requestToFollow(receivedData Follow) error {
 		Type:       "notification requestToFollow",
 	}
 
-	data, err := dbfuncs.GetBasicUserInfoById(receivedData.FollowerId)
+	data, err := GetBasicUserInfoById(receivedData.FollowerId)
 	if err != nil {
 		log.Println("error getting basic user info from database", err)
 		notifyClientOfError(err, "requestToFollow", receivedData.FollowerId, nil)
@@ -673,7 +673,7 @@ func answerRequestToFollow(receivedData AnswerRequestToFollow) error {
 		Seen:       false,
 	}
 
-	following, err := dbfuncs.GetBasicUserInfoById(receivedData.SenderId)
+	following, err := GetBasicUserInfoById(receivedData.SenderId)
 	message := fmt.Sprintf("%s has said %s to your request to follow", following.Nickname, receivedData.Reply)
 	notificationToSend.Body = message
 	notificationToSend.Payload = map[string]interface{}{
@@ -731,7 +731,7 @@ func unfollow(receivedData Unfollow) error {
 		Type:       "notification unfollow",
 	}
 
-	data, err := dbfuncs.GetBasicUserInfoById(receivedData.FollowerId)
+	data, err := GetBasicUserInfoById(receivedData.FollowerId)
 	if err != nil {
 		log.Println("error getting basic user info from database", err)
 		notifyClientOfError(err, "requestToFollow", receivedData.FollowerId, nil)
@@ -908,7 +908,7 @@ func post(receivedData PostFromClient) error {
 	}
 
 	receivedData.Id = dbPost.Id
-	 
+
 	signalBody, err := json.Marshal(receivedData)
 	if err != nil {
 		log.Println("error marshalling receivedData", err)
@@ -1146,7 +1146,7 @@ func requestToJoinGroup(receivedData GroupMember) error {
 		return err
 	}
 
-	applicant, err := dbfuncs.GetBasicUserInfoById(receivedData.UserId)
+	applicant, err := GetBasicUserInfoById(receivedData.UserId)
 	if err != nil {
 		log.Println(err, "error getting applicant name")
 		notifyClientOfError(err, "requestRequestToJoinGroup", receivedData.UserId, nil)
@@ -1177,7 +1177,7 @@ func requestToJoinGroup(receivedData GroupMember) error {
 		Body:       dbNotification.Body,
 	}
 
-	data, err := dbfuncs.GetBasicUserInfoById(receivedData.UserId)
+	data, err := GetBasicUserInfoById(receivedData.UserId)
 	if err != nil {
 		log.Println(err, "error getting basic user by id")
 		return err
@@ -1242,7 +1242,7 @@ func answerRequestToJoinGroup(receivedData AnswerRequestToJoinGroup) error {
 		return err
 	}
 
-	creator, err := dbfuncs.GetBasicUserInfoById(group.BasicInfo.CreatorId)
+	creator, err := GetBasicUserInfoById(group.BasicInfo.CreatorId)
 	if err != nil {
 		log.Println(err, "error getting creator name")
 		notifyClientOfError(err, "answerRequestToJoinGroup", receivedData.SenderId, nil)
@@ -1327,7 +1327,7 @@ func inviteToJoinGroup(receivedData InviteToJoinGroup) error {
 		return err
 	}
 
-	inviterData, err := dbfuncs.GetBasicUserInfoById(receivedData.SenderId)
+	inviterData, err := GetBasicUserInfoById(receivedData.SenderId)
 	if err != nil {
 		log.Println(err, "error getting user by id")
 		notifyClientOfError(err, "inviteToJoinGroup", receivedData.SenderId, receivedData.GroupId)
@@ -1400,7 +1400,7 @@ func answerInvitationToJoinGroup(receivedData AnswerInvitationToJoinGroup) error
 		return err
 	}
 
-	data, err := dbfuncs.GetBasicUserInfoById(member.UserId)
+	data, err := GetBasicUserInfoById(member.UserId)
 	if err != nil {
 		log.Println(err, "error getting new member's basic user info")
 		notifyClientOfError(err, "answerInviteToJoinGroup", receivedData.UserId, receivedData.GroupId)

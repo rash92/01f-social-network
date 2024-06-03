@@ -158,3 +158,4 @@ type Notification struct {
 	Seen         bool
 	SenderAvatar string
 }
+

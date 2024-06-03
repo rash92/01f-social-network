@@ -1,11 +1,9 @@
 package handlefuncs
 
 import (
+	"backend/pkg/db/dbfuncs"
 	"database/sql"
 	"fmt"
-	"server/pkg/db/dbfuncs"
-
-	_ "github.com/mattn/go-sqlite3"
 )
 
 func FindPostsComment(id string) (Comment, error) {
@@ -21,12 +19,12 @@ func FindPostsComment(id string) (Comment, error) {
 	var one Comment
 	var userId string
 	for rows.Next() {
-		err = rows.Scan(&one.ID, &one.Body, &userId, &one.PostID, &one.CreatedAt)
+		err = rows.Scan(&one.Id, &one.Body, &userId, &one.PostID, &one.CreatedAt)
 		if err != nil {
 			return Comment{}, err
 		}
 
-		err = database.QueryRow("SELECT Nickname FROM Users WHERE Id=?", userId).Scan(&one.Username)
+		err = database.QueryRow("SELECT Nickname FROM Users WHERE Id=?", userId).Scan(&one.CreatorNickname)
 
 		if err != nil {
 			// log.Fatal(err, "what")
@@ -34,6 +32,6 @@ func FindPostsComment(id string) (Comment, error) {
 		}
 
 	}
-	one.Likes, one.Dislikes = dbfuncs.CountCommentReacts(one.ID)
-	return one, nil
+	one.Likes, one.Dislikes, err = dbfuncs.CountCommentReacts(one.Id)
+	return one, err
 }

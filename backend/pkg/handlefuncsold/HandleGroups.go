@@ -51,7 +51,7 @@ type DetailedGroupInfo struct {
 	Messages         []GroupMessage   `json:"Messages"`
 	Status           string           `json:"Status"`
 
-	Invite []dbfuncs.BasicUserInfo `json:"Invite"`
+	Invite []BasicUserInfo `json:"Invite"`
 }
 
 type GroupDash struct {
@@ -485,23 +485,31 @@ func GetBasicUserInfoFromUsers(input []string) ([]BasicUserInfo, error) {
 	res := []BasicUserInfo{}
 	var err error
 	for _, userId := range input {
-		user, err := dbfuncs.GetUserById(userId)
+		basicInfo, err := GetBasicUserInfoById(userId)
 		if err != nil {
-			fmt.Println("couldn't get user from user id")
 			return res, err
-		}
-
-		basicInfo := BasicUserInfo{
-			Avatar:         user.Avatar,
-			Id:             user.Id,
-			Nickname:       user.Nickname,
-			FirstName:      user.FirstName,
-			LastName:       user.LastName,
-			PrivacySetting: user.PrivacySetting,
 		}
 		res = append(res, basicInfo)
 	}
 	return res, err
+}
+
+func GetBasicUserInfoById(userId string) (BasicUserInfo, error) {
+	user, err := dbfuncs.GetUserById(userId)
+	if err != nil {
+		fmt.Println("couldn't get user from user id")
+		return BasicUserInfo{}, err
+	}
+
+	basicInfo := BasicUserInfo{
+		Avatar:         user.Avatar,
+		Id:             user.Id,
+		Nickname:       user.Nickname,
+		FirstName:      user.FirstName,
+		LastName:       user.LastName,
+		PrivacySetting: user.PrivacySetting,
+	}
+	return basicInfo, err
 }
 
 // func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
@@ -703,9 +711,9 @@ func GetBasicUserInfoFromUsers(input []string) ([]BasicUserInfo, error) {
 
 // }
 
-func WhoCanIInviteToThisGroup(groupId, userId string) ([]dbfuncs.BasicUserInfo, error) {
-	var users []dbfuncs.BasicUserInfo
-	included := make(map[dbfuncs.BasicUserInfo]struct{})
+func WhoCanIInviteToThisGroup(groupId, userId string) ([]BasicUserInfo, error) {
+	var users []BasicUserInfo
+	included := make(map[BasicUserInfo]struct{})
 	followers, err := dbfuncs.GetAcceptedFollowerIdsByFollowingId(userId)
 	if err != nil {
 		log.Println("error getting followers from database", err)
@@ -720,10 +728,10 @@ func WhoCanIInviteToThisGroup(groupId, userId string) ([]dbfuncs.BasicUserInfo, 
 		if status == "invited" || status == "accepted" || status == "requested" {
 			continue
 		}
-		basicInfo, err := dbfuncs.GetBasicUserInfoById(follower)
+		basicInfo, err := GetBasicUserInfoById(follower)
 		if err != nil {
 			log.Println(err)
-			return []dbfuncs.BasicUserInfo{}, err
+			return []BasicUserInfo{}, err
 		}
 		_, ok := included[basicInfo]
 		if ok {
@@ -736,22 +744,22 @@ func WhoCanIInviteToThisGroup(groupId, userId string) ([]dbfuncs.BasicUserInfo, 
 	following, err := dbfuncs.GetAcceptedFollowingIdsByFollowerId(userId)
 	if err != nil {
 		log.Println("error getting following from database", err)
-		return []dbfuncs.BasicUserInfo{}, err
+		return []BasicUserInfo{}, err
 	}
 	for _, following := range following {
 		status, err := dbfuncs.GetGroupStatus(groupId, following)
 		if err != nil && err != sql.ErrNoRows {
 			log.Println(err)
-			return []dbfuncs.BasicUserInfo{}, err
+			return []BasicUserInfo{}, err
 		}
 		if status == "invited" || status == "accepted" || status == "requested" {
 			fmt.Println("following", following)
 			continue
 		}
-		basicInfo, err := dbfuncs.GetBasicUserInfoById(following)
+		basicInfo, err := GetBasicUserInfoById(following)
 		if err != nil {
 			log.Println(err)
-			return []dbfuncs.BasicUserInfo{}, err
+			return []BasicUserInfo{}, err
 		}
 		_, ok := included[basicInfo]
 		if ok {
