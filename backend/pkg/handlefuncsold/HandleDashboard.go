@@ -67,7 +67,7 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 
 	posts, err := dbfuncs.GetVisiblePosts(ownerId)
 	if err != nil {
-		log.Println("error getting posts", err)
+		log.Println("error getting posts :)", err)
 		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 		return
 	}

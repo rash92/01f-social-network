@@ -66,14 +66,14 @@ type Post struct {
 }
 
 type Comment struct {
-	Id        string
-	Body      string
-	CreatorId string
-	PostId    string
-	CreatedAt time.Time
-	Image     string
-	Likes     int
-	Dislikes int
+	Id              string
+	Body            string
+	CreatorId       string
+	PostId          string
+	CreatedAt       time.Time
+	Image           string
+	Likes           int
+	Dislikes        int
 	CreatorNickname string
 }
 
@@ -158,4 +158,3 @@ type Notification struct {
 	Seen         bool
 	SenderAvatar string
 }
-

@@ -10,6 +10,20 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+func NullString(s string) sql.NullString {
+	if s == "" {
+		return sql.NullString{}
+	}
+	return sql.NullString{
+		String: s,
+		Valid:  true,
+	}
+}
+
+func StringNull(ns sql.NullString) string {
+	return ns.String
+}
+
 func AddPost(post *Post) error {
 	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
@@ -22,7 +36,7 @@ func AddPost(post *Post) error {
 	if err != nil {
 		return err
 	}
-	_, err = statement.Exec(post.Id, post.Title, post.Body, post.CreatorId, post.GroupId, post.CreatedAt, post.Image, post.PrivacyLevel)
+	_, err = statement.Exec(post.Id, post.Title, post.Body, post.CreatorId, NullString(post.GroupId), post.CreatedAt, post.Image, post.PrivacyLevel)
 
 	return err
 }
@@ -163,10 +177,12 @@ func GetPostChosenFollowerIdsByPostId(id string) ([]string, error) {
 
 func GetPostById(userId, id string) (Post, error) {
 	var post Post
-	err := db.QueryRow("SELECT Id, Title, Body, CreatorId, GroupId, CreatedAt, Image, PrivacyLevel FROM Posts WHERE Id=?", id).Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
+	var groupId sql.NullString
+	err := db.QueryRow("SELECT Id, Title, Body, CreatorId, GroupId, CreatedAt, Image, PrivacyLevel FROM Posts WHERE Id=?", id).Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &groupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
 	if err != nil {
 		return post, err
 	}
+	post.GroupId = StringNull(groupId)
 
 	post.Likes, post.Dislikes, err = CountPostReacts(post.Id)
 	if err != nil {
@@ -209,11 +225,13 @@ func GetAllPostsByCreatorId(creatorId string) ([]Post, error) {
 	defer rows.Close()
 	for rows.Next() {
 		var post Post
+		var groupId sql.NullString
+
 		err = rows.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
 		if err != nil {
 			return posts, err
 		}
-
+		post.GroupId = StringNull(groupId)
 		post.Likes, post.Dislikes, err = CountPostReacts(post.Id)
 		if err != nil {
 			return nil, err
@@ -243,17 +261,18 @@ func GetAllPostsByCreatorId(creatorId string) ([]Post, error) {
 	return posts, err
 }
 
+// AND ( OR GroupId IN (SELECT GroupId From GroupMembers WHERE UserId = ?))
 func GetVisiblePosts(userId string) ([]Post, error) {
 	query := `
 	SELECT * FROM Posts
 	WHERE 
-			(PrivacyLevel = 'public') OR 
+			(PrivacyLevel = 'public' AND GroupId IS NULL) OR 
 			(PrivacyLevel = 'private' AND CreatorId IN (SELECT FollowingId FROM Follows WHERE FollowerId = ?)) OR 
 			(PrivacyLevel = 'superprivate' AND Id IN (SELECT PostId FROM PostChosenFollowers WHERE FollowerId = ?)) OR
 			CreatorId = ? 
 ORDER BY CreatedAt DESC
 	`
-	rows, err := db.Query(query, userId, userId, userId)
+	rows, err := db.Query(query, userId, userId, userId, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -262,11 +281,15 @@ ORDER BY CreatedAt DESC
 	var posts []Post
 	for rows.Next() {
 		var post Post
-		err := rows.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
+		var groupId sql.NullString
+
+		err := rows.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &groupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
 		if err != nil {
 			return nil, err
 		}
-
+		fmt.Println("group null string: ", groupId)
+		post.GroupId = StringNull(groupId)
+		fmt.Println("added groupId to post: ", post)
 		post.Likes, post.Dislikes, err = CountPostReacts(post.Id)
 		if err != nil {
 			return nil, err
@@ -321,11 +344,13 @@ func GetVisiblePostsForProfile(userId, profileOwnerId string) ([]Post, error) {
 	var posts []Post
 	for rows.Next() {
 		var post Post
-		err := rows.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
+		var groupId sql.NullString
+
+		err := rows.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &groupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
 		if err != nil {
 			return nil, err
 		}
-
+		post.GroupId = StringNull(groupId)
 		post.Likes, post.Dislikes, err = CountPostReacts(post.Id)
 		if err != nil {
 			return nil, err
