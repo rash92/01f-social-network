@@ -660,22 +660,36 @@ export const AuthContextProvider = (props) => {
           ...prev,
           data: {
             ...prev.data,
-            Posts: [
-              {
-                Body,
-                Title,
-                CreatedAt,
-                CreatorId,
-                GroupId,
-                Id,
-                privacyLevel: PrivacyLevel,
-                Image: Image,
-              },
-              ...prev.data.Posts,
-            ],
+            Posts: Array.isArray(prev?.data?.Posts)
+              ? [
+                  {
+                    Body,
+                    Title,
+                    CreatedAt,
+                    CreatorId,
+                    GroupId,
+                    Id,
+                    privacyLevel: PrivacyLevel,
+                    Image: Image,
+                  },
+                  ...prev?.data?.Posts,
+                ]
+              : [
+                  {
+                    Body,
+                    Title,
+                    CreatedAt,
+                    CreatorId,
+                    GroupId,
+                    Id,
+                    privacyLevel: PrivacyLevel,
+                    Image: Image,
+                  },
+                ],
           },
         }));
       } else {
+        console.log("THIS WERE POST being dublicated");
         setDashBoardData((prev) => ({
           ...prev,
           Posts: [
@@ -781,8 +795,8 @@ export const AuthContextProvider = (props) => {
 
           break;
         case "answerInvitationToJoinGroup":
-          if (data.GroupId !== groupId) return;
-          // addd group chech first
+          if (data.groupId !== groupId) return;
+          console.log("answerInvitationToJoinGroup");
           setGroupData((prev) => {
             return {
               ...prev,
@@ -790,7 +804,7 @@ export const AuthContextProvider = (props) => {
                 ...prev?.data,
                 Members: Array.isArray(prev?.data.Members)
                   ? [...prev?.data.Members, data?.newMember]
-                  : [data?.payload?.Data],
+                  : [data?.newMember],
               },
             };
           });

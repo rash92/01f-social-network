@@ -37,7 +37,7 @@ type GroupEvent struct {
 }
 
 type GroupEventCard struct {
-	Event GroupEvent `json:"Id"`
+	Event GroupEvent `json:"event"`
 	Going bool       `json:"Going"`
 }
 
@@ -717,7 +717,7 @@ func WhoCanIInviteToThisGroup(groupId, userId string) ([]dbfuncs.BasicUserInfo, 
 			log.Println(err)
 			return users, err
 		}
-		if status == "invited" || status == "accepted" {
+		if status == "invited" || status == "accepted" || status == "requested" {
 			continue
 		}
 		basicInfo, err := dbfuncs.GetBasicUserInfoById(follower)
@@ -744,7 +744,8 @@ func WhoCanIInviteToThisGroup(groupId, userId string) ([]dbfuncs.BasicUserInfo, 
 			log.Println(err)
 			return []dbfuncs.BasicUserInfo{}, err
 		}
-		if status == "invited" || status == "accepted" {
+		if status == "invited" || status == "accepted" || status == "requested" {
+			fmt.Println("following", following)
 			continue
 		}
 		basicInfo, err := dbfuncs.GetBasicUserInfoById(following)

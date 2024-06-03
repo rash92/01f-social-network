@@ -897,6 +897,7 @@ func post(receivedData PostFromClient) error {
 			return err
 		}
 		dbPost.Image = imageUUID
+		receivedData.Image = imageUUID
 	}
 
 	err = dbfuncs.AddPost(&dbPost)
@@ -907,6 +908,7 @@ func post(receivedData PostFromClient) error {
 	}
 
 	receivedData.Id = dbPost.Id
+	 
 	signalBody, err := json.Marshal(receivedData)
 	if err != nil {
 		log.Println("error marshalling receivedData", err)
@@ -1424,6 +1426,7 @@ func answerInvitationToJoinGroup(receivedData AnswerInvitationToJoinGroup) error
 	payload := map[string]any{
 		"type":      "answerInvitationToJoinGroup",
 		"newMember": newMember,
+		"groupId":   receivedData.GroupId,
 	}
 
 	connectionLock.RLock()
