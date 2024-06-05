@@ -1468,7 +1468,7 @@ func createEvent(receivedData GroupEvent) error {
 
 		dbNotification := dbfuncs.Notification{
 			Type:       "createEvent",
-			ReceiverId: receivedData.GroupId,
+			ReceiverId: member,
 			SenderId:   receivedData.CreatorId,
 			Seen:       false,
 			Body:       message,

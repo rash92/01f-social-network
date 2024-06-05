@@ -777,7 +777,7 @@ export const AuthContextProvider = (props) => {
       ) {
         setDashBoardData((prev) => ({
           ...prev,
-          notifications: [data, ...prev.notifications],
+          notifications: [data, ...prev?.notifications],
         }));
         return;
       }

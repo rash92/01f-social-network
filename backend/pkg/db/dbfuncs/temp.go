@@ -1,6 +1,7 @@
 package dbfuncs
 
 import (
+	"database/sql"
 	"encoding/base64"
 	"fmt"
 	"log"
@@ -69,11 +70,12 @@ func GetPosts(userId string, page int, batchSize int, usersOwnProfile bool) ([]P
 	posts := []Post{}
 	for rows.Next() {
 		var post Post
+		var groupId sql.NullString
 		err := rows.Scan(&post.Id,
 			&post.Title,
 			&post.Body,
 			&post.CreatorId,
-			&post.GroupId,
+			&groupId,
 			&post.CreatedAt,
 			&post.Image,
 			&post.PrivacyLevel)
@@ -81,6 +83,8 @@ func GetPosts(userId string, page int, batchSize int, usersOwnProfile bool) ([]P
 			log.Println(err)
 			return nil, err
 		}
+
+		post.GroupId = StringNull(groupId)
 		// Skip superprivate posts if the viewer does not have access.
 		// if !usersOwnProfile || post.PrivacyLevel == "superprivate" {
 		// 	allowed, err := CheckSuperprivateAccess(post.Id, userId) // Changed from post.Id.String() now that dbfuncs.Post.Id is of type string.

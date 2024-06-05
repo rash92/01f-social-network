@@ -259,10 +259,13 @@ func GetPostsByGroupId(groupId string) ([]Post, error) {
 	defer rows.Close()
 	for rows.Next() {
 		var post Post
-		err = rows.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
+		var groupId sql.NullString
+
+		err = rows.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &groupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
 		if err != nil {
 			return posts, err
 		}
+		post.GroupId = StringNull(groupId)
 		posts = append(posts, post)
 	}
 	err = rows.Err()

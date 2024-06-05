@@ -227,7 +227,7 @@ func GetAllPostsByCreatorId(creatorId string) ([]Post, error) {
 		var post Post
 		var groupId sql.NullString
 
-		err = rows.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
+		err = rows.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &groupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
 		if err != nil {
 			return posts, err
 		}
@@ -406,106 +406,106 @@ func GetNumberOfPostsByUserId(userId string) (int, error) {
 	return len(posts), err
 }
 
-func GetProfilePosts(viewerId string, creatorId string) ([]Post, error) {
-	var posts []Post
-	// check if creator has public profile, if yes move on to checking privacy level of posts. If no, check if viewer is following them.
-	creatorPrivate, err := IsUserPrivate(creatorId)
-	if err != nil {
-		return posts, err
-	}
-	isFollowing, err := IsFollowing(viewerId, creatorId)
-	if err != nil {
-		return posts, err
-	}
-	if creatorPrivate && !isFollowing {
-		return posts, nil
-	}
+// func GetProfilePosts(viewerId string, creatorId string) ([]Post, error) {
+// 	var posts []Post
+// 	// check if creator has public profile, if yes move on to checking privacy level of posts. If no, check if viewer is following them.
+// 	creatorPrivate, err := IsUserPrivate(creatorId)
+// 	if err != nil {
+// 		return posts, err
+// 	}
+// 	isFollowing, err := IsFollowing(viewerId, creatorId)
+// 	if err != nil {
+// 		return posts, err
+// 	}
+// 	if creatorPrivate && !isFollowing {
+// 		return posts, nil
+// 	}
 
-	row, err := db.Query(`
-		SELECT * FROM Posts 
-			WHERE CreatorId=? AND PrivacyLevel='public'
-		UNION
-		SELECT * FROM Posts
-			WHERE CreatorId=? AND PrivacyLevel='private' AND CreatorId IN
-			(
-				SELECT FollowingId
-					FROM Follows
-					WHERE FollowerId=? AND Status='accepted'
-			)
-		UNION
-		SELECT * FROM Posts
-			WHERE CreatorId=? AND PrivacyLevel='superPrivate' AND Id IN
-			(
-				SELECT PostId FROM PostChosenFollowers
-					WHERE FollowerId=?
-			)
-		ORDER BY CreatedAt DESC`,
-		creatorId, creatorId, viewerId, creatorId, viewerId)
+// 	row, err := db.Query(`
+// 		SELECT * FROM Posts
+// 			WHERE CreatorId=? AND PrivacyLevel='public'
+// 		UNION
+// 		SELECT * FROM Posts
+// 			WHERE CreatorId=? AND PrivacyLevel='private' AND CreatorId IN
+// 			(
+// 				SELECT FollowingId
+// 					FROM Follows
+// 					WHERE FollowerId=? AND Status='accepted'
+// 			)
+// 		UNION
+// 		SELECT * FROM Posts
+// 			WHERE CreatorId=? AND PrivacyLevel='superPrivate' AND Id IN
+// 			(
+// 				SELECT PostId FROM PostChosenFollowers
+// 					WHERE FollowerId=?
+// 			)
+// 		ORDER BY CreatedAt DESC`,
+// 		creatorId, creatorId, viewerId, creatorId, viewerId)
 
-	if err == sql.ErrNoRows {
-		return posts, nil
-	}
-	if err != nil {
-		return posts, err
-	}
-	defer row.Close()
+// 	if err == sql.ErrNoRows {
+// 		return posts, nil
+// 	}
+// 	if err != nil {
+// 		return posts, err
+// 	}
+// 	defer row.Close()
 
-	for row.Next() {
-		var post Post
-		err = row.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
-		if err != nil {
-			return posts, err
-		}
-		posts = append(posts, post)
-	}
+// 	for row.Next() {
+// 		var post Post
+// 		err = row.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
+// 		if err != nil {
+// 			return posts, err
+// 		}
+// 		posts = append(posts, post)
+// 	}
 
-	err = row.Err()
+// 	err = row.Err()
 
-	return posts, err
-}
+// 	return posts, err
+// }
 
-func GetDashboardPosts(userId string) ([]Post, error) {
-	var posts []Post
+// func GetDashboardPosts(userId string) ([]Post, error) {
+// 	var posts []Post
 
-	row, err := db.Query(`
-		SELECT * FROM Posts 
-			WHERE PrivacyLevel='public'
-		UNION
-		SELECT * FROM Posts
-			WHERE PrivacyLevel='private' AND CreatorId IN
-			(
-				SELECT FollowingId
-					FROM Follows
-					WHERE FollowerId=? AND Status='accepted'
-			)
-		UNION
-		SELECT * FROM Posts
-			WHERE PrivacyLevel='superPrivate' AND Id IN
-			(
-				SELECT PostId FROM PostChosenFollowers
-					WHERE FollowerId=?
-			)
-		ORDER BY CreatedAt DESC`,
-		userId, userId)
+// 	row, err := db.Query(`
+// 		SELECT * FROM Posts
+// 			WHERE PrivacyLevel='public'
+// 		UNION
+// 		SELECT * FROM Posts
+// 			WHERE PrivacyLevel='private' AND CreatorId IN
+// 			(
+// 				SELECT FollowingId
+// 					FROM Follows
+// 					WHERE FollowerId=? AND Status='accepted'
+// 			)
+// 		UNION
+// 		SELECT * FROM Posts
+// 			WHERE PrivacyLevel='superPrivate' AND Id IN
+// 			(
+// 				SELECT PostId FROM PostChosenFollowers
+// 					WHERE FollowerId=?
+// 			)
+// 		ORDER BY CreatedAt DESC`,
+// 		userId, userId)
 
-	if err == sql.ErrNoRows {
-		return posts, nil
-	}
-	if err != nil {
-		return posts, err
-	}
+// 	if err == sql.ErrNoRows {
+// 		return posts, nil
+// 	}
+// 	if err != nil {
+// 		return posts, err
+// 	}
 
-	defer row.Close()
-	for row.Next() {
-		var post Post
-		err = row.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
-		if err != nil {
-			return posts, err
-		}
-		posts = append(posts, post)
-	}
+// 	defer row.Close()
+// 	for row.Next() {
+// 		var post Post
+// 		err = row.Scan(&post.Id, &post.Title, &post.Body, &post.CreatorId, &post.GroupId, &post.CreatedAt, &post.Image, &post.PrivacyLevel)
+// 		if err != nil {
+// 			return posts, err
+// 		}
+// 		posts = append(posts, post)
+// 	}
 
-	err = row.Err()
+// 	err = row.Err()
 
-	return posts, err
-}
+// 	return posts, err
+// }
