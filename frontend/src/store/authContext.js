@@ -259,7 +259,10 @@ export const AuthContextProvider = (props) => {
       const socket = new WebSocket("ws://localhost:8000/ws");
       socket.onopen = () => setIsWsReady(true);
       socket.onclose = () => setIsWsReady(false);
-      socket.onmessage = (event) => setWsVal(event.data);
+      socket.onmessage = (event) => {
+          setWsVal(event?.data);
+    
+      };
 
       ws.current = socket;
 
@@ -401,8 +404,31 @@ export const AuthContextProvider = (props) => {
           ...prev,
           data: {...prev.data, Status: "invited"},
         }));
+        break;
+
+      case "notification createEvent":
+        if (
+          dashBoardData?.notifications[0]?.payload?.EventCard.event?.GroupId !==
+          groupId
+        )
+          return;
+        setGroupData((prev) => {
+          return {
+            ...prev,
+            data: {
+              ...prev?.data,
+              Events: Array.isArray(prev?.data.Events)
+                ? [
+                    ...prev?.data.Events,
+                    dashBoardData?.notifications[0]?.payload?.EventCard,
+                  ]
+                : [dashBoardData?.notifications[0]?.payload?.EventCard],
+            },
+          };
+        });
 
         break;
+
       default:
         console.log(
           "unknow nofication type",
@@ -590,6 +616,21 @@ export const AuthContextProvider = (props) => {
           fetchGroupData(groupId);
           break;
 
+        case "createEvent":
+          if (data.whatever.payload.event.GroupId !== groupId) return;
+          setGroupData((prev) => {
+            return {
+              ...prev,
+              data: {
+                ...prev?.data,
+                Events: Array.isArray(prev?.data.Events)
+                  ? [...prev?.data.Events, data.whatever.payload]
+                  : [data.whatever.payload],
+              },
+            };
+          });
+          break;
+
         default:
           console.log("unknown websocket message");
           break;
@@ -689,7 +730,7 @@ export const AuthContextProvider = (props) => {
           },
         }));
       } else {
-        console.log("THIS WERE POST being dublicated");
+        console.log("THIS WERE POST being dublicated", "bug to be sorted");
         setDashBoardData((prev) => ({
           ...prev,
           Posts: [
@@ -719,8 +760,7 @@ export const AuthContextProvider = (props) => {
   useEffect(() => {
     if (isWsReady) {
       const data = JSON.parse(wsVal);
-      console.log(data, "data from websocket");
-
+      console.log(data, "data from websocket", Date.now());
       if (data?.type === "error") {
         handleWebsocketErrors(data);
         return;
@@ -732,8 +772,8 @@ export const AuthContextProvider = (props) => {
       }
 
       if (
-        data?.type?.includes("notification") &&
-        dashBoardData.notifications.some((el) => el.Id === data.Id) === false
+        data?.type?.includes("notification")
+        // dashBoardData.notifications.some((el) => el.Id === data.Id) === false
       ) {
         setDashBoardData((prev) => ({
           ...prev,
@@ -767,29 +807,17 @@ export const AuthContextProvider = (props) => {
           currentProfilePrivacyChanged(data);
           break;
         case "createGroup":
+          const obj = {
+            BasicInfo: data.payload.Data,
+            Status:
+              data.payload.Data.CreatorId === user.Id ? "accepted" : "none",
+          };
           setDashBoardData((prev) => {
             return {
               ...prev,
               groups: Array.isArray(prev.groups)
-                ? [
-                    ...prev.groups,
-                    {
-                      BasicInfo: data.payload.Data,
-                      Status:
-                        data.payload.Data.CreatorId === user.Id
-                          ? "accepted"
-                          : "none",
-                    },
-                  ]
-                : [
-                    {
-                      BasicInfo: data.payload.Data,
-                      Status:
-                        data.payload.Data.CreatorId === user.Id
-                          ? "accepted"
-                          : "none",
-                    },
-                  ],
+                ? [...prev.groups, obj]
+                : [obj],
             };
           });
 
@@ -810,23 +838,36 @@ export const AuthContextProvider = (props) => {
           });
 
           break;
-
-        case "createEvent":
-          console.log(data, "createEvent");
-          if (data?.payload.GroupId !== groupId) return;
+        case "toggleAttendEvent":
+          if (groupId !== data.GroupId) return;
+          // console.log(data, "we are making here");
           setGroupData((prev) => {
             return {
               ...prev,
               data: {
-                ...prev?.data,
-                Events: Array.isArray(prev?.data.Events)
-                  ? [...prev?.data.Events, data?.payload]
-                  : [data?.payload],
+                ...prev.data,
+                Events: prev.data.Events.map((el) => {
+                  if (data.EventId === el.event.Id) {
+                    return {
+                      event: {
+                        ...el.event,
+                        Going: data.Going,
+                        NotGoing: data.NotGoing,
+                      },
+
+                      Going: data.hasOwnProperty("IsAttending")
+                        ? data.IsAttending
+                        : el.Going,
+                    };
+                  }
+                  return el;
+                }),
               },
             };
           });
 
           break;
+
         default:
           // console.log("no action", data);
           break;
@@ -835,12 +876,12 @@ export const AuthContextProvider = (props) => {
   }, [
     isWsReady,
     wsVal,
-    logoutHandler,
-    addPostToFeed,
-    currentProfilePrivacyChanged,
-    handleWebsocketErrors,
-    handleWebsocketSucess,
-    dashBoardData.notifications,
+    // logoutHandler,
+    // addPostToFeed,
+    // currentProfilePrivacyChanged,
+    // handleWebsocketErrors,
+    // handleWebsocketSucess,
+
     user.Id,
     groupId,
   ]);

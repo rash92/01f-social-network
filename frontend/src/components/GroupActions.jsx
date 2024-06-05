@@ -27,7 +27,12 @@ const GroupActions = ({
       show={show}
       flag={flag}
     >
-      <ul className={classes.actions}>
+      <ul
+        className={classes.actions}
+        style={{
+          maxHeight: "500px",
+        }}
+      >
         {status ? (
           <>
             <Action

@@ -84,8 +84,8 @@ const Profile = () => {
   }, [resetIsProfileComponentVisible]);
 
   const requestFollowHandler = () => {
-    console.log("unfollowing");
     if (isWsReady) {
+      console.log(isWsReady, "isWsReady");
       if (data.IsFollowed) {
         wsMsgToServer(
           JSON.stringify({

@@ -17,6 +17,15 @@ const AddEvent = ({groupId}) => {
   } = useInput((value) => value.trim() !== "");
 
   const {
+    isValid: statusIsValid,
+    value: statusValue,
+    hassError: statusInputHassError,
+    valueChangeHandler: statusChangeHandler,
+    valueInputBlurHandler: stausBlurHandler,
+    reset: statusTitleInput,
+  } = useInput((value) => value.trim() !== "");
+
+  const {
     isValid: enteredDateIsValid,
     value: enteredDate,
     hassError: enteredDateInputHassError,
@@ -35,7 +44,10 @@ const AddEvent = ({groupId}) => {
   } = useInput((value) => value.trim() !== "");
 
   let formIsValid =
-    titleIsValid && enteredDescriptionIsValid && enteredDateIsValid
+    titleIsValid &&
+    enteredDescriptionIsValid &&
+    enteredDateIsValid &&
+    statusIsValid
       ? true
       : false;
 
@@ -51,13 +63,16 @@ const AddEvent = ({groupId}) => {
           CreatorId: user.Id,
           Time: new Date(enteredDate),
           GroupId: groupId,
-          Participants: [],
+          Going: 0,
+          NotGoing: 0,
+          Id: statusValue,
         },
       })
     );
 
     resetTitleInput("");
     resetPostInput("");
+    statusTitleInput("");
     resetEnteredDateInput("");
   };
 
@@ -68,6 +83,7 @@ const AddEvent = ({groupId}) => {
   const dateInputClasses = enteredDateInputHassError
     ? `${classes.invalid} `
     : "";
+  const statusInputClasses = statusInputHassError ? `${classes.invalid} ` : "";
 
   return (
     <Form onSubmit={handleSubmit} className="py-3">
@@ -101,6 +117,23 @@ const AddEvent = ({groupId}) => {
           <p className={classes["error-text"]}>input text must not be emty.</p>
         )}
       </Form.Group>
+
+      <Form.Group controlId="formBasicText" className={statusInputClasses}>
+        <Form.Label className="mt-2">Are You Goiing ?</Form.Label>
+        <Form.Control
+          as="textarea"
+          type="Are You Goiing ?"
+          placeholder="Enter going"
+          value={statusValue}
+          onChange={statusChangeHandler}
+          onBlur={stausBlurHandler}
+        />
+
+        {statusInputClasses && (
+          <p className={classes["error-text"]}>input text must not be emty.</p>
+        )}
+      </Form.Group>
+
       <Form.Control
         type="date"
         placeholder="Enter Date"
