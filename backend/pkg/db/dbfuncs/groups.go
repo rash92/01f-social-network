@@ -88,12 +88,17 @@ func AddGroupEventParticipant(groupEventParticipant *GroupEventParticipant) erro
 	return err
 }
 
-func DeleteGroupEventParticipant(groupEventParticipantId string) error {
-	statement, err := db.Prepare("DELETE FROM GroupEventParticipants WHERE Id=?")
+// func F() {
+// 	statement, _ := db.Prepare("DELETE FROM GroupEventParticipants WHERE UserId=?")
+// 	statement.Exec("fe7eb83d-1523-467a-9b1b-b7b4186a9c58")
+// }
+
+func DeleteGroupEventParticipant(participant *GroupEventParticipant) error {
+	statement, err := db.Prepare("DELETE FROM GroupEventParticipants WHERE UserId=? AND EventId=?")
 	if err != nil {
 		return err
 	}
-	_, err = statement.Exec(groupEventParticipantId)
+	_, err = statement.Exec(participant.UserId, participant.EventId)
 
 	return err
 }
@@ -298,10 +303,6 @@ func IsUserAttendingEvent(userId string, eventId string) (bool, error) {
 	return count > 0, err
 }
 
-
-
-
-
 func DeleteGroupt(groupEventParticipantId string) error {
 	statement, err := db.Prepare("DELETE FROM Groups WHERE Id=?")
 	if err != nil {
@@ -311,4 +312,3 @@ func DeleteGroupt(groupEventParticipantId string) error {
 
 	return err
 }
-

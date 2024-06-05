@@ -1,14 +1,37 @@
-import React from "react";
+import React, {useContext} from "react";
 import {Container, Card, Button} from "react-bootstrap";
 import {TiTick} from "react-icons/ti";
 import {FaTimesCircle} from "react-icons/fa";
+import AuthContext from "../store/authContext";
 
 function EventsList({event}) {
+  const {user, isWsReady, wsMsgToServer} = useContext(AuthContext);
   const handleRSVP = (status) => {
-    // Handle RSVP logic here, you can send the status to a parent component
-    console.log(
-      `User is ${status === "going" ? "going" : "not going"} to the event`
-    );
+    console.log(isWsReady);
+    if (isWsReady) {
+      console.log(
+        {
+          type: "toggleAttendEvent",
+          message: {
+            SenderId: user.Id,
+            EventId: event?.event.Id,
+            GroupId: event.event.GroupId,
+          },
+        },
+        Date.now(),
+        "sending"
+      );
+      wsMsgToServer(
+        JSON.stringify({
+          type: "toggleAttendEvent",
+          message: {
+            SenderId: user.Id,
+            EventId: event?.event.Id,
+            GroupId: event.event.GroupId,
+          },
+        })
+      );
+    }
   };
 
   return (
@@ -21,15 +44,23 @@ function EventsList({event}) {
             Day/Time: {new Date(event.event.Time).toLocaleString()}
           </Card.Text>
 
-          <Card.Text>Going: 0</Card.Text>
-          <Card.Text>Not going: 0</Card.Text>
+          <Card.Text>Going: {event?.event?.Going}</Card.Text>
+          <Card.Text>Not going: {event?.event?.NotGoing}</Card.Text>
 
           <div className="d-flex justify-content-between align-items-center">
-            <Button variant="primary" onClick={() => handleRSVP("going")}>
+            <Button
+              disabled={event.Going}
+              variant="primary"
+              onClick={() => handleRSVP("going")}
+            >
               {event.Going && <TiTick />}
               Going
             </Button>
-            <Button variant="secondary" onClick={() => handleRSVP("not going")}>
+            <Button
+              disabled={!event.Going}
+              variant="secondary"
+              onClick={() => handleRSVP("not going")}
+            >
               {!event?.Going && <FaTimesCircle size={20} />}
               <span
                 style={{

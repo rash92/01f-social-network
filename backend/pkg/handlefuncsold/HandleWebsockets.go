@@ -1,24 +1,5 @@
 package handlefuncs
 
-// Include LastMessageTime in database for users so that we can
-// order them in the chat. And include logic for that here.
-
-// If client receives a signal of type BasicUserInfo, that means they
-// have a (potential) new follower.
-
-// *
-
-// Switching to remarshaling app structs to forward to the frontend.
-// I'm up to requestToJoinGroup with this.
-
-// Changing uuid.UUID to string everywhere as I go along.
-
-// Note that notifyClientOfError only notifies the client that there was
-// an error. It doesn't tell the client what the error was. From the
-// POV of the client, it will always be an internal server error. Nor
-// should it notify a user if someone else failed in some action that
-// would have affected them only if it had succeeded.
-
 // Distinguish between errors that need to be returned from, such as
 // failure to add item to db, versus errors that just need to be logged,
 // such as failure to send message to one of several connections.
@@ -33,8 +14,6 @@ package handlefuncs
 // as long as we make sure to use .RLock() only when reading from the database and .Lock()
 // when writing to it.
 
-// What happens if a user's cookie expires after they've logged in? We need to make sure
-// that we're checking for that and handling it appropriately.
 import (
 	"backend/pkg/db/dbfuncs"
 	"encoding/json"
@@ -51,8 +30,8 @@ import (
 
 var (
 	upgrader = websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
+		ReadBufferSize:  4096,
+		WriteBufferSize: 4096,
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
 			return origin == "http://localhost:3000"
@@ -62,10 +41,6 @@ var (
 	activeConnections = make(map[string][]*websocket.Conn)
 	connectionLock    sync.RWMutex
 )
-
-// this is what the client sends to the server,
-// Body will be unmarshalled based on type into PrivateMessage, GroupMessage, or Notification etc.
-// as well as ws messages unrelated to database operations
 
 type SignalReceived struct {
 	Type string          `json:"type"`
@@ -79,22 +54,6 @@ func unmarshalBody[T any](signalBody []byte, receivedData T) {
 		log.Println("type of receivedData:", fmt.Sprintf("%T", receivedData))
 	}
 }
-
-// type PrivateMessage struct {
-// 	Id          string    `json:"Id"`
-// 	SenderId    string    `json:"SenderId"`
-// 	RecipientId string    `json:"RecipientId"`
-// 	Message     string    `json:"Message"`
-// 	CreatedAt   time.Time `json:"CreatedAt"`
-// }
-
-// type GroupMessage struct {
-// 	Id        string `json:"Id"`
-// 	SenderId  string `json:"SenderId"`
-// 	GroupId   string `json:"GroupId"`
-// 	Message   string `json:"Message"`
-// 	CreatedAt string `json:"CreatedAt"`
-// }
 
 type PostFromClient struct {
 	Id                  string    `json:"Id"`
@@ -118,21 +77,9 @@ type TogglePrivacy struct {
 	PrivacySetting string `json:"privacySetting"`
 }
 
-// func (receivedData Post) parseForDB() *dbfuncs.Post {
-// 	return &dbfuncs.Post{
-// 		Title:        receivedData.Title,
-// 		Body:         receivedData.Body,
-// 		CreatorId:    receivedData.CreatorId,
-// 		GroupId:      receivedData.GroupId,
-// 		CreatedAt:    receivedData.CreatedAt,
-// 		Image:        receivedData.Image.Data,
-// 		PrivacyLevel: receivedData.PrivacyLevel,
-// 	}
-// }
-
 type Notification struct {
 	Id         string                 `json:"Id"`
-	ReceiverId string                 `json:"ReceiverId"` // I changed this from RecieverId 4 Apr
+	ReceiverId string                 `json:"ReceiverId"`
 	SenderId   string                 `json:"SenderId"`
 	Payload    map[string]interface{} `json:"payload"`
 	Body       string                 `json:"Body"`
@@ -140,10 +87,6 @@ type Notification struct {
 	CreatedAt  time.Time              `json:"CreatedAt"`
 	Seen       bool                   `json:"Seen"`
 }
-
-// type NotificationSeen struct {
-// 	Id string `json:"Id"`
-// }
 
 func (receivedData Notification) parseForDB(message string) *dbfuncs.Notification {
 	return &dbfuncs.Notification{
@@ -159,37 +102,6 @@ type GroupMember struct {
 	UserId  string `json:"UserId"`
 	Status  string `json:"Status"`
 }
-
-// func (dbNotification *dbfuncs.Notification) parseForClient() Notification {
-// 	user := dbfunc.GetBasicUserInfoById(dbNotification.SenderId)
-// 	body := map[string]interface{}{
-// 		"message": dbNotification.Body,
-// 		"user":    user,
-// 	}
-// 	return Notification{
-// 		Type:       dbNotification.Type,
-// 		ReceiverId: dbNotification.ReceiverId,
-// 		SenderId:   dbNotification.SenderId,
-// 	}
-// }
-
-// // these may not involve database calls but can still be sent through websockets
-// // this can be resused for sending SignalReceiveds to other users about a user who has
-// // e.g. registered, logged in, logged out, or changed their status
-// type BasicUserInfo struct {
-// 	Avatar string `json:"Avatar"`
-// 	UserId         string `json:"UserId"`
-// 	FirstName      string `json:"FirstName"`
-// 	LastName       string `json:"LastName"`
-// 	Nickname       string `json:"Nickname"`
-// 	PrivacySetting string `json:"PrivacySetting"`
-// }
-
-// type RequestToFollow struct {
-// 	User   BasicUserInfo `json:"User"`
-// 	Status string        `json:"Status"`
-// 	Type   string        `json:"Type"`
-// }
 
 type Follow struct {
 	FollowerId  string `json:"FollowerId"`
@@ -236,42 +148,30 @@ type GroupMessage struct {
 	CreatedAt time.Time `json:"CreatedAt"`
 }
 
-// type Event struct {
-// 	EventId     string `json:"EventId"`
-// 	GroupId     string `json:"GroupId"`
-// 	Title       string `json:"Title"`
-// 	Description string `json:"Description"`
-// 	CreatorId   string `json:"CreatorId"`
-// }
+type AnswerRequestToJoinGroup struct {
+	SenderId   string `json:"SenderId"`
+	ReceiverId string `json:"ReceiverId"`
+	GroupId    string `json:"GroupId"`
+	Accept     bool   `json:"Accept"`
+}
 
-// func (receivedData Event) parseForDB() *dbfuncs.Event {
-// 	return &dbfuncs.Event{
-// 		EventId:     receivedData.EventId,
-// 		GroupId:     receivedData.GroupId,
-// 		Title:       receivedData.Title,
-// 		Description: receivedData.Description,
-// 		CreatorId:   receivedData.CreatorId,
-// 	}
-// }
+type InviteToJoinGroup struct {
+	SenderId   string `json:"SenderId"`
+	ReceiverId string `json:"ReceiverId"`
+	GroupId    string `json:"GroupId"`
+}
 
-// func (receivedData Comment) parseForDB() *dbfuncs.Comment {
-// 	return &dbfuncs.Comment{
-// 		Body:      receivedData.Body,
-// 		CreatorId: receivedData.UserId,
-// 		PostId:    receivedData.PostId,
-// 	}
-// }
+type AnswerInvitationToJoinGroup struct {
+	UserId  string `json:"UserId"`
+	GroupId string `json:"GroupId"`
+}
 
-// When a new user registers, send their basic info to all other users? No,
-// this was my original thought, but that would only be necessary if we
-// displayed a menu of all users to all users, as we did in the realtime
-// chat app. We don't do that here. We only display a list of users who
-// are followers or following.
+type GroupEventParticipant struct {
+	UserId  string `json:"SenderId"`
+	EventId string `json:"EventId"`
+	GroupId string `json:"GroupId"`
+}
 
-// Be sure to allow possibilty of one of a user's connections being closed
-// while they still have other connections open. Make this distinct from
-// logging out, although logging out will include closing the current
-// connection.
 func HandleConnection(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Number of goroutines: %d\n", runtime.NumGoroutine())
 	cookie, err := r.Cookie("user_token")
@@ -389,9 +289,6 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 	log.Println("signal.Type", signal.Type)
 
 	switch signal.Type {
-	// case "login":
-	// No need. This is covered at the start of handleConnection.
-	// Sign out and register:
 	case "logout":
 		logout(userID, conn)
 		err = fmt.Errorf("logout")
@@ -426,6 +323,10 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 		var receivedData PostFromClient
 		unmarshalBody(signal.Body, &receivedData)
 		err = post(receivedData)
+	case "groupPost":
+		var receivedData PostFromClient
+		unmarshalBody(signal.Body, &receivedData)
+		err = groupPost(receivedData)
 
 	case "privateMessage":
 		var receivedData PrivateMessage
@@ -459,11 +360,12 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 	case "createEvent":
 		var receivedData GroupEvent
 		unmarshalBody(signal.Body, &receivedData)
+		fmt.Println("createEvent unmarshalled")
 		err = createEvent(receivedData)
-	// case "toggleAttendEvent":
-	// 	var receivedData GroupEventParticipant
-	// 	unmarshalBody(signal.Body, &receivedData)
-	// 	toggleAttendEvent(receivedData)
+	case "toggleAttendEvent":
+		var receivedData GroupEventParticipant
+		unmarshalBody(signal.Body, &receivedData)
+		toggleAttendEvent(receivedData)
 	default:
 		err = fmt.Errorf("unexpected websocket message type: %s", signal.Type)
 	}
@@ -771,43 +673,6 @@ func unfollow(receivedData Unfollow) error {
 	return err
 }
 
-// Only notify a user of an error that occurred while processing an
-// action they attempted. No need to notify someone if someone else
-// failed to follow them, for example. I'm thinking, also, only notify
-// user that a message couldn't be added to the db, since that affects
-// them directly. If a message couldn't be sent to one of their connections,
-// we can just log that and deal with it ourselves.
-func notifyClientOfError(err error, message string, id string, whatever any) error {
-	log.Println("notify client of error", err, message)
-
-	data := map[string]interface{}{
-		"message":  message,
-		"whatever": whatever,
-	}
-
-	if err == nil {
-		data["type"] = "success"
-	} else {
-		data["type"] = "error"
-		data["error"] = err
-	}
-
-	connectionLock.RLock()
-
-	val, ok := activeConnections[id]
-	if ok {
-		for _, c := range val {
-			err = c.WriteJSON(data)
-			if err != nil {
-				fmt.Println("error sending error message to client:", err)
-				break
-			}
-		}
-	}
-	connectionLock.RUnlock()
-	return err
-}
-
 func createGroup(receivedData Group) error {
 	log.Println("starting createGroup")
 	group := dbfuncs.Group{
@@ -873,7 +738,74 @@ func createGroup(receivedData Group) error {
 	connectionLock.RUnlock()
 
 	log.Println("err:", err)
-	notifyClientOfError(err, "createGroup", receivedData.CreatorId, nil)
+	// notifyClientOfError(err, "createGroup", receivedData.CreatorId, nil)
+	return err
+}
+
+func groupPost(receivedData PostFromClient) error {
+	err := validateContent(receivedData.Body)
+	if err != nil {
+		return err
+	}
+
+	dbPost := dbfuncs.Post{
+		Title:        receivedData.Title,
+		Body:         receivedData.Body,
+		CreatorId:    receivedData.CreatorId,
+		PrivacyLevel: receivedData.PrivacyLevel,
+		GroupId:      receivedData.GroupId,
+	}
+	if receivedData.Image != "" {
+		imageUUID, err := dbfuncs.ConvertBase64ToImage(receivedData.Image, "./pkg/db/images")
+		if err != nil {
+			log.Println("error converting base64 to image", err)
+			notifyClientOfError(err, "post", receivedData.CreatorId, nil)
+			return err
+		}
+		dbPost.Image = imageUUID
+		receivedData.Image = imageUUID
+	}
+
+	err = dbfuncs.AddPost(&dbPost)
+	if err != nil {
+		log.Println("error adding post to database", err)
+		notifyClientOfError(err, "post", receivedData.CreatorId, nil)
+		return err
+	}
+
+	receivedData.Id = dbPost.Id
+
+	signalBody, err := json.Marshal(receivedData)
+	if err != nil {
+		log.Println("error marshalling receivedData", err)
+		notifyClientOfError(err, "post", receivedData.CreatorId, nil)
+		return err
+	}
+
+	signal := SignalReceived{
+		Type: "post",
+		Body: signalBody,
+	}
+
+	members, err := dbfuncs.GetGroupMemberIdsByGroupId(receivedData.GroupId)
+	if err != nil {
+		log.Println("error getting group members from database", err)
+		notifyClientOfError(err, "post", receivedData.CreatorId, nil)
+		return err
+	}
+
+	connectionLock.RLock()
+	for _, member := range members {
+		for _, c := range activeConnections[member] {
+			err = c.WriteJSON(signal)
+			if err != nil {
+				log.Println("error sending new post to clients", err)
+			}
+		}
+	}
+	connectionLock.RUnlock()
+
+	// notifyClientOfError(err, "post", receivedData.CreatorId, nil)
 	return err
 }
 
@@ -908,7 +840,7 @@ func post(receivedData PostFromClient) error {
 	}
 
 	receivedData.Id = dbPost.Id
-	 
+
 	signalBody, err := json.Marshal(receivedData)
 	if err != nil {
 		log.Println("error marshalling receivedData", err)
@@ -982,7 +914,7 @@ func post(receivedData PostFromClient) error {
 		}
 	}
 
-	notifyClientOfError(err, "post", receivedData.CreatorId, nil)
+	// notifyClientOfError(err, "post", receivedData.CreatorId, nil)
 	return err
 }
 
@@ -1024,7 +956,7 @@ func TogglePrivacySetting(receivedData TogglePrivacy) error {
 	}
 	connectionLock.RUnlock()
 
-	notifyClientOfError(err, "TogglePrivacySetting", receivedData.UserId, nil)
+	// notifyClientOfError(err, "TogglePrivacySetting", receivedData.UserId, nil)
 	return err
 }
 
@@ -1077,7 +1009,7 @@ func privateMessage(receivedData PrivateMessage) error {
 		}
 	}
 
-	notifyClientOfError(err, "privateMessage", receivedData.Message, nil)
+	// notifyClientOfError(err, "privateMessage", receivedData.Message, nil)
 	return err
 }
 
@@ -1098,14 +1030,14 @@ func groupMessage(receivedData GroupMessage) error {
 
 	connectionLock.RLock()
 	defer connectionLock.RUnlock()
-	recipients, err := dbfuncs.GetGroupMemberIdsByGroupId(receivedData.GroupId)
+	members, err := dbfuncs.GetGroupMemberIdsByGroupId(receivedData.GroupId)
 	if err != nil {
 		log.Println("error getting group members from database", err)
 		notifyClientOfError(err, "error getting group members from database", receivedData.SenderId, nil)
 		return err
 	}
-	for _, recipient := range recipients {
-		for _, c := range activeConnections[recipient] {
+	for _, member := range members {
+		for _, c := range activeConnections[member] {
 			err := c.WriteJSON(receivedData)
 			if err != nil {
 				log.Println("error sending group message to recipient", err)
@@ -1113,7 +1045,7 @@ func groupMessage(receivedData GroupMessage) error {
 		}
 	}
 
-	notifyClientOfError(err, "groupMessage", receivedData.Message, nil)
+	// notifyClientOfError(err, "groupMessage", receivedData.Message, nil)
 	return err
 }
 
@@ -1447,31 +1379,8 @@ func answerInvitationToJoinGroup(receivedData AnswerInvitationToJoinGroup) error
 	return err
 }
 
-type AnswerRequestToJoinGroup struct {
-	SenderId   string `json:"SenderId"`
-	ReceiverId string `json:"ReceiverId"`
-	GroupId    string `json:"GroupId"`
-	Accept     bool   `json:"Accept"`
-}
-
-type InviteToJoinGroup struct {
-	SenderId   string `json:"SenderId"`
-	ReceiverId string `json:"ReceiverId"`
-	GroupId    string `json:"GroupId"`
-}
-
-type AnswerInvitationToJoinGroup struct {
-	UserId  string `json:"UserId"`
-	GroupId string `json:"GroupId"`
-}
-
-type GroupEventParticipant struct {
-	UserId  string `json:"SenderId"`
-	EventId string `json:"EventId"`
-	GroupId string `json:"GroupId"`
-}
-
 func createEvent(receivedData GroupEvent) error {
+	fmt.Println("createEvent called")
 	dbEvent := dbfuncs.GroupEvent{
 		GroupId:     receivedData.GroupId,
 		Title:       receivedData.Title,
@@ -1486,60 +1395,230 @@ func createEvent(receivedData GroupEvent) error {
 		return err
 	}
 
-	receivedData.Id = dbEvent.Id
 	members, err := dbfuncs.GetGroupMemberIdsByGroupId(receivedData.GroupId)
 	if err != nil {
 		log.Println("error getting group members", err)
 		notifyClientOfError(err, "createEvent", receivedData.CreatorId, nil)
 		return err
 	}
+
+	going := 0
+	notGoing := len(members)
+
+	if receivedData.Id == "going" {
+		participant := dbfuncs.GroupEventParticipant{
+			UserId:  receivedData.CreatorId,
+			EventId: dbEvent.Id,
+			GroupId: receivedData.GroupId,
+		}
+		err = dbfuncs.AddGroupEventParticipant(&participant)
+		if err != nil {
+			log.Println("error adding creator as participant to event", err)
+			notifyClientOfError(err, "createEvent", receivedData.CreatorId, nil)
+			return err
+		}
+		going++
+		notGoing--
+	}
+
+	receivedData.Id = dbEvent.Id
+
 	eventToFront, err := DbGroupEventToFrontend(dbEvent)
 	if err != nil {
 		log.Println("error converting event to frontend format", err)
 		notifyClientOfError(err, "createEvent", receivedData.CreatorId, nil)
 		return err
 	}
+
+	eventToFront.Going = going
+	eventToFront.NotGoing = notGoing
+
+	eventCard := GetGroupEventCard(eventToFront, eventToFront.CreatorId)
+
 	newEvent := map[string]any{
-		"type":    "createEvent",
-		"payload": eventToFront,
+		"type":    "notification createEvent",
+		"payload": eventCard,
 	}
+
+	creator, err := dbfuncs.GetBasicUserInfoById(receivedData.CreatorId)
+	if err != nil {
+		log.Println("error getting creator basic info", err)
+		notifyClientOfError(err, "createEvent", receivedData.CreatorId, nil)
+		return err
+	}
+
 	connectionLock.RLock()
 	for _, member := range members {
+		if member == receivedData.CreatorId {
+			continue
+		}
+
+		eventCard := GetGroupEventCard(eventToFront, member)
+
+		message := fmt.Sprintf("%s has created a new event, %s", creator.Nickname, receivedData.Title)
+
+		notification := Notification{
+			Id:         eventToFront.Id,
+			Type:       "notification createEvent",
+			ReceiverId: member,
+			SenderId:   receivedData.CreatorId,
+			Seen:       false,
+			Body:       message,
+		}
+
+		dbNotification := dbfuncs.Notification{
+			Type:       "createEvent",
+			ReceiverId: receivedData.GroupId,
+			SenderId:   receivedData.CreatorId,
+			Seen:       false,
+			Body:       message,
+		}
+
+		notificationId, err := dbfuncs.AddNotification(&dbNotification)
+		if err != nil {
+			log.Println("error adding notification to database", err)
+			notifyClientOfError(err, "createEvent", receivedData.CreatorId, nil)
+			return err
+		}
+
+		notification.Id = notificationId
+		notification.CreatedAt = dbNotification.CreatedAt
+
+		notificationPayload := map[string]any{
+			"EventCard": eventCard,
+			"Message":   dbNotification.Body,
+		}
+
+		notification.Payload = notificationPayload
+
 		for _, c := range activeConnections[member] {
-			err = c.WriteJSON(newEvent)
+			err = c.WriteJSON(notification)
 			if err != nil {
 				log.Println("error sending new event to client", err)
 			}
 		}
 	}
-	notifyClientOfError(err, "createEvent", receivedData.CreatorId, nil)
+	connectionLock.RUnlock()
+
+	notifyClientOfError(err, "createEvent", receivedData.CreatorId, newEvent)
 	return err
 }
 
-// func toggleAttendEvent(receivedData GroupEventParticipant) error {
-// 	participant := dbfuncs.GroupEventParticipant{
-// 		UserId:  receivedData.UserId,
-// 		EventId: receivedData.EventId,
-// 		GroupId: receivedData.GroupId,
-// 	}
-// 	isAttending, err := dbfuncs.IsUserAttendingEvent(participant.UserId, participant.EventId)
-// 	if err != nil {
-// 		log.Println("error checking if user is attending event", err)
-// 		notifyClientOfError(err, "toggleAttendEvent", receivedData.UserId, nil)
-// 		return err
-// 	}
+func toggleAttendEvent(receivedData GroupEventParticipant) error {
+	log.Println("toggleAttendEvent starting")
 
-// 	if isAttending {
-// 		err = dbfuncs.DeleteGroupEventParticipant(&participant)
-// 	} else {
-// 		err = dbfuncs.AddGroupEventParticipant(&participant)
-// 	}
-// 	if err != nil {
-// 		log.Println("error toggling event attendance", err)
-// 		notifyClientOfError(err, "toggleAttendEvent", receivedData.UserId, nil)
-// 		return err
-// 	}
+	participant := dbfuncs.GroupEventParticipant{
+		UserId:  receivedData.UserId,
+		EventId: receivedData.EventId,
+		GroupId: receivedData.GroupId,
+	}
+	isAttending, err := dbfuncs.IsUserAttendingEvent(participant.UserId, participant.EventId)
+	log.Println("isAttending", isAttending)
+	if err != nil {
+		log.Println("error checking if user is attending event", err)
+		notifyClientOfError(err, "toggleAttendEvent", receivedData.UserId, nil)
+		return err
+	}
 
-// 	notifyClientOfError(err, "toggleAttendEvent", receivedData.UserId, nil)
-// 	return err
-// }
+	connectionLock.Lock()
+	if isAttending {
+		err = dbfuncs.DeleteGroupEventParticipant(&participant)
+	} else {
+		err = dbfuncs.AddGroupEventParticipant(&participant)
+	}
+	if err != nil {
+		log.Println("error toggling event attendance", err)
+		notifyClientOfError(err, "toggleAttendEvent", receivedData.UserId, nil)
+		return err
+	}
+	isAttending = !isAttending
+	connectionLock.Unlock()
+
+	members, err := dbfuncs.GetGroupMemberIdsByGroupId(receivedData.GroupId)
+	if err != nil {
+		log.Println("error getting group members", err)
+		notifyClientOfError(err, "toggleAttendEvent", receivedData.UserId, nil)
+		return err
+	}
+
+	if len(members) == 0 {
+		log.Println("no group members found")
+		return err
+	}
+
+	participants, err := dbfuncs.GetEventParticipantIdsByEventId(receivedData.EventId)
+	if err != nil {
+		log.Println("error getting event participants", err)
+		notifyClientOfError(err, "toggleAttendEvent", receivedData.UserId, nil)
+		return err
+	}
+
+	going := len(participants)
+	notGoing := len(members) - going
+
+	forwardedData := map[string]any{
+		"type":     "toggleAttendEvent",
+		"UserId":   receivedData.UserId,
+		"EventId":  receivedData.EventId,
+		"GroupId":  receivedData.GroupId,
+		"Going":    going,
+		"NotGoing": notGoing,
+	}
+
+	fmt.Println("forwardedData.Going", forwardedData["Going"])
+	fmt.Println("forwardedData.NotGoing", forwardedData["NotGoing"])
+
+	connectionLock.RLock()
+	for _, member := range members {
+		_, okay := activeConnections[member]
+		fmt.Println(okay, "okay")
+		if member == receivedData.UserId {
+			forwardedData["IsAttending"] = isAttending
+		}
+
+		for _, c := range activeConnections[member] {
+			// log.Println("start of loop", member)
+			err = c.WriteJSON(forwardedData)
+			if err != nil {
+				log.Println("error sending event attendance to client", err)
+			}
+			// log.Println("end of loop", member)
+		}
+		delete(forwardedData, "IsAttending")
+	}
+	connectionLock.RUnlock()
+
+	// notifyClientOfError(err, "toggleAttendEvent notify", receivedData.UserId, nil)
+	return err
+}
+
+func notifyClientOfError(err error, message string, id string, whatever any) error {
+	log.Println("notify client of error", err, message)
+
+	data := map[string]interface{}{
+		"message":  message,
+		"whatever": whatever,
+	}
+
+	if err == nil {
+		data["type"] = "success"
+	} else {
+		data["type"] = "error"
+		data["error"] = err
+	}
+
+	connectionLock.RLock()
+
+	val, ok := activeConnections[id]
+	if ok {
+		for _, c := range val {
+			err = c.WriteJSON(data)
+			if err != nil {
+				fmt.Println("error sending error message to client:", err)
+				break
+			}
+		}
+	}
+	connectionLock.RUnlock()
+	return err
+}

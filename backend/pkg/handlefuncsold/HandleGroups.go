@@ -27,13 +27,14 @@ type GroupCard struct {
 }
 
 type GroupEvent struct {
-	Id           string          `json:"Id"`
-	GroupId      string          `json:"GroupId"`
-	Title        string          `json:"Title"`
-	Description  string          `json:"Description"`
-	CreatorId    string          `json:"CreatorId"`
-	Time         time.Time       `json:"Time"`
-	Participants []BasicUserInfo `json:"Participants"`
+	Id          string    `json:"Id"`
+	GroupId     string    `json:"GroupId"`
+	Title       string    `json:"Title"`
+	Description string    `json:"Description"`
+	CreatorId   string    `json:"CreatorId"`
+	Time        time.Time `json:"Time"`
+	Going       int       `json:"Going"`
+	NotGoing    int       `json:"NotGoing"`
 }
 
 type GroupEventCard struct {
@@ -154,10 +155,13 @@ func GetGroupEventCards(groupId string, userId string) ([]GroupEventCard, error)
 }
 
 func GetGroupEventCard(event GroupEvent, userId string) GroupEventCard {
-	for _, participant := range event.Participants {
-		if participant.Id == userId {
-			return GroupEventCard{event, true}
-		}
+	attending, err := dbfuncs.IsUserAttendingEvent(userId, event.Id)
+	if err != nil {
+		fmt.Println(err)
+		return GroupEventCard{event, false}
+	}
+	if attending {
+		return GroupEventCard{event, true}
 	}
 	return GroupEventCard{event, false}
 }
@@ -465,18 +469,21 @@ func DbGroupEventToFrontend(dbEvent dbfuncs.GroupEvent) (GroupEvent, error) {
 	if err != nil {
 		return GroupEvent{}, err
 	}
-	participants, err := GetBasicUserInfoFromUsers(participantIds)
+	going := len(participantIds)
+	groupMembers, err := dbfuncs.GetGroupMemberIdsByGroupId(dbEvent.GroupId)
 	if err != nil {
 		return GroupEvent{}, err
 	}
+	notGoing := len(groupMembers) - going
 	event := GroupEvent{
-		Id:           dbEvent.Id,
-		GroupId:      dbEvent.GroupId,
-		Title:        dbEvent.Title,
-		Description:  dbEvent.Description,
-		CreatorId:    dbEvent.CreatorId,
-		Time:         dbEvent.Time,
-		Participants: participants,
+		Id:          dbEvent.Id,
+		GroupId:     dbEvent.GroupId,
+		Title:       dbEvent.Title,
+		Description: dbEvent.Description,
+		CreatorId:   dbEvent.CreatorId,
+		Time:        dbEvent.Time,
+		Going:       going,
+		NotGoing:    notGoing,
 	}
 	return event, err
 }

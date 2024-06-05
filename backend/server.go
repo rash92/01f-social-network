@@ -49,6 +49,7 @@ func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
 }
 
 func main() {
+	// dbfuncs.F()
 
 	// dbfuncs.DeleteUserByUsername("Accepted")
 	// sqlite.Migrate()
