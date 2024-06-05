@@ -1440,7 +1440,7 @@ func createEvent(receivedData GroupEvent) error {
 		"payload": eventCard,
 	}
 
-	creator, err := dbfuncs.GetBasicUserInfoById(receivedData.CreatorId)
+	creator, err := GetBasicUserInfoById(receivedData.CreatorId)
 	if err != nil {
 		log.Println("error getting creator basic info", err)
 		notifyClientOfError(err, "createEvent", receivedData.CreatorId, nil)
