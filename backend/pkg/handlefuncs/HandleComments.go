@@ -8,6 +8,25 @@ import (
 	"time"
 )
 
+func DbMessagesToFrontend(dbMessages []dbfuncs.GroupMessage) []GroupMessage {
+	var frontendGroupMessages []GroupMessage
+	for _, dbGroupMessage := range dbMessages {
+		frontendGroupMessages = append(frontendGroupMessages, DbGroupMessageToFrontend(dbGroupMessage))
+	}
+	return frontendGroupMessages
+}
+
+func DbMessageToFrontend(dbMessage dbfuncs.GroupMessage) GroupMessage {
+	frontendGroupMessage := GroupMessage{
+		Id:        dbMessage.Id,
+		SenderId:  dbMessage.SenderId,
+		GroupId:   dbMessage.GroupId,
+		Message:   dbMessage.Message,
+		CreatedAt: dbMessage.CreatedAt,
+	}
+	return frontendGroupMessage
+}
+
 func HandleAddComment(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {

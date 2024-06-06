@@ -266,11 +266,12 @@ func GetVisiblePosts(userId string) ([]Post, error) {
 	query := `
 	SELECT * FROM Posts
 	WHERE 
-			(PrivacyLevel = 'public' AND GroupId IS NULL) OR 
+			(GroupId IS NULL OR GroupId IN (SELECT GroupId From GroupMembers WHERE UserId = ?)) AND
+			(PrivacyLevel = 'public' OR 
 			(PrivacyLevel = 'private' AND CreatorId IN (SELECT FollowingId FROM Follows WHERE FollowerId = ?)) OR 
 			(PrivacyLevel = 'superprivate' AND Id IN (SELECT PostId FROM PostChosenFollowers WHERE FollowerId = ?)) OR
-			CreatorId = ? 
-ORDER BY CreatedAt DESC
+			CreatorId = ?)
+	ORDER BY CreatedAt DESC
 	`
 	rows, err := db.Query(query, userId, userId, userId, userId)
 	if err != nil {
@@ -330,12 +331,13 @@ func GetVisiblePostsForProfile(userId, profileOwnerId string) ([]Post, error) {
 	SELECT * FROM Posts
 	WHERE 
 			(CreatorId = ?) AND
+			(GroupId IS NULL OR GroupId IN (SELECT GroupId From GroupMembers WHERE UserId = ?)) AND
 			((PrivacyLevel = 'public') OR 
 			(PrivacyLevel = 'private' AND CreatorId IN (SELECT FollowingId FROM Follows WHERE FollowerId = ?)) OR 
 			(PrivacyLevel = 'superprivate' AND Id IN (SELECT PostId FROM PostChosenFollowers WHERE FollowerId = ?)) )
 	ORDER BY CreatedAt DESC
 	`
-	rows, err := db.Query(query, profileOwnerId, userId, userId)
+	rows, err := db.Query(query, profileOwnerId, userId, userId, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -384,6 +386,8 @@ func GetVisiblePostsForProfile(userId, profileOwnerId string) ([]Post, error) {
 
 	return posts, nil
 }
+
+
 
 func GetUserLikeDislike(userId, postId string) (int, error) {
 	var like bool

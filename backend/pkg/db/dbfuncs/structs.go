@@ -38,6 +38,7 @@ type User struct {
 	CreatedAt      time.Time
 }
 
+// avatar and nickname isn't used in frontend so could get rid of it.
 type PrivateMessage struct {
 	Id          string
 	SenderId    string

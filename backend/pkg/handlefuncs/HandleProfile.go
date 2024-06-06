@@ -8,31 +8,9 @@ import (
 	"net/http"
 )
 
-// I've included whatever structs I needed in this file. They can be replaced
-// with the real ones when they're ready, or if anyone knows where they live
-// now. UPDATE: We've moved some of these structs to dbfuncs, along with the
-// helper functions that access the database.
-// I just added this to get rid of the red line under *Image. I don't know
-// what Image is really supposed to be.
-// type Image []byte
-
 // This is what will be returned by the handler.
 
-type Profile struct {
-	Owner     dbfuncs.User
-	Posts     []dbfuncs.Post
-	Followers []BasicUserInfo
-	Following []BasicUserInfo
-
-	// NumberOfPosts     int
-	// NumberOfFollowers int
-	// NumberOfFollowing int
-	PendingFollowers []BasicUserInfo
-	IsFollowed       bool
-	IsPending        bool
-}
-
-func helper(input []string) []BasicUserInfo {
+func UserIdsToBasicUserInfos(input []string) []BasicUserInfo {
 	res := []BasicUserInfo{}
 
 	for _, followerId := range input {
@@ -124,33 +102,6 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println(ownerId, "")
 
-	//  this  is where we would get the number of posts, followers, and following
-	// we decided we not going to use this for now so it can be removed
-
-	// profile.NumberOfPosts, err = dbfuncs.GetNumberOfById(ownerId, "Posts")
-	// if err != nil {
-	// 	errorMessage := fmt.Sprintf("error getting number of posts: %v", err.Error())
-	// 	fmt.Println(err.Error(), "90")
-	// 	http.Error(w, errorMessage, http.StatusInternalServerError)
-	// 	return
-	// }
-
-	// profile.NumberOfFollowers, err = dbfuncs.GetNumberOfFollowersAndFollowing("FollowingId", ownerId)
-	// if err != nil {
-	// 	errorMessage := fmt.Sprintf("error getting number of followers: %v", err.Error())
-	// 	fmt.Println(err.Error())
-	// 	http.Error(w, errorMessage, http.StatusInternalServerError)
-	// 	return
-	// }
-
-	// profile.NumberOfFollowing, err = dbfuncs.GetNumberOfFollowersAndFollowing("FollowerId", ownerId)
-	// if err != nil {
-	// 	fmt.Println(err.Error())
-	// 	errorMessage := fmt.Sprintf("error getting number of following: %v", err.Error())
-	// 	http.Error(w, errorMessage, http.StatusInternalServerError)
-	// 	return
-	// }
-
 	if usersOwnProfile {
 		pendingFollowers, err := dbfuncs.GetPendingFollowerIdsByFollowingId(ownerId)
 		if err != nil {
@@ -161,7 +112,7 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		profile.PendingFollowers = helper(pendingFollowers)
+		profile.PendingFollowers = UserIdsToBasicUserInfos(pendingFollowers)
 
 	}
 
@@ -188,45 +139,6 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, errorMessage, http.StatusInternalServerError)
 			return
 		}
-		// if profile.IsFollowed {
-		// 	a, err := dbfuncs.GetPostsByCreatorId(ownerId)
-		// 	if err != nil {
-		// 		errorMessage := fmt.Sprintf("error getting posts: %v", err.Error())
-		// 		http.Error(w, errorMessage, http.StatusInternalServerError)
-		// 		return
-		// 	}
-		// 	for _, post := range a {
-		// 		if post.PrivacyLevel == "public" || post.PrivacyLevel == "private" {
-		// 			profile.Posts = append(profile.Posts, post)
-		// 		}
-		// 		if post.PrivacyLevel == "superprivate" {
-		// 			b, err := dbfuncs.GetPostChosenFollowerIdsByPostId(post.Id)
-		// 			if err != nil {
-		// 				errorMessage := fmt.Sprintf("error getting posts: %v", err.Error())
-		// 				http.Error(w, errorMessage, http.StatusInternalServerError)
-		// 				return
-		// 			}
-		// 			for _, followerId := range b {
-		// 				if followerId == userId {
-		// 					profile.Posts = append(profile.Posts, post)
-		// 				}
-		// 			}
-		// 		} else {
-		// 			a, err := dbfuncs.GetPostsByCreatorId(ownerId)
-		// 			if err != nil {
-		// 				errorMessage := fmt.Sprintf("error getting posts: %v", err.Error())
-		// 				http.Error(w, errorMessage, http.StatusInternalServerError)
-		// 				return
-		// 			}
-		// 			for _, post := range a {
-		// 				if post.PrivacyLevel == "public" {
-		// 					profile.Posts = append(profile.Posts, post)
-		// 				}
-		// 			}
-		// 		}
-		// 	}
-
-		// }
 	}
 
 	acceptedFollowers, err := dbfuncs.GetAcceptedFollowerIdsByFollowingId(ownerId)
@@ -236,7 +148,7 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	profile.Followers = helper(acceptedFollowers)
+	profile.Followers = UserIdsToBasicUserInfos(acceptedFollowers)
 
 	following, err := dbfuncs.GetAcceptedFollowingIdsByFollowerId(ownerId)
 	if err != nil {
@@ -245,10 +157,44 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	profile.Following = helper(following)
+	profile.Following = UserIdsToBasicUserInfos(following)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(profile)
+
+}
+
+func HandleToggleProfilePrivacy(w http.ResponseWriter, r *http.Request) {
+
+	var privacy PrivcySetting
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "405 Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&privacy)
+
+	if err != nil {
+		errorMessage := fmt.Sprintf("error decoding userId: %v", err.Error())
+		fmt.Println(err.Error(), "60")
+		http.Error(w, errorMessage, http.StatusInternalServerError)
+		return
+	}
+	fmt.Println("privacy setting", privacy)
+	err = dbfuncs.UpdatePrivacySetting(privacy.UserId, privacy.Privacy)
+	if err != nil {
+		errorMessage := fmt.Sprintf("error updating privacy setting: %v", err.Error())
+		fmt.Println(err.Error(), "66")
+		http.Error(w, errorMessage, http.StatusInternalServerError)
+		return
+	}
+
+	response := make(map[string]string)
+	response["message"] = "Successfully updated privacy setting"
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
 
 }

@@ -8,19 +8,6 @@ import (
 	"net/http"
 )
 
-func GetAllChats(ownerId string) ([]string, error) {
-
-	var chatIds []string
-
-	messaged, err := dbfuncs.GetAllUserIdsSortedByLastPrivateMessage(ownerId)
-	if err != nil {
-		fmt.Println("error getting all user ids sorted by last private message", err)
-		return chatIds, err
-	}
-
-	return messaged, err
-}
-
 func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 	var ownerId string
 

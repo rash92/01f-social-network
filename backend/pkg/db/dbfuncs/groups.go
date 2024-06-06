@@ -88,11 +88,6 @@ func AddGroupEventParticipant(groupEventParticipant *GroupEventParticipant) erro
 	return err
 }
 
-// func F() {
-// 	statement, _ := db.Prepare("DELETE FROM GroupEventParticipants WHERE UserId=?")
-// 	statement.Exec("fe7eb83d-1523-467a-9b1b-b7b4186a9c58")
-// }
-
 func DeleteGroupEventParticipant(participant *GroupEventParticipant) error {
 	statement, err := db.Prepare("DELETE FROM GroupEventParticipants WHERE UserId=? AND EventId=?")
 	if err != nil {
@@ -119,27 +114,79 @@ func AddGroupMessage(groupMessage *GroupMessage) error {
 	return err
 }
 
-func GetAllGroupMessagesByGroupId(userId string) ([]GroupMessage, error) {
-	return []GroupMessage{}, nil
+func GetAllGroupMessagesByGroupId(groupId string) ([]GroupMessage, error) {
+	var groupMessages []GroupMessage
+	query := `
+	SELECT * FROM GroupMessages WHERE GroupId=?
+	ORDER BY CreatedAt defer rows.Close()DESC
+	`
+	rows, err := db.Query(query, groupId)
+	if err == sql.ErrNoRows {
+		return groupMessages, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var message GroupMessage
+		err := rows.Scan(&message.Id, &message.SenderId, &message.GroupId, &message.Message, &message.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		groupMessages = append(groupMessages, message)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return groupMessages, err
+
 }
 
-func GetRecentGroupMessagesByGroupId(userId string, numberOfMessages, offset int) ([]GroupMessage, error) {
-	return []GroupMessage{}, nil
+func GetLimitedGroupMessagesByGroupId(groupId string, numberOfMessages, offset int) ([]GroupMessage, error) {
+	var groupMessages []GroupMessage
+	query := `
+	SELECT * FROM GroupMessages WHERE GroupId=?
+	ORDER BY CreatedAt DESC
+	LIMIT ? OFFSET ?
+	`
+
+	rows, err := db.Query(query, groupId, numberOfMessages, offset)
+	if err == sql.ErrNoRows {
+		return groupMessages, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		var message GroupMessage
+		err := rows.Scan(&message.Id, &message.SenderId, &message.GroupId, &message.Message, &message.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		groupMessages = append(groupMessages, message)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return groupMessages, err
 }
 
 func GetGroupEventsByGroupId(groupId string) ([]GroupEvent, error) {
 	var GroupEvents []GroupEvent
-	row, err := db.Query("SELECT Id, GroupId, Title, Description, CreatorId, Time FROM GroupEvents WHERE GroupId=?", groupId)
+	rows, err := db.Query("SELECT Id, GroupId, Title, Description, CreatorId, Time FROM GroupEvents WHERE GroupId=?", groupId)
 	if err == sql.ErrNoRows {
 		return GroupEvents, nil
 	}
 	if err != nil {
 		return GroupEvents, err
 	}
-	defer row.Close()
-	for row.Next() {
+	defer rows.Close()
+	for rows.Next() {
 		var GroupEvent GroupEvent
-		err = row.Scan(&GroupEvent.Id, &GroupEvent.GroupId, &GroupEvent.Title, &GroupEvent.Description, &GroupEvent.CreatorId, &GroupEvent.Time)
+		err = rows.Scan(&GroupEvent.Id, &GroupEvent.GroupId, &GroupEvent.Title, &GroupEvent.Description, &GroupEvent.CreatorId, &GroupEvent.Time)
 		if err != nil {
 			return GroupEvents, err
 		}
@@ -157,17 +204,17 @@ func GetGroupCreatorIdByGroupId(groupId string) (string, error) {
 
 func GetGroupMemberIdsByGroupId(groupId string) ([]string, error) {
 	var GroupMemberIds []string
-	row, err := db.Query("SELECT UserId FROM GroupMembers WHERE GroupId=? AND Status=?", groupId, "accepted")
+	rows, err := db.Query("SELECT UserId FROM GroupMembers WHERE GroupId=? AND Status=?", groupId, "accepted")
 	if err == sql.ErrNoRows {
 		return GroupMemberIds, nil
 	}
 	if err != nil {
 		return GroupMemberIds, err
 	}
-	defer row.Close()
-	for row.Next() {
+	defer rows.Close()
+	for rows.Next() {
 		var GroupMemberId string
-		err = row.Scan(&GroupMemberId)
+		err = rows.Scan(&GroupMemberId)
 		if err != nil {
 			return GroupMemberIds, err
 		}
@@ -178,17 +225,17 @@ func GetGroupMemberIdsByGroupId(groupId string) ([]string, error) {
 
 func GetRequestedGroupMemberIdsByGroupId(groupId string) ([]string, error) {
 	var GroupMemberIds []string
-	row, err := db.Query("SELECT UserId FROM GroupMembers WHERE GroupId=? AND Status=?", groupId, "requested")
+	rows, err := db.Query("SELECT UserId FROM GroupMembers WHERE GroupId=? AND Status=?", groupId, "requested")
 	if err == sql.ErrNoRows {
 		return GroupMemberIds, nil
 	}
 	if err != nil {
 		return GroupMemberIds, err
 	}
-	defer row.Close()
-	for row.Next() {
+	defer rows.Close()
+	for rows.Next() {
 		var GroupMemberId string
-		err = row.Scan(&GroupMemberId)
+		err = rows.Scan(&GroupMemberId)
 		if err != nil {
 			return GroupMemberIds, err
 		}
@@ -199,17 +246,17 @@ func GetRequestedGroupMemberIdsByGroupId(groupId string) ([]string, error) {
 
 func GetInvitedGroupMemberIdsByGroupId(groupId string) ([]string, error) {
 	var GroupMemberIds []string
-	row, err := db.Query("SELECT UserId FROM GroupMembers WHERE GroupId=? AND Status=?", groupId, "invited")
+	rows, err := db.Query("SELECT UserId FROM GroupMembers WHERE GroupId=? AND Status=?", groupId, "invited")
 	if err == sql.ErrNoRows {
 		return GroupMemberIds, nil
 	}
 	if err != nil {
 		return GroupMemberIds, err
 	}
-	defer row.Close()
-	for row.Next() {
+	defer rows.Close()
+	for rows.Next() {
 		var GroupMemberId string
-		err = row.Scan(&GroupMemberId)
+		err = rows.Scan(&GroupMemberId)
 		if err != nil {
 			return GroupMemberIds, err
 		}
@@ -222,17 +269,17 @@ func GetInvitedGroupMemberIdsByGroupId(groupId string) ([]string, error) {
 
 func GetAllGroups() ([]Group, error) {
 	var groups []Group
-	row, err := db.Query("SELECT Id, Title, Description, CreatorId, CreatedAt FROM Groups")
+	rows, err := db.Query("SELECT Id, Title, Description, CreatorId, CreatedAt FROM Groups")
 	if err == sql.ErrNoRows {
 		return groups, nil
 	}
 	if err != nil {
 		return groups, err
 	}
-	defer row.Close()
-	for row.Next() {
+	defer rows.Close()
+	for rows.Next() {
 		var group Group
-		err = row.Scan(&group.Id, &group.Title, &group.Description, &group.CreatorId, &group.CreatedAt)
+		err = rows.Scan(&group.Id, &group.Title, &group.Description, &group.CreatorId, &group.CreatedAt)
 		if err != nil {
 			return groups, err
 		}
@@ -300,7 +347,7 @@ func IsUserAttendingEvent(userId string, eventId string) (bool, error) {
 	return count > 0, err
 }
 
-func DeleteGroupt(groupEventParticipantId string) error {
+func DeleteGroup(groupEventParticipantId string) error {
 	statement, err := db.Prepare("DELETE FROM Groups WHERE Id=?")
 	if err != nil {
 		return err

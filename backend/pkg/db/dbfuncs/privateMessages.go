@@ -148,7 +148,46 @@ func GetAllPrivateMessagesByUserId(CurrUser, OtherUser string) ([]PrivateMessage
 
 }
 
-func GetRecentPrivateMessagesByUserId(userId string, numberOfMessages, offset int) ([]PrivateMessage, error) {
-	return []PrivateMessage{}, nil
-}
+func GetLimitedPrivateMessages(CurrentUserId string, OtherUserId string, numberOfMessages, offset int) ([]PrivateMessage, error) {
+	messages := []PrivateMessage{}
+	query := `
+		SELECT * FROM PrivateMessages
+		WHERE (senderId = ? AND RecipientId = ?) OR (SenderId = ? AND RecipientId = ?)
+		ORDER BY CreatedAt DESC
+		LIMIT ? OFFSET ?
+	`
+	rows, err := db.Query(query, CurrentUserId, OtherUserId, OtherUserId, CurrentUserId, numberOfMessages, offset)
+	if err != nil {
 
+		return messages, err
+	}
+
+	for rows.Next() {
+		var message PrivateMessage
+		err := rows.Scan(&message.Id, &message.SenderId, &message.RecipientId, &message.Message, &message.CreatedAt)
+
+		if err != nil {
+			return nil, err
+
+		}
+
+		user, err := GetUserById(message.SenderId)
+
+		if err != nil {
+			return nil, err
+
+		}
+		message.Avatar = user.Avatar
+		message.Nickname = user.Nickname
+
+		messages = append(messages, message)
+	}
+
+	// Reverse the order of messages
+	for i := 0; i < len(messages)/2; i++ {
+		j := len(messages) - i - 1
+		messages[i], messages[j] = messages[j], messages[i]
+	}
+
+	return messages, nil
+}

@@ -2,29 +2,10 @@ package main
 
 import (
 	"backend/pkg/db/dbfuncs"
-
-	handlefuncs "backend/pkg/handlefuncsold"
+	"backend/pkg/handlefuncs"
 	"fmt"
 	"net/http"
 )
-
-// func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		handlefuncs.Cors(&w, r)
-// 		cookie, err := r.Cookie("user_token")
-// 		if err != nil {
-// 			http.Error(w, `{"error": "something went to wrong"}`, http.StatusUnauthorized)
-// 			return
-// 		}
-// 		isValidCookie, err := dbfuncs.ValidateCookie(cookie.Value)
-// 		if err != nil || !isValidCookie {
-// 			// fmt.Println("cookie value wrapper function", cookie.Value)
-// 			http.Error(w, `{"error": "something went to wrong"}`, http.StatusUnauthorized)
-// 			return
-// 		}
-// 		handler(w, r)
-// 	}
-// }
 
 func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -39,7 +20,6 @@ func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
 		cookieValue, err := dbfuncs.ValidateCookie(cookie.Value)
 
 		if !(err == nil && cookieValue) {
-			// fmt.Println("cookie value wrapper function", cookie.Value)
 			http.Error(w, `{"error": "something went to wrong"}`, http.StatusUnauthorized)
 			return
 		}
@@ -49,8 +29,6 @@ func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
 }
 
 func main() {
-	// dbfuncs.F()
-
 	// dbfuncs.DeleteUserByUsername("Accepted")
 	// sqlite.Migrate()
 	http.HandleFunc("/ws", wrapperHandler(handlefuncs.HandleConnection))
@@ -77,7 +55,7 @@ func main() {
 	http.HandleFunc("/get-users", wrapperHandler(handlefuncs.HandleGetUsers))
 	http.HandleFunc("/get-messages", wrapperHandler(handlefuncs.MessagesHandler))
 	http.HandleFunc("/search", wrapperHandler(handlefuncs.HandleSearchUser))
-	http.HandleFunc("/toggle-privacy", wrapperHandler(handlefuncs.HanddleToggleProfilePrivacy))
+	http.HandleFunc("/toggle-privacy", wrapperHandler(handlefuncs.HandleToggleProfilePrivacy))
 	http.Handle("/images/", http.StripPrefix("/images", http.FileServer(http.Dir("./pkg/db/images"))))
 	http.Handle("/search-Follower", wrapperHandler(handlefuncs.HandleSearchFollower))
 

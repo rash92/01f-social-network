@@ -7,59 +7,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-
-	"time"
 )
 
-//struct for frontend to consume
-
-type BasicGroupInfo struct {
-	Id          string    `json:"Id"`
-	CreatorId   string    `json:"CreatorId"`
-	Name        string    `json:"Title"`
-	Description string    `json:"Description"`
-	CreatedAt   time.Time `json:"CreatedAt"`
-}
-
-type GroupCard struct {
-	BasicInfo BasicGroupInfo `json:"BasicInfo"`
-	Status    string         `json:"Status"`
-}
-
-type GroupEvent struct {
-	Id          string    `json:"Id"`
-	GroupId     string    `json:"GroupId"`
-	Title       string    `json:"Title"`
-	Description string    `json:"Description"`
-	CreatorId   string    `json:"CreatorId"`
-	Time        time.Time `json:"Time"`
-	Going       int       `json:"Going"`
-	NotGoing    int       `json:"NotGoing"`
-}
-
-type GroupEventCard struct {
-	Event GroupEvent `json:"event"`
-	Going bool       `json:"Going"`
-}
-
-type DetailedGroupInfo struct {
-	BasicInfo        BasicGroupInfo   `json:"BasicInfo"`
-	InvitedMembers   []BasicUserInfo  `json:"InvitedMembers"`
-	RequestedMembers []BasicUserInfo  `json:"RequestedMembers"`
-	Members          []BasicUserInfo  `json:"Members"`
-	Posts            []Post           `json:"Posts"`
-	EventCards       []GroupEventCard `json:"Events"`
-	Messages         []GroupMessage   `json:"Messages"`
-	Status           string           `json:"Status"`
-
-	Invite []BasicUserInfo `json:"Invite"`
-}
-
-type GroupDash struct {
-	GroupCards []GroupCard `json:"GroupCards"`
-}
-
-//
+//structs for frontend to consume
 
 func HandleGroup(w http.ResponseWriter, r *http.Request) {
 	var userId string
@@ -106,40 +56,6 @@ func HandleGroup(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(group)
 }
-
-// func HandleGroupDash(w http.ResponseWriter, r *http.Request) {
-// 	if r.Method != http.MethodPost {
-// 		http.Error(w, "405 Method Not Allowed", http.StatusMethodNotAllowed)
-// 		return
-// 	}
-
-// 	cookie, err := r.Cookie("user_token")
-// 	if err != nil {
-// 		errorMessage := fmt.Sprintf("error retrieving cookie: %v", err.Error())
-// 		fmt.Println(err.Error(), errorMessage)
-// 		http.Error(w, errorMessage, http.StatusForbidden)
-// 		return
-// 	}
-// 	userId, err := dbfuncs.GetUserIdFromCookie(cookie.Value)
-// 	if err != nil {
-// 		errorMessage := fmt.Sprintf("error getting user from cookie: %v", err.Error())
-// 		fmt.Println(err.Error(), errorMessage)
-// 		http.Error(w, errorMessage, http.StatusInternalServerError)
-// 		return
-// 	}
-// 	groupDash, err := GetGroupDash(userId)
-// 	if err != nil {
-// 		errorMessage := fmt.Sprintf("error getting group dash: %v", err.Error())
-// 		fmt.Println(err.Error(), errorMessage)
-// 		http.Error(w, errorMessage, http.StatusInternalServerError)
-// 		return
-
-// 	}
-
-// 	w.Header().Set("Content-Type", "application/json")
-// 	w.WriteHeader(http.StatusOK)
-// 	json.NewEncoder(w).Encode(groupDash)
-// }
 
 func GetGroupEventCards(groupId string, userId string) ([]GroupEventCard, error) {
 	groupEvents, err := GetGroupEventsByGroupId(groupId)
@@ -205,9 +121,8 @@ func GetGroupDash(userId string) (GroupDash, error) {
 func GetGroupCard(groupId string, userId string) (GroupCard, error) {
 	basicInfo, err := GetBasicGroupInfo(groupId)
 	if err != nil {
-
+		fmt.Println(err)
 		return GroupCard{}, err
-
 	}
 	status, err := dbfuncs.GetGroupStatus(groupId, userId)
 	if err == sql.ErrNoRows {
@@ -317,34 +232,6 @@ func GetGroup(groupId string, userId string) (DetailedGroupInfo, error) {
 
 	return groupInfo, err
 }
-
-// //handle get profile to use as template for handle groups
-
-// // I've included whatever structs I needed in this file. They can be replaced
-// // with the real ones when they're ready, or if anyone knows where they live
-// // now. UPDATE: We've moved some of these structs to dbfuncs, along with the
-// // helper functions that access the database.
-// // I just added this to get rid of the red line under *Image. I don't know
-// // what Image is really supposed to be.
-// // type Image []byte
-
-// // This is what will be returned by the handler.
-
-// type Profile struct {
-// 	Owner     dbfuncs.User
-// 	Posts     []dbfuncs.Post
-// 	Followers []BasicUserInfo
-// 	Following []BasicUserInfo
-
-// 	// NumberOfPosts     int
-// 	// NumberOfFollowers int
-// 	// NumberOfFollowing int
-// 	PendingFollowers []BasicUserInfo
-// 	IsFollowed       bool
-// 	IsPending        bool
-// }
-
-// CONVERSIONS SECTION
 
 func GetBasicGroupInfo(groupId string) (BasicGroupInfo, error) {
 
@@ -518,205 +405,6 @@ func GetBasicUserInfoById(userId string) (BasicUserInfo, error) {
 	}
 	return basicInfo, err
 }
-
-// func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
-// 	var userId string
-// 	var ownerId string
-// 	var profile Profile
-// 	var usersOwnProfile bool
-
-// 	if r.Method != http.MethodPost {
-// 		http.Error(w, "405 Method Not Allowed", http.StatusMethodNotAllowed)
-// 		return
-// 	}
-
-// 	err := json.NewDecoder(r.Body).Decode(&ownerId)
-// 	if err != nil {
-// 		errorMessage := fmt.Sprintf("error decoding userId: %v", err.Error())
-// 		fmt.Println(err.Error(), "60")
-// 		http.Error(w, errorMessage, http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	profile.Owner, err = dbfuncs.GetUserById(ownerId)
-
-// 	if err != nil {
-// 		errorMessage := fmt.Sprintf("error getting profile owner: %v", err.Error())
-// 		fmt.Println(err.Error(), "66")
-// 		http.Error(w, errorMessage, http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	profile.Owner.Password = []byte{}
-
-// 	cookie, _ := r.Cookie("user_token")
-// 	userId, _ = dbfuncs.GetUserIdFromCookie(cookie.Value)
-
-// 	if userId == ownerId {
-// 		usersOwnProfile = true
-// 	}
-
-// 	// Check Follows table to see if there's a row with FollowerId = userId and FollowingId = ownerId.
-// 	profile.IsFollowed, err = dbfuncs.IsFollowing(userId, ownerId)
-// 	if err != nil {
-// 		fmt.Printf("failed to execute query: %v\n", err)
-// 		http.Error(w, "Failed to execute query", http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	profile.IsPending, err = dbfuncs.IsPending(userId, ownerId)
-// 	if err != nil {
-// 		fmt.Printf("failed to execute query: %v\n", err)
-// 		http.Error(w, "Failed to execute query", http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	if !usersOwnProfile && profile.Owner.PrivacySetting == "private" && !profile.IsFollowed {
-
-// 		w.Header().Set("Content-Type", "application/json")
-// 		w.WriteHeader(http.StatusOK)
-
-// 		if err := json.NewEncoder(w).Encode(profile); err != nil {
-// 			// Handle JSON encoding error
-// 			http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
-// 			fmt.Println("Failed to encode JSON:", err)
-// 			return
-// 		}
-
-// 		return
-// 	}
-
-// 	fmt.Println(ownerId, "")
-
-// 	//  this  is where we would get the number of posts, followers, and following
-// 	// we decided we not going to use this for now so it can be removed
-
-// 	// profile.NumberOfPosts, err = dbfuncs.GetNumberOfById(ownerId, "Posts")
-// 	// if err != nil {
-// 	// 	errorMessage := fmt.Sprintf("error getting number of posts: %v", err.Error())
-// 	// 	fmt.Println(err.Error(), "90")
-// 	// 	http.Error(w, errorMessage, http.StatusInternalServerError)
-// 	// 	return
-// 	// }
-
-// 	// profile.NumberOfFollowers, err = dbfuncs.GetNumberOfFollowersAndFollowing("FollowingId", ownerId)
-// 	// if err != nil {
-// 	// 	errorMessage := fmt.Sprintf("error getting number of followers: %v", err.Error())
-// 	// 	fmt.Println(err.Error())
-// 	// 	http.Error(w, errorMessage, http.StatusInternalServerError)
-// 	// 	return
-// 	// }
-
-// 	// profile.NumberOfFollowing, err = dbfuncs.GetNumberOfFollowersAndFollowing("FollowerId", ownerId)
-// 	// if err != nil {
-// 	// 	fmt.Println(err.Error())
-// 	// 	errorMessage := fmt.Sprintf("error getting number of following: %v", err.Error())
-// 	// 	http.Error(w, errorMessage, http.StatusInternalServerError)
-// 	// 	return
-// 	// }
-
-// 	if usersOwnProfile {
-// 		pendingFollowers, err := dbfuncs.GetPendingFollowerIdsByFollowingId(ownerId)
-// 		if err != nil {
-
-// 			fmt.Println(err.Error(), "105")
-// 			errorMessage := fmt.Sprintf("error getting following: %v", err.Error())
-// 			http.Error(w, errorMessage, http.StatusInternalServerError)
-// 			return
-// 		}
-
-// 		profile.PendingFollowers = helper(pendingFollowers)
-
-// 	}
-
-// 	profile.Posts, err = dbfuncs.GetPosts(userId, 1, 10, usersOwnProfile)
-// 	if err != nil {
-// 		errorMessage := fmt.Sprintf("error getting posts: %v", err.Error())
-// 		fmt.Println(err.Error(), "90")
-// 		http.Error(w, errorMessage, http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	if usersOwnProfile {
-// 		profile.Posts, err = dbfuncs.GetPostsByCreatorId(ownerId)
-// 		if err != nil {
-// 			errorMessage := fmt.Sprintf("error getting posts: %v", err.Error())
-// 			http.Error(w, errorMessage, http.StatusInternalServerError)
-// 			return
-// 		}
-// 	} else {
-// 		profile.Posts, err = dbfuncs.GetVisiblePostsForProfile(userId, ownerId)
-
-// 		if err != nil {
-// 			errorMessage := fmt.Sprintf("error getting posts: %v", err.Error())
-// 			http.Error(w, errorMessage, http.StatusInternalServerError)
-// 			return
-// 		}
-// 		// if profile.IsFollowed {
-// 		// 	a, err := dbfuncs.GetPostsByCreatorId(ownerId)
-// 		// 	if err != nil {
-// 		// 		errorMessage := fmt.Sprintf("error getting posts: %v", err.Error())
-// 		// 		http.Error(w, errorMessage, http.StatusInternalServerError)
-// 		// 		return
-// 		// 	}
-// 		// 	for _, post := range a {
-// 		// 		if post.PrivacyLevel == "public" || post.PrivacyLevel == "private" {
-// 		// 			profile.Posts = append(profile.Posts, post)
-// 		// 		}
-// 		// 		if post.PrivacyLevel == "superprivate" {
-// 		// 			b, err := dbfuncs.GetPostChosenFollowerIdsByPostId(post.Id)
-// 		// 			if err != nil {
-// 		// 				errorMessage := fmt.Sprintf("error getting posts: %v", err.Error())
-// 		// 				http.Error(w, errorMessage, http.StatusInternalServerError)
-// 		// 				return
-// 		// 			}
-// 		// 			for _, followerId := range b {
-// 		// 				if followerId == userId {
-// 		// 					profile.Posts = append(profile.Posts, post)
-// 		// 				}
-// 		// 			}
-// 		// 		} else {
-// 		// 			a, err := dbfuncs.GetPostsByCreatorId(ownerId)
-// 		// 			if err != nil {
-// 		// 				errorMessage := fmt.Sprintf("error getting posts: %v", err.Error())
-// 		// 				http.Error(w, errorMessage, http.StatusInternalServerError)
-// 		// 				return
-// 		// 			}
-// 		// 			for _, post := range a {
-// 		// 				if post.PrivacyLevel == "public" {
-// 		// 					profile.Posts = append(profile.Posts, post)
-// 		// 				}
-// 		// 			}
-// 		// 		}
-// 		// 	}
-
-// 		// }
-// 	}
-
-// 	acceptedFollowers, err := dbfuncs.GetAcceptedFollowerIdsByFollowingId(ownerId)
-// 	if err != nil {
-// 		errorMessage := fmt.Sprintf("error getting followers: %v", err.Error())
-// 		http.Error(w, errorMessage, http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	profile.Followers = helper(acceptedFollowers)
-
-// 	following, err := dbfuncs.GetAcceptedFollowingIdsByFollowerId(ownerId)
-// 	if err != nil {
-// 		errorMessage := fmt.Sprintf("error getting following: %v", err.Error())
-// 		http.Error(w, errorMessage, http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	profile.Following = helper(following)
-
-// 	fmt.Println(profile, "profile")
-// 	w.Header().Set("Content-Type", "application/json")
-// 	w.WriteHeader(http.StatusOK)
-// 	json.NewEncoder(w).Encode(profile)
-
-// }
 
 func WhoCanIInviteToThisGroup(groupId, userId string) ([]BasicUserInfo, error) {
 	var users []BasicUserInfo
