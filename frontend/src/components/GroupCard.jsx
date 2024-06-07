@@ -3,8 +3,12 @@
 import {Card, Button} from "react-bootstrap";
 import classes from "./ProfileCard.module.css";
 import Action from "./Action";
+import AuthContext from "../store/authContext";
+import {useContext} from "react";
 
 const GroupCard = ({group, toggleAction, owner, showChat}) => {
+  const {user} = useContext(AuthContext);
+
   return (
     <Card className={classes.card}>
       <div className={classes.profileContainer}>
@@ -48,8 +52,8 @@ const GroupCard = ({group, toggleAction, owner, showChat}) => {
             <Button
               onClick={showChat.bind(null, {
                 id: group?.BasicInfo?.Id,
-                Nickname: group?.BasicInfo?.Title,
-                Avatar: "",
+                Nickname: user.Nickname,
+                Avatar: user.Avatar,
                 type: "groupMessage",
               })}
             >

@@ -20,19 +20,19 @@ type Image struct {
 }
 
 type Post struct {
-	Id              string    `json:"id"`
-	UserId          string    `json:"userid"`
-	Title           string    `json:"title"`
-	Body            string    `json:"body"`
-	CreatedAt       time.Time `json:"createdAt"`
-	Comments        []Comment `json:"comments"`
-	Likes           int       `json:"likes"`
-	Dislikes        int       `json:"dislikes"`
-	PrivacyLevel    string    `json:"privacyLevel"`
-	CreatorId       string    `json:"creatorId "`
-	Image           string    `json:"avatar,omitempty"`
-	GroupId         string    `json:"groupId"`
-	ChosenFollowers []string  `json:"chosenFollowers"`
+	Id              string    `json:"Id"`
+	UserId          string    `json:"UserId"`
+	Title           string    `json:"Title"`
+	Body            string    `json:"Body"`
+	CreatedAt       time.Time `json:"CreatedAt"`
+	Comments        []Comment `json:"Comments"`
+	Likes           int       `json:"Likes"`
+	Dislikes        int       `json:"Dislikes"`
+	PrivacyLevel    string    `json:"PrivacyLevel"`
+	CreatorId       string    `json:"CreatorId"`
+	Image           string    `json:"Image,omitempty"`
+	GroupId         string    `json:"GroupId"`
+	ChosenFollowers []string  `json:"ChosenFollowers"`
 }
 type Comment struct {
 	Id              string    `json:"Id"`

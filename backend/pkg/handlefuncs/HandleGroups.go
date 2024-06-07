@@ -137,7 +137,9 @@ func GetGroupCard(groupId string, userId string) (GroupCard, error) {
 
 func GetGroup(groupId string, userId string) (DetailedGroupInfo, error) {
 	basicInfo, err := GetBasicGroupInfo(groupId)
+
 	if err != nil {
+		log.Fatalln(err, "error  GetBasicGroupInfo")
 		return DetailedGroupInfo{}, err
 	}
 

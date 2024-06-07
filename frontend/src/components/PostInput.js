@@ -3,7 +3,7 @@ import {InputGroup, FormControl, Button} from "react-bootstrap";
 import clsses from "./PostInput.module.css";
 import AddPost from "./AddPost";
 import {Link} from "react-router-dom";
-export default function PostInput({src, id}) {
+export default function PostInput({src, id, type}) {
   const [show, setShow] = useState(false);
 
   return (
@@ -37,7 +37,7 @@ export default function PostInput({src, id}) {
           // disabled
         />
       </InputGroup>
-      <AddPost show={show} setShow={setShow} />
+      <AddPost show={show} setShow={setShow}  type={type}  />
     </>
   );
 }

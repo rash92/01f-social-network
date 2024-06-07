@@ -118,7 +118,7 @@ func GetAllGroupMessagesByGroupId(groupId string) ([]GroupMessage, error) {
 	var groupMessages []GroupMessage
 	query := `
 	SELECT * FROM GroupMessages WHERE GroupId=?
-	ORDER BY CreatedAt defer rows.Close()DESC
+	ORDER BY CreatedAt DESC
 	`
 	rows, err := db.Query(query, groupId)
 	if err == sql.ErrNoRows {

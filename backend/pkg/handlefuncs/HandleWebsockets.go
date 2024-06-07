@@ -55,23 +55,6 @@ func unmarshalBody[T any](signalBody []byte, receivedData T) {
 	}
 }
 
-type PostFromClient struct {
-	Id                  string    `json:"Id"`
-	Title               string    `json:"Title"`
-	Body                string    `json:"Body"`
-	CreatedAt           time.Time `json:"CreatedAt"`
-	PrivacyLevel        string    `json:"PrivacyLevel"`
-	CreatorId           string    `json:"CreatorId"`
-	Image               string    `json:"Image,omitempty"`
-	PostChosenFollowers []string  `json:"PostChosenFollowers,omitempty"`
-	GroupId             string    `json:"GroupId,omitempty"`
-	Likes               int       `json:"Likes,omitempty"`
-	Dislikes            int       `json:"Dislikes,omitempty"`
-	CreatorNickname     string    `json:"CreatorNickname,omitempty"`
-	UserLikeOrDislike   string    `json:"UserLikeOrDislike,omitempty"`
-	CommentSorter       []string  `json:"Comments,omitempty"`
-}
-
 type TogglePrivacy struct {
 	UserId         string `json:"senderId"`
 	PrivacySetting string `json:"privacySetting"`
@@ -146,6 +129,8 @@ type GroupMessage struct {
 	GroupId   string    `json:"GroupId"`
 	Message   string    `json:"Message"`
 	CreatedAt time.Time `json:"CreatedAt"`
+	Nickname    string    `json:"Nickname"`
+	Avatar      string    `json:"Avatar"`
 }
 
 type AnswerRequestToJoinGroup struct {
@@ -320,11 +305,13 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 		err = unfollow(receivedData)
 
 	case "post":
-		var receivedData PostFromClient
+		var receivedData Post
+		log.Println(signal.Body)
 		unmarshalBody(signal.Body, &receivedData)
 		err = post(receivedData)
 	case "groupPost":
-		var receivedData PostFromClient
+		var receivedData Post
+		log.Println(signal.Body)
 		unmarshalBody(signal.Body, &receivedData)
 		err = groupPost(receivedData)
 
@@ -742,7 +729,7 @@ func createGroup(receivedData Group) error {
 	return err
 }
 
-func groupPost(receivedData PostFromClient) error {
+func groupPost(receivedData Post) error {
 	err := validateContent(receivedData.Body)
 	if err != nil {
 		return err
@@ -809,7 +796,7 @@ func groupPost(receivedData PostFromClient) error {
 	return err
 }
 
-func post(receivedData PostFromClient) error {
+func post(receivedData Post) error {
 	err := validateContent(receivedData.Body)
 	if err != nil {
 		return err
@@ -894,7 +881,7 @@ func post(receivedData PostFromClient) error {
 				log.Println("error sending new post to self", err)
 			}
 		}
-		for _, followerId := range receivedData.PostChosenFollowers {
+		for _, followerId := range receivedData.ChosenFollowers {
 			postChosenFollower := dbfuncs.PostChosenFollower{
 				PostId:     dbPost.Id,
 				FollowerId: followerId,

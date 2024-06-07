@@ -161,10 +161,10 @@ const Group = () => {
 
             <div>
               <div style={{width: "50vw", margin: "2rem 0 3rem 0"}}>
-                <PostInput src={user.Avatar} id={user.Id} />
+                <PostInput src={user.Avatar} id={user.Id} type={"group"} />
               </div>
               <section id="posts" ref={postRef}>
-                {<Posts posts={groupData.data.Posts} postref={postRef} />}
+                {<Posts posts={groupData?.data?.Posts} postref={postRef} />}
               </section>
             </div>
           </>

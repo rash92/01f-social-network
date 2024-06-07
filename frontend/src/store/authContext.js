@@ -260,8 +260,7 @@ export const AuthContextProvider = (props) => {
       socket.onopen = () => setIsWsReady(true);
       socket.onclose = () => setIsWsReady(false);
       socket.onmessage = (event) => {
-          setWsVal(event?.data);
-    
+        setWsVal(event?.data);
       };
 
       ws.current = socket;
@@ -729,8 +728,40 @@ export const AuthContextProvider = (props) => {
                 ],
           },
         }));
+      } else if (groupId === GroupId) {
+        setGroupData((prev) => ({
+          ...prev,
+          data: {
+            ...prev?.data,
+            Posts: Array.isArray(prev?.data.Posts)
+              ? [
+                  {
+                    Body,
+                    Title,
+                    CreatedAt,
+                    CreatorId,
+                    GroupId,
+                    Id,
+                    privacyLevel: PrivacyLevel,
+                    Image: Image,
+                  },
+                  ...prev?.data.Posts,
+                ]
+              : [
+                  {
+                    Body,
+                    Title,
+                    CreatedAt,
+                    CreatorId,
+                    GroupId,
+                    Id,
+                    privacyLevel: PrivacyLevel,
+                    Image: Image,
+                  },
+                ],
+          },
+        }));
       } else {
-        console.log("THIS WERE POST being dublicated", "bug to be sorted");
         setDashBoardData((prev) => ({
           ...prev,
           Posts: [
@@ -754,6 +785,7 @@ export const AuthContextProvider = (props) => {
       profileData.data?.Owner?.Id,
       setProfileData,
       setDashBoardData,
+      groupId,
     ]
   );
 
@@ -777,7 +809,9 @@ export const AuthContextProvider = (props) => {
       ) {
         setDashBoardData((prev) => ({
           ...prev,
-          notifications: [data, ...prev?.notifications],
+          notifications: Array.isArray(prev?.notifications)
+            ? [data, ...prev?.notifications]
+            : [data],
         }));
         return;
       }
@@ -786,6 +820,16 @@ export const AuthContextProvider = (props) => {
         case "logout":
           httpLogout();
           setUser(userObj);
+          break;
+        case "groupMessage":
+          if (groupId === data.GroupId) {
+            setOpenChatDetails((prev) => ({
+              ...prev,
+              messages: Array.isArray(prev.messages)
+                ? [...prev.messages, data]
+                : [data],
+            }));
+          }
           break;
 
         case "privateMessage":
@@ -964,6 +1008,7 @@ export const AuthContextProvider = (props) => {
         groupData,
         resetIsGroupComponentVisible,
         updateGroupId,
+        groupId,
       }}
     >
       {props.children}

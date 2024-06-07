@@ -11,10 +11,11 @@ import {Link} from "react-router-dom";
 import User from "./User";
 import {convertImageToBase64} from "../helpers/helpers";
 
-const AddPost = ({show, setShow, type = "profile", groupId = ""}) => {
+const AddPost = ({show, setShow, type = "profile"}) => {
   const {
     user,
     isWsReady,
+    groupId,
 
     wsMsgToServer,
   } = useContext(AuthContext);
@@ -113,13 +114,13 @@ const AddPost = ({show, setShow, type = "profile", groupId = ""}) => {
     }
 
     const data = {
-      type: "post",
+      type: type === "profile" ? "post" : "groupPost",
       message: {
         title: titleValue,
         body: enterePost,
-        PostChosenFollowers: chosenFollowers.map((el) => el.Id),
+        ChosenFollowers: chosenFollowers.map((el) => el.Id),
         privacyLevel: privacy,
-        groupId: "",
+        GroupId: groupId || "",
         creatorId: user.Id,
         createdAt: new Date(),
         image: postImgValue.file

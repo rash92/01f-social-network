@@ -68,6 +68,8 @@ func MessagesHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 			return
+		}else{
+			
 		}
 
 	}

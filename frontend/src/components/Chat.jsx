@@ -17,26 +17,55 @@ const ChatComponent = () => {
     OpenChat: handleShow,
     closeChat: handleClose,
     user: loggedUser,
+    groupId,
+    groupData,
     openChatDetails: {messages, isChatOpen, user},
   } = useContext(AuthContext);
 
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (newMessage.trim() !== "" && isWsReady) {
-      wsMsgToServer(
-        JSON.stringify({
-          type: user.type,
-          message: {
-            SenderId: loggedUser.Id,
-            ReceiverId: user.id,
-            message: newMessage,
+      // type GroupMessage struct {
+      //   Id        string    ⁠ json:"Id" ⁠
+      //   Type      string    ⁠ json:"type" ⁠
+      //   SenderId  string    ⁠ json:"SenderId" ⁠
+      //   GroupId   string    ⁠ json:"GroupId" ⁠
+      //   Message   string    ⁠ json:"Message" ⁠
+      //   CreatedAt time.Time ⁠ json:"CreatedAt" ⁠
+      // }
+      if (user.type === "profileMessage") {
+        wsMsgToServer(
+          JSON.stringify({
             type: user.type,
-            createAt: "",
-            Nickname: user.Nickname,
-            Avatar: user.Avatar,
-          },
-        })
-      );
+            message: {
+              SenderId: loggedUser.Id,
+              ReceiverId: user.id,
+              message: newMessage,
+              type: user.type,
+              createAt: "",
+              Nickname: user.Nickname,
+              Avatar: user.Avatar,
+            },
+          })
+        );
+      } else {
+        wsMsgToServer(
+          JSON.stringify({
+            type: user.type,
+            message: {
+              Id: "",
+              SenderId: loggedUser.Id,
+              ReceiverId: user.id,
+              Message: newMessage,
+              GroupId: groupId || "",
+              type: user.type,
+              CreateAt: "",
+              Nickname: user.Nickname,
+              Avatar: user.Avatar,
+            },
+          })
+        );
+      }
 
       setNewMessage("");
     }
@@ -68,7 +97,7 @@ const ChatComponent = () => {
           />
         ) : (
           <div>
-            <h1> {user?.Nickname} </h1>
+            <h1> {groupData?.data?.BasicInfo?.Title} </h1>
           </div>
         )}
       </div>
