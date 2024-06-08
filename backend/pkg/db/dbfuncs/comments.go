@@ -11,6 +11,9 @@ import (
 
 // check if pointery way of doing it is working with * and & the right way etc., or if we want to just pass in by value
 func AddComment(comment *Comment) (string, error) {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
 	if err != nil {
@@ -18,9 +21,6 @@ func AddComment(comment *Comment) (string, error) {
 	}
 	comment.Id = id.String()
 	comment.CreatedAt = time.Now()
-
-	dbLock.Lock()
-	defer dbLock.Unlock()
 
 	statement, err := db.Prepare("INSERT INTO Comments VALUES (?,?,?,?,?,?)")
 	if err != nil {

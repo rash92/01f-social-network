@@ -468,3 +468,67 @@ func WhoCanIInviteToThisGroup(groupId, userId string) ([]BasicUserInfo, error) {
 
 	return users, nil
 }
+
+func HandleGetGroupMessages(w http.ResponseWriter, r *http.Request) error {
+	var err error
+	var groupId string
+	var userId string
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "405 Method Not Allowed", http.StatusMethodNotAllowed)
+		return err
+	}
+
+	err = json.NewDecoder(r.Body).Decode(&groupId)
+	if err != nil {
+		errorMessage := fmt.Sprintf("error decoding groupId: %v", err.Error())
+		fmt.Println(err.Error(), errorMessage)
+		http.Error(w, errorMessage, http.StatusInternalServerError)
+		return err
+	}
+
+	cookie, err := r.Cookie("user_token")
+	if err != nil {
+		errorMessage := fmt.Sprintf("error retrieving cookie: %v", err.Error())
+		fmt.Println(err.Error(), errorMessage)
+		http.Error(w, errorMessage, http.StatusForbidden)
+		return err
+	}
+	userId, err = dbfuncs.GetUserIdFromCookie(cookie.Value)
+	if err != nil {
+		errorMessage := fmt.Sprintf("error getting user from cookie: %v", err.Error())
+		fmt.Println(err.Error(), errorMessage)
+		http.Error(w, errorMessage, http.StatusInternalServerError)
+		return err
+	}
+
+	status, err := dbfuncs.GetGroupStatus(groupId, userId)
+
+	if err == sql.ErrNoRows {
+		fmt.Println("User is not a member of this group")
+		return nil
+	}
+
+	if err != nil {
+		fmt.Println("Error getting group status: ", err)
+		return err
+	}
+
+	if status != "accepted" {
+		fmt.Println("user is not a member of the group")
+		return nil
+	}
+
+	dbGroupMessages, err := dbfuncs.GetAllGroupMessagesByGroupId(groupId)
+	if err != nil {
+		return err
+	}
+
+	groupMessages := DbGroupMessagesToFrontend(dbGroupMessages)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(groupMessages)
+
+	return err
+}
