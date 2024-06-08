@@ -25,6 +25,9 @@ func IsPending(userId, ownerId string) (bool, error) {
 }
 
 func AddFollow(follow *Follow) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	statement, err := db.Prepare("INSERT INTO Follows VALUES (?,?,?)")
 	if err != nil {
 		return err
@@ -35,6 +38,8 @@ func AddFollow(follow *Follow) error {
 
 // Only to be used when updating a pending follow to accepted follow - only necessary if following private user
 func AcceptFollow(followerId, followingId string) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
 
 	statement, err := db.Prepare("UPDATE Follows SET Status=?  WHERE FollowerId=? AND FollowingId=?")
 	if err != nil {
@@ -48,6 +53,9 @@ func AcceptFollow(followerId, followingId string) error {
 
 // may not use this and can just delete follow from table instead on rejected a follow request
 func RejectFollow(followerId, followingId string) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	statement, err := db.Prepare("UPDATE Follows SET Status=? WHERE FollowerId=? AND FollowingId=?")
 	if err != nil {
 		return err
@@ -58,6 +66,9 @@ func RejectFollow(followerId, followingId string) error {
 
 // Delete follow from table when unfollowing
 func DeleteFollow(followerId, followingId string) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	statement, err := db.Prepare("DELETE FROM Follows WHERE FollowerId=? AND FollowingId=?")
 	if err != nil {
 		return err

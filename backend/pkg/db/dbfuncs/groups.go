@@ -8,6 +8,9 @@ import (
 )
 
 func AddGroup(group *Group) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return err
@@ -24,6 +27,9 @@ func AddGroup(group *Group) error {
 }
 
 func AddGroupMember(groupMember *GroupMember) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	statement, err := db.Prepare("INSERT INTO GroupMembers VALUES (?,?,?)")
 	if err != nil {
 		return err
@@ -34,6 +40,9 @@ func AddGroupMember(groupMember *GroupMember) error {
 }
 
 func UpdateGroupMember(groupMember *GroupMember) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	statement, err := db.Prepare("UPDATE GroupMembers SET Status=? WHERE GroupId=? AND UserId=?")
 	if err != nil {
 		return err
@@ -44,6 +53,9 @@ func UpdateGroupMember(groupMember *GroupMember) error {
 }
 
 func DeleteGroupMember(groupMember *GroupMember) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	statement, err := db.Prepare("DELETE FROM GroupMembers WHERE GroupId=? AND UserId=?")
 	if err != nil {
 		return err
@@ -54,6 +66,9 @@ func DeleteGroupMember(groupMember *GroupMember) error {
 }
 
 func AddGroupEvent(groupEvent *GroupEvent) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return err
@@ -69,6 +84,9 @@ func AddGroupEvent(groupEvent *GroupEvent) error {
 }
 
 func DeleteGroupEvent(groupEventId string) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	statement, err := db.Prepare("DELETE FROM GroupEvents WHERE Id=?")
 	if err != nil {
 		return err
@@ -79,6 +97,9 @@ func DeleteGroupEvent(groupEventId string) error {
 }
 
 func AddGroupEventParticipant(groupEventParticipant *GroupEventParticipant) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	statement, err := db.Prepare("INSERT INTO GroupEventParticipants VALUES (?,?,?)")
 	if err != nil {
 		return err
@@ -89,6 +110,9 @@ func AddGroupEventParticipant(groupEventParticipant *GroupEventParticipant) erro
 }
 
 func DeleteGroupEventParticipant(participant *GroupEventParticipant) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	statement, err := db.Prepare("DELETE FROM GroupEventParticipants WHERE UserId=? AND EventId=?")
 	if err != nil {
 		return err
@@ -99,6 +123,9 @@ func DeleteGroupEventParticipant(participant *GroupEventParticipant) error {
 }
 
 func AddGroupMessage(groupMessage *GroupMessage) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return err
@@ -348,6 +375,9 @@ func IsUserAttendingEvent(userId string, eventId string) (bool, error) {
 }
 
 func DeleteGroup(groupEventParticipantId string) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	statement, err := db.Prepare("DELETE FROM Groups WHERE Id=?")
 	if err != nil {
 		return err

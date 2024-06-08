@@ -9,6 +9,9 @@ import (
 )
 
 func AddUser(user *User) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return err
@@ -25,6 +28,9 @@ func AddUser(user *User) error {
 }
 
 func DeleteUser(userId string) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	statement, err := db.Prepare("DELETE FROM Users WHERE Id = ?")
 	if err != nil {
 		return err
@@ -34,6 +40,9 @@ func DeleteUser(userId string) error {
 }
 
 func AddSession(userId string) (Session, error) {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return Session{}, err
@@ -54,6 +63,9 @@ func AddSession(userId string) (Session, error) {
 }
 
 func DeleteSession(sessionId string) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	statement, err := db.Prepare("DELETE FROM Sessions WHERE Id = ?")
 	if err != nil {
 		return err
@@ -124,7 +136,8 @@ func GetUsers() ([]User, error) {
 
 // togle PrivacySetting
 func UpdatePrivacySetting(userId string, privacySetting string) error {
-
+	dbLock.Lock()
+	defer dbLock.Unlock()
 
 	statement, err := db.Prepare("UPDATE Users SET PrivacySetting=? WHERE Id=?")
 	if err != nil {

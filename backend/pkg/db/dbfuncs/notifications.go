@@ -8,6 +8,9 @@ import (
 )
 
 func AddNotification(notification *Notification) (string, error) {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
 	if err != nil {
@@ -26,6 +29,9 @@ func AddNotification(notification *Notification) (string, error) {
 
 // updates notification to seen
 func NotificationSeen(notificationId string) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	statement, err := db.Prepare("UPDATE Notifications SET Seen=? WHERE Id=?")
 	if err != nil {
 		return err

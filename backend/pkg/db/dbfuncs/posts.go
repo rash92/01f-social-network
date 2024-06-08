@@ -25,6 +25,9 @@ func StringNull(ns sql.NullString) string {
 }
 
 func AddPost(post *Post) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
 	if err != nil {
@@ -42,6 +45,9 @@ func AddPost(post *Post) error {
 }
 
 func DeletePost(PostId string) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	statement, err := db.Prepare("DELETE FROM Posts WHERE PostId=?")
 	if err != nil {
 		return err
@@ -61,6 +67,9 @@ func AddPostChosenFollower(postChosenFollower *PostChosenFollower) error {
 }
 
 func DeletePostChosenFollower(postChosenFollower *PostChosenFollower) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	statement, err := db.Prepare("DELETE FROM PostChosenFollowers WHERE PostId=? AND FollowerId=?")
 	if err != nil {
 		return err
@@ -108,6 +117,9 @@ func GetPostLikes(PostId string) (likeUserIds, dislikeUserIds []string, err erro
 
 // likeOrDislike can only take values "like" or "dislike"
 func LikeDislikePost(UserId, PostId, likeOrDislike string) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	fmt.Println("likeOrDislike", likeOrDislike)
 	addLike := false
 	addDislike := false
@@ -386,8 +398,6 @@ func GetVisiblePostsForProfile(userId, profileOwnerId string) ([]Post, error) {
 
 	return posts, nil
 }
-
-
 
 func GetUserLikeDislike(userId, postId string) (int, error) {
 	var like bool

@@ -18,6 +18,10 @@ func AddComment(comment *Comment) (string, error) {
 	}
 	comment.Id = id.String()
 	comment.CreatedAt = time.Now()
+
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	statement, err := db.Prepare("INSERT INTO Comments VALUES (?,?,?,?,?,?)")
 	if err != nil {
 		return "", err
@@ -28,6 +32,9 @@ func AddComment(comment *Comment) (string, error) {
 }
 
 func DeleteComment(commentId string) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	statement, err := db.Prepare("DELETE FROM Comments WHERE CommentId=?")
 	if err != nil {
 		return err
@@ -76,6 +83,9 @@ func GetCommentLikes(CommentId string) (likeUserIds, dislikeUserIds []string, er
 
 // likeOrDislike can only take values "like" or "dislike"
 func LikeDislikeComment(UserId, CommentId, likeOrDislike string) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	addLike := false
 	addDislike := false
 	if likeOrDislike == "like" {

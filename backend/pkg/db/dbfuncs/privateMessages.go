@@ -9,6 +9,9 @@ import (
 )
 
 func AddPrivateMessage(privateMessage *PrivateMessage) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
 	if err != nil {
