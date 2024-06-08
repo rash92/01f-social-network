@@ -8,11 +8,20 @@ package handlefuncs
 // changing app structs to match database column names as I go along,
 // thus "Id" rather than "ID".
 
+// If only we'd managed that! It caused us much trouble.
+
 // Protect the database from concurrent reads and writes. The mattn/go-sqlite3
 // documentation says that it's safe for concurrent reads but not for concurrent writes,
 // so, as for the activeConnections map, we can use a sync.RWMutex instead of a sync.Mutex,
 // as long as we make sure to use .RLock() only when reading from the database and .Lock()
 // when writing to it.
+
+// We did make a db mutex in dbfuncs, but forgot to use it.
+
+// `notifyClientOfError(err, "post", receivedData.CreatorId, nil)` commented out
+// where sending a succes or failure message to the client is not necessary, and
+// can interfere with the actual message being processed by the client due to
+// React ovewriting variables due to batched state updates.
 
 import (
 	"backend/pkg/db/dbfuncs"
@@ -129,8 +138,8 @@ type GroupMessage struct {
 	GroupId   string    `json:"GroupId"`
 	Message   string    `json:"Message"`
 	CreatedAt time.Time `json:"CreatedAt"`
-	Nickname    string    `json:"Nickname"`
-	Avatar      string    `json:"Avatar"`
+	Nickname  string    `json:"Nickname"`
+	Avatar    string    `json:"Avatar"`
 }
 
 type AnswerRequestToJoinGroup struct {
@@ -314,6 +323,10 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 		log.Println(signal.Body)
 		unmarshalBody(signal.Body, &receivedData)
 		err = groupPost(receivedData)
+	case "comment":
+		var receivedData Comment
+		unmarshalBody(signal.Body, &receivedData)
+		err = comment(receivedData)
 
 	case "privateMessage":
 		var receivedData PrivateMessage
@@ -849,7 +862,7 @@ func post(receivedData Post) error {
 				fmt.Println(c, "c", signal, "signal")
 				err = c.WriteJSON(signal)
 				if err != nil {
-					log.Println("error sending new post to clients", err)
+					log.Println("error sending new post to public user", err)
 				}
 			}
 		}
@@ -870,7 +883,7 @@ func post(receivedData Post) error {
 			for _, c := range activeConnections[followerId] {
 				err = c.WriteJSON(signal)
 				if err != nil {
-					log.Println("error sending new post to client", err)
+					log.Println("error sending new post to follower", err)
 				}
 			}
 		}
@@ -895,7 +908,7 @@ func post(receivedData Post) error {
 			for _, c := range activeConnections[followerId] {
 				err = c.WriteJSON(signal)
 				if err != nil {
-					log.Println("error sending new post to client", err)
+					log.Println("error sending new post to chosen follower", err)
 				}
 			}
 		}
@@ -1607,5 +1620,117 @@ func notifyClientOfError(err error, message string, id string, whatever any) err
 		}
 	}
 	connectionLock.RUnlock()
+	return err
+}
+
+func comment(receivedData Comment) error {
+	err := validateContent(receivedData.Body)
+	if err != nil {
+		notifyClientOfError(err, "comment", receivedData.CreatorId, nil)
+		return err
+	}
+
+	newCommentDb := dbfuncs.Comment{
+		Body:            receivedData.Body,
+		CreatorId:       receivedData.CreatorId,
+		PostId:          receivedData.PostID,
+		CreatedAt:       time.Now(),
+		Likes:           0,
+		Dislikes:        0,
+		CreatorNickname: receivedData.CreatorNickname,
+	}
+
+	if receivedData.Image != "" {
+		imageUUID, err := dbfuncs.ConvertBase64ToImage(receivedData.Image, "./pkg/db/images")
+		if err != nil {
+			log.Println("error converting base64 to image", err)
+			notifyClientOfError(err, "post", receivedData.CreatorId, nil)
+			return err
+		}
+		newCommentDb.Image = imageUUID
+		receivedData.Image = imageUUID
+	}
+
+	id, err := dbfuncs.AddComment(&newCommentDb)
+	receivedData.Id = id
+	if err != nil {
+		notifyClientOfError(err, "comment", receivedData.CreatorId, nil)
+	}
+
+	signalBody, err := json.Marshal(receivedData)
+	if err != nil {
+		notifyClientOfError(err, "comment", receivedData.CreatorId, nil)
+	}
+
+	signal := SignalReceived{
+		Type: "comment",
+		Body: signalBody,
+	}
+
+	// Why does GetPostById need the creatorId too? The name suggests it
+	// should only need the postId.
+	post, err := dbfuncs.GetPostById(receivedData.CreatorId, receivedData.PostID)
+	if err != nil {
+		log.Println("error getting post from database", err)
+		notifyClientOfError(err, "comment", receivedData.CreatorId, nil)
+	}
+
+	chosenFollowers, err := dbfuncs.GetPostChosenFollowerIdsByPostId(receivedData.PostID)
+	if err != nil {
+		log.Println("error getting chosen followers from database", err)
+		notifyClientOfError(err, "comment", receivedData.CreatorId, nil)
+	}
+
+	switch post.PrivacyLevel {
+	case "public":
+		connectionLock.RLock()
+		for user := range activeConnections {
+			log.Println("user", user, "creatorId", receivedData.CreatorId)
+			for _, c := range activeConnections[user] {
+				fmt.Println(c, "c", signal, "signal")
+				err = c.WriteJSON(signal)
+				if err != nil {
+					log.Println("error sending new comment to public", err)
+				}
+			}
+		}
+		connectionLock.RUnlock()
+	case "private":
+		for _, c := range activeConnections[receivedData.CreatorId] {
+			err = c.WriteJSON(signal)
+			if err != nil {
+				log.Println("error sending new comment to self", err)
+			}
+		}
+		followers, err := dbfuncs.GetAcceptedFollowerIdsByFollowingId(receivedData.CreatorId)
+		if err != nil {
+			log.Println("error getting followers from database", err)
+			notifyClientOfError(err, "post", receivedData.CreatorId, nil)
+		}
+		for _, followerId := range followers {
+			for _, c := range activeConnections[followerId] {
+				err = c.WriteJSON(signal)
+				if err != nil {
+					log.Println("error sending new post to follower", err)
+				}
+			}
+		}
+	case "superprivate":
+		for _, c := range activeConnections[receivedData.CreatorId] {
+			err = c.WriteJSON(signal)
+			if err != nil {
+				log.Println("error sending new comment to self", err)
+			}
+		}
+		for _, followerId := range chosenFollowers {
+			for _, c := range activeConnections[followerId] {
+				err = c.WriteJSON(signal)
+				if err != nil {
+					log.Println("error sending new post to chosen follower", err)
+				}
+			}
+		}
+	}
+
 	return err
 }

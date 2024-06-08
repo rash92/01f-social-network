@@ -68,9 +68,13 @@ func MessagesHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 			return
-		}else{
-			
 		}
+
+		// else {
+		// 	// Why is this branch empty? Was it empty when I downloaded the repo
+		// 	// but just didn't register as a problem till I saved some comments
+		// 	// in a different file? It's not necessary, anyway, after the return.
+		// }
 
 	}
 
