@@ -1623,8 +1623,6 @@ func notifyClientOfError(err error, message string, id string, whatever any) err
 	return err
 }
 
-// Assumes comments are for general posts, not group posts.
-// Add logic for group posts or make a separate function for that.
 func comment(receivedData Comment) error {
 	err := validateContent(receivedData.Body)
 	if err != nil {
@@ -1681,6 +1679,33 @@ func comment(receivedData Comment) error {
 	if err != nil {
 		log.Println("error getting chosen followers from database", err)
 		notifyClientOfError(err, "comment", receivedData.CreatorId, nil)
+	}
+
+	isGroupPost, err := dbfuncs.IsGroupPost(receivedData.PostID)
+	if err != nil {
+		log.Println("error checking if post is group post", err)
+		notifyClientOfError(err, "comment", receivedData.CreatorId, nil)
+	}
+
+	if isGroupPost {
+		members, err := dbfuncs.GetGroupMemberIdsByGroupId(post.GroupId)
+		if err != nil {
+			log.Println("error getting group members from database", err)
+			notifyClientOfError(err, "comment", receivedData.CreatorId, nil)
+		}
+
+		connectionLock.RLock()
+		for _, member := range members {
+			for _, c := range activeConnections[member] {
+				err = c.WriteJSON(signal)
+				if err != nil {
+					log.Println("error sending new comment to group members", err)
+				}
+			}
+		}
+		connectionLock.RUnlock()
+
+		return err
 	}
 
 	switch post.PrivacyLevel {

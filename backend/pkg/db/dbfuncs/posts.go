@@ -10,6 +10,18 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+func IsGroupPost(PostId string) (bool, error) {
+	var groupId sql.NullString
+	err := db.QueryRow("SELECT GroupId FROM Posts WHERE Id=?", PostId).Scan(&groupId)
+	if err != nil {
+		return false, err
+	}
+	if groupId.Valid {
+		return true, nil
+	}
+	return false, nil
+}
+
 func NullString(s string) sql.NullString {
 	if s == "" {
 		return sql.NullString{}
