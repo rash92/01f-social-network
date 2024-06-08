@@ -1623,6 +1623,8 @@ func notifyClientOfError(err error, message string, id string, whatever any) err
 	return err
 }
 
+// Assumes comments are for general posts, not group posts.
+// Add logic for group posts.
 func comment(receivedData Comment) error {
 	err := validateContent(receivedData.Body)
 	if err != nil {
