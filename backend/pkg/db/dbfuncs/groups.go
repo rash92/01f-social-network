@@ -125,7 +125,6 @@ func DeleteGroupEventParticipant(participant *GroupEventParticipant) error {
 func AddGroupMessage(groupMessage *GroupMessage) error {
 	dbLock.Lock()
 	defer dbLock.Unlock()
-
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return err

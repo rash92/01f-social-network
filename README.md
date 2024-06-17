@@ -15,5 +15,6 @@
 - Dockerize.
 
 - edited sqlite.go migrations to run down then up
-- followers doubling when following back - if 1 public 1 private - needs more testing? fixes when refreshed
+- follower/following requests/accepted doubling - needs more testing? - fixes when refreshed
 - group posts don't let comments/likes/dislike show in group also can't add comment, can only see stuff on dash
+- chat shows wrong username when message first posted - does change to correct when reloaded

@@ -44,6 +44,7 @@ func main() {
 	http.HandleFunc("/add-comment", wrapperHandler(handlefuncs.HandleAddComment))
 	http.HandleFunc("/group", wrapperHandler(handlefuncs.HandleGroup))
 	http.HandleFunc("/react-Post-like-dislike", wrapperHandler(handlefuncs.HandlePostLikeDislike))
+	http.HandleFunc("/get-group-messages", wrapperHandler(handlefuncs.HandleGetGroupMessages))
 	// http.HandleFunc("/react-comment-like-dislike", handlefuncs.HandleCommenttLikeDislike)
 	// http.HandleFunc("/removePost", handlefuncs.HandleRemovePost)
 

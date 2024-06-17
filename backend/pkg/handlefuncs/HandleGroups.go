@@ -51,7 +51,7 @@ func HandleGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(group, "group")
+	//fmt.Println(group, "group")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(group)
@@ -469,14 +469,14 @@ func WhoCanIInviteToThisGroup(groupId, userId string) ([]BasicUserInfo, error) {
 	return users, nil
 }
 
-func HandleGetGroupMessages(w http.ResponseWriter, r *http.Request) error {
+func HandleGetGroupMessages(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var groupId string
 	var userId string
 
 	if r.Method != http.MethodPost {
 		http.Error(w, "405 Method Not Allowed", http.StatusMethodNotAllowed)
-		return err
+		return
 	}
 
 	err = json.NewDecoder(r.Body).Decode(&groupId)
@@ -484,7 +484,7 @@ func HandleGetGroupMessages(w http.ResponseWriter, r *http.Request) error {
 		errorMessage := fmt.Sprintf("error decoding groupId: %v", err.Error())
 		fmt.Println(err.Error(), errorMessage)
 		http.Error(w, errorMessage, http.StatusInternalServerError)
-		return err
+		return
 	}
 
 	cookie, err := r.Cookie("user_token")
@@ -492,43 +492,39 @@ func HandleGetGroupMessages(w http.ResponseWriter, r *http.Request) error {
 		errorMessage := fmt.Sprintf("error retrieving cookie: %v", err.Error())
 		fmt.Println(err.Error(), errorMessage)
 		http.Error(w, errorMessage, http.StatusForbidden)
-		return err
+		return
 	}
 	userId, err = dbfuncs.GetUserIdFromCookie(cookie.Value)
 	if err != nil {
 		errorMessage := fmt.Sprintf("error getting user from cookie: %v", err.Error())
 		fmt.Println(err.Error(), errorMessage)
 		http.Error(w, errorMessage, http.StatusInternalServerError)
-		return err
+		return
 	}
 
 	status, err := dbfuncs.GetGroupStatus(groupId, userId)
 
 	if err == sql.ErrNoRows {
 		fmt.Println("User is not a member of this group")
-		return nil
+		return
 	}
 
 	if err != nil {
 		fmt.Println("Error getting group status: ", err)
-		return err
+		return
 	}
 
 	if status != "accepted" {
 		fmt.Println("user is not a member of the group")
-		return nil
+		return
 	}
-
 	dbGroupMessages, err := dbfuncs.GetAllGroupMessagesByGroupId(groupId)
 	if err != nil {
-		return err
+		return
 	}
-
 	groupMessages := DbGroupMessagesToFrontend(dbGroupMessages)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(groupMessages)
-
-	return err
 }
