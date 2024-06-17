@@ -23,6 +23,9 @@ func Migrate() {
 	}
 
 	// Apply the migrations
+	if err := m.Down(); err != nil && err != migrate.ErrNoChange {
+		log.Fatal(err)
+	}
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		log.Fatal(err)
 	}
