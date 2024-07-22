@@ -60,15 +60,24 @@ func MessagesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
 		return
 	}
-	var messages []dbfuncs.PrivateMessage
+
+	fmt.Println(enteredData, "message data from client")
+
 	if enteredData.Type == "privateMessage" {
 		fmt.Println(enteredData.Type, "entredData.Type")
 
-		messages, err = dbfuncs.GetAllPrivateMessagesByUserId(enteredData.CurrUser, enteredData.OtherUser)
+		messages, err := dbfuncs.GetAllPrivateMessagesByUserId(enteredData.CurrUser, enteredData.OtherUser)
 		if err != nil {
 			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 			return
 		}
+
+		response := map[string]interface{}{
+			"success":  true,
+			"messages": messages,
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
 
 		// else {
 		// 	// Why is this branch empty? Was it empty when I downloaded the repo
@@ -76,14 +85,23 @@ func MessagesHandler(w http.ResponseWriter, r *http.Request) {
 		// 	// in a different file? It's not necessary, anyway, after the return.
 		// }
 
-	}
+	} else {
 
-	response := map[string]interface{}{
-		"success":  true,
-		"messages": messages,
+		messages, err := dbfuncs.GetAllGroupMessagesByGroupId(enteredData.OtherUser)
+
+		if err != nil {
+			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+			return
+		}
+
+		response := map[string]interface{}{
+			"success":  true,
+			"messages": messages,
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
+
 	}
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
 
 }
 
