@@ -43,8 +43,8 @@ const ChatComponent = () => {
               message: newMessage,
               type: user.type,
               createAt: "",
-              Nickname: user.Nickname,
-              Avatar: user.Avatar,
+              Nickname: loggedUser.Nickname,
+              Avatar: loggedUser.Avatar,
             },
           })
         );
@@ -60,8 +60,8 @@ const ChatComponent = () => {
               GroupId: groupId || "",
               type: user.type,
               CreateAt: "",
-              Nickname: user.Nickname,
-              Avatar: user.Avatar,
+              Nickname: loggedUser.Nickname,
+              Avatar: loggedUser.Avatar,
             },
           })
         );

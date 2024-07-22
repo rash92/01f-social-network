@@ -284,51 +284,54 @@ export const AuthContextProvider = (props) => {
     switch (dashBoardData?.notifications[0]?.type) {
       case "notification requestToFollow":
         if (profileData?.isComponentVisible) {
-          if (profileData?.data?.Owner?.PrivacySetting === "public") {
-            setProfileData((prev) => ({
-              ...prev,
-              data: {
-                ...prev?.data,
-
-                Followers: Array.isArray(prev?.data?.Followers)
-                  ? [
-                      dashBoardData?.notifications[0]?.payload.Data,
-                      ...prev?.data?.Followers,
-                    ]
-                  : [dashBoardData?.notifications[0]?.Body?.Data],
-                IsFollowed: true,
-              },
-            }));
-
-            return;
-          }
-
-          setProfileData((prev) => {
-            if (prev.data?.PendingFollowers?.length === 0) {
-              return {
-                ...prev,
-                data: {
-                  ...prev?.data,
-                  PendingFollowers: [
-                    dashBoardData?.notifications[0]?.payload?.Data,
-                  ],
-                },
-              };
-            }
-            return {
-              ...prev,
-              data: {
-                ...prev.data,
-                PendingFollowers: Array.isArray(prev?.data?.PendingFollowers)
-                  ? [
-                      dashBoardData?.notifications[0]?.payload.Data,
-                      ...prev?.data?.PendingFollowers,
-                    ]
-                  : [dashBoardData?.notifications[0]?.payload.Data],
-              },
-            };
-          });
+          fetchProfileData(profileData?.data?.Owner?.Id);
         }
+        //   if (profileData?.data?.Owner?.PrivacySetting === "public") {
+
+        //     setProfileData((prev) => ({
+        //       ...prev,
+        //       data: {
+        //         ...prev?.data,
+
+        //         Followers: Array.isArray(prev?.data?.Followers)
+        //           ? [
+        //               dashBoardData?.notifications[0]?.payload.Data,
+        //               ...prev?.data?.Followers,
+        //             ]
+        //           : [dashBoardData?.notifications[0]?.Body?.Data],
+        //         IsFollowed: true,
+        //       },
+        //     }));
+
+        //     return;
+        //   }
+
+        //   setProfileData((prev) => {
+        //     if (prev.data?.PendingFollowers?.length === 0) {
+        //       return {
+        //         ...prev,
+        //         data: {
+        //           ...prev?.data,
+        //           PendingFollowers: [
+        //             dashBoardData?.notifications[0]?.payload?.Data,
+        //           ],
+        //         },
+        //       };
+        //     }
+        //     return {
+        //       ...prev,
+        //       data: {
+        //         ...prev.data,
+        //         PendingFollowers: Array.isArray(prev?.data?.PendingFollowers)
+        //           ? [
+        //               dashBoardData?.notifications[0]?.payload.Data,
+        //               ...prev?.data?.PendingFollowers,
+        //             ]
+        //           : [dashBoardData?.notifications[0]?.payload.Data],
+        //       },
+        //     };
+        //   });
+        // }
         break;
 
       case "notification answerRequestToFollow":
@@ -644,7 +647,7 @@ export const AuthContextProvider = (props) => {
       user.FirstName,
       user.LastName,
       user.Nickname,
-      user.Privicy_setting,
+      // user.Privicy_setting,
       groupId,
       fetchGroupData,
     ]
@@ -782,7 +785,7 @@ export const AuthContextProvider = (props) => {
     },
     [
       profileData?.isComponentVisible,
-      profileData.data?.Owner?.Id,
+      // profileData.data?.Owner?.Id,
       setProfileData,
       setDashBoardData,
       groupId,
@@ -833,6 +836,7 @@ export const AuthContextProvider = (props) => {
           break;
 
         case "privateMessage":
+          console.log(data);
           setOpenChatDetails((prev) => ({
             ...prev,
             messages: Array.isArray(prev.messages)

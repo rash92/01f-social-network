@@ -129,8 +129,8 @@ type GroupMessage struct {
 	GroupId   string    `json:"GroupId"`
 	Message   string    `json:"Message"`
 	CreatedAt time.Time `json:"CreatedAt"`
-	Nickname    string    `json:"Nickname"`
-	Avatar      string    `json:"Avatar"`
+	Nickname  string    `json:"Nickname"`
+	Avatar    string    `json:"Avatar"`
 }
 
 type AnswerRequestToJoinGroup struct {
@@ -919,34 +919,6 @@ func validateContent(content string) error {
 	return nil
 }
 
-func TogglePrivacySetting(receivedData TogglePrivacy) error {
-	err := dbfuncs.UpdatePrivacySetting(receivedData.UserId, receivedData.PrivacySetting)
-	if err != nil {
-		log.Println("error updating privacy setting", err)
-		notifyClientOfError(err, "TogglePrivacySetting", receivedData.UserId, nil)
-		return err
-	}
-
-	signal := map[string]any{
-		"type": "togglePrivacySetting",
-		"body": receivedData,
-	}
-
-	connectionLock.RLock()
-	for user := range activeConnections {
-		for _, c := range activeConnections[user] {
-			err = c.WriteJSON(signal)
-			if err != nil {
-				log.Println("error sending new privacy setting to client", err)
-			}
-		}
-	}
-	connectionLock.RUnlock()
-
-	// notifyClientOfError(err, "TogglePrivacySetting", receivedData.UserId, nil)
-	return err
-}
-
 func privateMessage(receivedData PrivateMessage) error {
 	fmt.Println(receivedData, "receivedData privateMessages")
 	dbPM := dbfuncs.PrivateMessage{
@@ -1607,5 +1579,64 @@ func notifyClientOfError(err error, message string, id string, whatever any) err
 		}
 	}
 	connectionLock.RUnlock()
+	return err
+}
+
+func acceptAllPendingFollows(followingId string) error {
+	pendingFollows, err := dbfuncs.GetPendingFollowerIdsByFollowingId(followingId)
+	if err != nil {
+		return err
+	}
+
+	for _, pendingFollow := range pendingFollows {
+		messageToPending := AnswerRequestToFollow{
+			SenderId:   followingId,
+			ReceiverId: pendingFollow,
+			Reply:      "yes",
+		}
+
+		err = dbfuncs.AcceptFollow(pendingFollow, followingId)
+		if err != nil {
+			return err
+		}
+
+		answerRequestToFollow(messageToPending)
+	}
+
+	return err
+}
+
+func TogglePrivacySetting(receivedData TogglePrivacy) error {
+	err := dbfuncs.UpdatePrivacySetting(receivedData.UserId, receivedData.PrivacySetting)
+	if err != nil {
+		log.Println("error updating privacy setting", err)
+		notifyClientOfError(err, "TogglePrivacySetting", receivedData.UserId, nil)
+		return err
+	}
+
+	err = acceptAllPendingFollows(receivedData.UserId)
+	if err != nil {
+		log.Println("error accepting all pending follows", err)
+		notifyClientOfError(err, "TogglePrivacySetting", receivedData.UserId, nil)
+		return err
+	}
+
+	signal := map[string]any{
+		"type": "togglePrivacySetting",
+		"body": receivedData,
+	}
+
+	connectionLock.RLock()
+	for user := range activeConnections {
+		for _, c := range activeConnections[user] {
+			err = c.WriteJSON(signal)
+			if err != nil {
+				log.Println("error sending new privacy setting to client", err)
+			}
+		}
+	}
+	connectionLock.RUnlock()
+
+	// notifyClientOfError(err, "TogglePrivacySetting", receivedData.UserId, nil)
 	return err
 }
