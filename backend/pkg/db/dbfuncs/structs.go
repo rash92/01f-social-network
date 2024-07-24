@@ -143,6 +143,8 @@ type CommentLike struct {
 type GroupMessage struct {
 	Id        string
 	SenderId  string
+	Nickname string
+	Avatar string
 	GroupId   string
 	Message   string
 	CreatedAt time.Time

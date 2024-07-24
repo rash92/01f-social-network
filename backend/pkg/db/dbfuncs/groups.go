@@ -161,6 +161,12 @@ func GetAllGroupMessagesByGroupId(groupId string) ([]GroupMessage, error) {
 		if err != nil {
 			return nil, err
 		}
+		sender, err := GetUserById(message.SenderId)
+		if err != nil {
+			return nil, err
+		}
+		message.Nickname = sender.Nickname
+		message.Avatar = sender.Avatar
 		groupMessages = append(groupMessages, message)
 	}
 	if err = rows.Err(); err != nil {
