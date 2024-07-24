@@ -78,7 +78,7 @@ const ProfileCard = ({
             <span>{`${user.FirstName} ${user.LastName}`}</span>
           </Card.Title>
           <Card.Subtitle className="mb-2 text-muted">
-            Date of Birth: {user.age}
+            Date of Birth: {user.DOB}
           </Card.Subtitle>
           {user.Nickname && <Card.Text>Nickname: {user.Nickname}</Card.Text>}
           {user.AboutMe && <Card.Text>About Me: {user.AboutMe}</Card.Text>}

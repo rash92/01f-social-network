@@ -97,7 +97,7 @@ const AddPost = ({show, setShow, type = "profile"}) => {
     const allowedImageTypes = {
       "image/png": true,
       "image/jpeg": true,
-      "image/giff": true,
+      "image/gif": true,
     };
 
     if (
@@ -107,7 +107,7 @@ const AddPost = ({show, setShow, type = "profile"}) => {
       console.log(postImgValue?.file?.type);
       console.log("this here");
       setErrorAddpost({
-        message: "image type  allowed png , jpeg giff ",
+        message: "image type  allowed png , jpeg gif ",
         isError: false,
       });
       return;

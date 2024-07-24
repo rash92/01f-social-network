@@ -56,7 +56,7 @@ const Comment = ({comments, id: postId, addComment}) => {
   const allowedImageTypes = {
     "image/png": true,
     "image/jpeg": true,
-    "image/giff": true,
+    "image/gif": true,
   };
   const handleSubmit = async (event) => {
     event.preventDefault();
