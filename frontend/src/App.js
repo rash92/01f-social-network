@@ -17,7 +17,6 @@ const router = createBrowserRouter([
       },
       {
         path: "groups/:id",
-        element: <PrivateRoutes component={Group} />,
 
         children: [
           {
@@ -32,7 +31,7 @@ const router = createBrowserRouter([
       },
       {
         path: "profile/:id",
-        // element: <ProfileLayout />,
+
         children: [
           {
             path: "",
