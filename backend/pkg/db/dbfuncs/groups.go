@@ -326,7 +326,7 @@ func GetGroupStatus(groupId string, userId string) (string, error) {
 	return status, err
 }
 
-func GetPostsByGroupId(groupId string) ([]Post, error) {
+func GetPostsByGroupId(userId, groupId string) ([]Post, error) {
 	var posts []Post
 	rows, err := db.Query("SELECT * FROM Posts WHERE GroupId=?", groupId)
 	if err == sql.ErrNoRows {
@@ -345,6 +345,28 @@ func GetPostsByGroupId(groupId string) ([]Post, error) {
 			return posts, err
 		}
 		post.GroupId = StringNull(groupId)
+
+		post.Likes, post.Dislikes, err = CountPostReacts(post.Id)
+		if err != nil {
+			return posts, err
+		}
+		user, err := GetUserById(post.CreatorId)
+		if err != nil {
+			return posts, err
+		}
+
+		post.CreatorNickname = user.Nickname
+		post.UserLikeDislike, err = GetUserLikeDislike(userId, post.Id)
+		if err != nil {
+			return posts, err
+		}
+
+		post.Comments, err = GetAllCommentsByPostId(post.Id)
+
+		if err != nil {
+			return posts, err
+		}
+
 		posts = append(posts, post)
 	}
 	err = rows.Err()

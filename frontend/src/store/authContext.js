@@ -123,7 +123,7 @@ export const AuthContextProvider = (props) => {
         credentials: "include",
         body: JSON.stringify(id),
       });
-
+      console.log("initial group data fetched: ", res);
       setGroupData((prev) => ({...prev, data: res}));
     } catch (err) {
       console.log(err);
@@ -952,6 +952,25 @@ export const AuthContextProvider = (props) => {
           ),
         },
       }));
+    } else if (groupId) {
+      setGroupData((prev) => {
+        return {
+          ...prev,
+          data: {
+            ...prev.data,
+            Posts: prev.data.Posts.map((el) =>
+              el.Id === id
+                ? {
+                    ...el,
+                    Likes: data.Likes,
+                    Dislikes: data.Dislikes,
+                    UserLikeDislike: data.UserLikeDislike,
+                  }
+                : el
+            ),
+          },
+        };
+      });
     } else {
       setDashBoardData((prev) => ({
         ...prev,

@@ -21,6 +21,10 @@ const router = createBrowserRouter([
 
         children: [
           {
+            path: "",
+            element: <PrivateRoutes component={Group} />,
+          },
+          {
             path: "post/:postId",
             element: <PrivateRoutes component={Post} />,
           },

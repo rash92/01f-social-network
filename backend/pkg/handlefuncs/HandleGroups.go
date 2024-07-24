@@ -196,7 +196,7 @@ func GetGroup(groupId string, userId string) (DetailedGroupInfo, error) {
 		return DetailedGroupInfo{}, err
 	}
 
-	groupDbPosts, err := dbfuncs.GetPostsByGroupId(groupId)
+	groupDbPosts, err := dbfuncs.GetPostsByGroupId(userId, groupId)
 	if err != nil {
 		return DetailedGroupInfo{}, err
 	}
