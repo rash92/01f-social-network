@@ -45,6 +45,12 @@ export const AuthContextProvider = (props) => {
 
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [isWsReady, setIsWsReady] = useState(false);
+  const [dashBoardIsvisible, setDashBoardIsvisible] = useState(null);
+
+  const toggleDashboard = useCallback((value) => {
+    setDashBoardIsvisible(value);
+  }, []);
+
   const [wsVal, setWsVal] = useState(null);
   const ws = useRef(null);
 
@@ -684,6 +690,7 @@ export const AuthContextProvider = (props) => {
 
   const addPostToFeed = useCallback(
     (data) => {
+      console.log("data we got from the websocket", data);
       const {
         Body,
         Title,
@@ -699,6 +706,7 @@ export const AuthContextProvider = (props) => {
         profileData?.isComponentVisible &&
         CreatorId === profileData?.data?.Owner?.Id
       ) {
+        console.log("in the 'profile data' case for add post to feed");
         setProfileData((prev) => ({
           ...prev,
           data: {
@@ -731,7 +739,8 @@ export const AuthContextProvider = (props) => {
                 ],
           },
         }));
-      } else if (groupId === GroupId) {
+      } else if (groupId === GroupId && groupId && GroupId) {
+        console.log("in the 'group data' case for add post to feed");
         setGroupData((prev) => ({
           ...prev,
           data: {
@@ -764,7 +773,8 @@ export const AuthContextProvider = (props) => {
                 ],
           },
         }));
-      } else {
+      } else if (dashBoardIsvisible) {
+        console.log("in the 'dashboard' case for add post to feed");
         setDashBoardData((prev) => ({
           ...prev,
           Posts: [
@@ -785,10 +795,11 @@ export const AuthContextProvider = (props) => {
     },
     [
       profileData?.isComponentVisible,
-      // profileData.data?.Owner?.Id,
+      profileData.data?.Owner?.Id,
       setProfileData,
       setDashBoardData,
       groupId,
+      dashBoardIsvisible,
     ]
   );
 
@@ -1032,6 +1043,7 @@ export const AuthContextProvider = (props) => {
         resetIsGroupComponentVisible,
         updateGroupId,
         groupId,
+        toggleDashboard,
       }}
     >
       {props.children}

@@ -21,7 +21,8 @@ function Dashboard() {
 
   const [activeSection, setActiveSection] = useState("posts");
 
-  const {fetchDashboard, dashBoardData} = useContext(AuthContext);
+  const {fetchDashboard, dashBoardData, toggleDashboard} =
+    useContext(AuthContext);
 
   useEffect(() => {
     fetchDashboard();
@@ -32,6 +33,8 @@ function Dashboard() {
 
     // setActiveSection(section);
   };
+
+ 
 
   return (
     <>

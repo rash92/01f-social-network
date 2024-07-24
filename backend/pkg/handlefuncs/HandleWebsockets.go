@@ -853,13 +853,13 @@ func post(receivedData Post) error {
 		Body: signalBody,
 	}
 
+	log.Println("about to enter switch case with privacy level: ", receivedData.PrivacyLevel)
 	switch receivedData.PrivacyLevel {
 	case "public":
 		connectionLock.RLock()
 		for user := range activeConnections {
 			log.Println("user", user, "creatorId", receivedData.CreatorId)
 			for _, c := range activeConnections[user] {
-				fmt.Println(c, "c", signal, "signal")
 				err = c.WriteJSON(signal)
 				if err != nil {
 					log.Println("error sending new post to public user", err)

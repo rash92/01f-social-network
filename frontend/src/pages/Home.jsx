@@ -6,10 +6,17 @@ import AuthContext from "../store/authContext";
 import PostInput from "../components/PostInput";
 import Dashboard from "../components/Dashboard";
 import Chat from "../components/Chat";
+import {useEffect} from "react";
 
 function Home() {
-  const {user, isWsReady, wsVal, onLogout} = useContext(AuthContext);
+  const {user, isWsReady, wsVal, onLogout, toggleDashboard} =
+    useContext(AuthContext);
   const [showRegisterForm, setShowRegisterForm] = useState(false);
+
+  useEffect(() => {
+    toggleDashboard(true);
+    return () => toggleDashboard(false);
+  }, [toggleDashboard]);
 
   return (
     <Container>
