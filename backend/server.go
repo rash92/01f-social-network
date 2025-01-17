@@ -2,7 +2,6 @@ package main
 
 import (
 	"backend/pkg/db/dbfuncs"
-	"backend/pkg/db/sqlite"
 	"backend/pkg/handlefuncs"
 	"fmt"
 	"net/http"
@@ -31,7 +30,7 @@ func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
 
 func main() {
 
-	sqlite.Migrate() //this line resets the database when the server runs, commented out to persist
+	// sqlite.Migrate() //this line resets the database when the server runs, commented out to persist
 	http.HandleFunc("/ws", wrapperHandler(handlefuncs.HandleConnection))
 	http.HandleFunc("/login", handlefuncs.HandleLogin)
 	http.HandleFunc("/checksession", handlefuncs.HandleValidateCookie)
