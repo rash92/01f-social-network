@@ -56,7 +56,7 @@ A **Facebook-inspired platform** that allows users to connect, share posts, and 
 2. Set up the backend:
    ```bash
    cd backend
-
+   
    go run .
    ```
 
@@ -75,7 +75,7 @@ A **Facebook-inspired platform** that allows users to connect, share posts, and 
 - Add support for more advanced privacy controls.
 
 ## Contributors
-- **Bilal** 
-- **Peter** 
-- **daisy** 
-- **rashid** 
+- **Rashid**
+- **Daisy**
+- **Bilaal** 
+- **Peter**

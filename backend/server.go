@@ -2,6 +2,7 @@ package main
 
 import (
 	"backend/pkg/db/dbfuncs"
+	"backend/pkg/db/sqlite"
 	"backend/pkg/handlefuncs"
 	"fmt"
 	"net/http"
@@ -29,25 +30,15 @@ func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
 }
 
 func main() {
-	// dbfuncs.DeleteUserByUsername("Accepted")
-	// sqlite.Migrate()
+
+	sqlite.Migrate() //this line resets the database when the server runs, commented out to persist
 	http.HandleFunc("/ws", wrapperHandler(handlefuncs.HandleConnection))
-	// http.HandleFunc("/check-nickname", handlefuncs.HanndleUserNameIsDbOrEmail)
-	// http.HandleFunc("/check-email", handlefuncs.HanndleUserNameIsDbOrEmail)
 	http.HandleFunc("/login", handlefuncs.HandleLogin)
 	http.HandleFunc("/checksession", handlefuncs.HandleValidateCookie)
-	// http.HandleFunc("/add-post", handlefuncs.HandleAddPost)
-
-	// http.HandleFunc("/get-posts", wrapperHandler(handlefuncs.HandleGetPosts))
-	// Commented out because definition change to placeholder for the sake of the
-	// web sockets.
 	http.HandleFunc("/add-comment", wrapperHandler(handlefuncs.HandleAddComment))
 	http.HandleFunc("/group", wrapperHandler(handlefuncs.HandleGroup))
 	http.HandleFunc("/react-Post-like-dislike", wrapperHandler(handlefuncs.HandlePostLikeDislike))
 	http.HandleFunc("/get-group-messages", wrapperHandler(handlefuncs.HandleGetGroupMessages))
-	// http.HandleFunc("/react-comment-like-dislike", handlefuncs.HandleCommenttLikeDislike)
-	// http.HandleFunc("/removePost", handlefuncs.HandleRemovePost)
-
 	http.HandleFunc("/newUser", handlefuncs.HandleNewUser)
 	http.HandleFunc("/get-post", wrapperHandler(handlefuncs.HandleGetPost))
 	http.HandleFunc("/logout", wrapperHandler(handlefuncs.HandleLogout))
