@@ -75,5 +75,7 @@ A **Facebook-inspired platform** that allows users to connect, share posts, and 
 - Add support for more advanced privacy controls.
 
 ## Contributors
-- **Bilaal** (Frontend and Backend Development)  
-- [Add other contributors' names and roles]
+- **Rashid**
+- **Daisy**
+- **Bilaal** 
+- **Peter**
