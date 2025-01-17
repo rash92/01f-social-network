@@ -2,6 +2,7 @@ import React from "react";
 import {ListGroup, Image} from "react-bootstrap";
 
 const NotificationList = ({notifications}) => {
+  if (!notifications) return null
   return (
     <div
       style={{
