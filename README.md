@@ -47,27 +47,20 @@ A **Facebook-inspired platform** that allows users to connect, share posts, and 
 
 ## Installation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/bilaal441/social-network.git
-   cd social-network
-   ```
+### docker
 
-2. Set up the backend:
-   ```bash
-   cd backend
-   
-   go run .
-   ```
+from the root directory run ```docker compose up```
 
-3. Set up the frontend:
-   ```bash
-   cd frontend
-   npm install
-   npm start
-   ```
+### If you do not want to use docker, or can't get docker to work
 
-4. Open the application in your browser at `http://localhost:3000`.
+cd into the backend directory, and run ```go run server.go```
+
+in a separate terminal, cd into the frontend directory and run ```npm install``` and then ```npm start```
+
+
+### run in browsers
+
+Open the application in your browser at `http://localhost:3000`. Separate instances can be run in separate browsers, and different users may log in and interact with each other through chats, reacting to posts and comments, joining groups etc.
 
 ## Future Improvements
 - Add automated tests for both frontend and backend.
