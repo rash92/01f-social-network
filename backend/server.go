@@ -3,7 +3,9 @@ package main
 import (
 	"backend/pkg/db/dbfuncs"
 	"backend/pkg/handlefuncs"
+	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -30,6 +32,14 @@ func wrapperHandler(handler http.HandlerFunc) http.HandlerFunc {
 
 func main() {
 
+	db, err := sql.Open("sqlite3", "file:./pkg/db/sqlite/sqlite.db?_foreign_keys=on")
+	if err != nil {
+		log.Fatal("Invalid DB config, unable to open database:", err)
+	}
+	defer db.Close()
+
+	dbfuncs.Configure(db)
+
 	// sqlite.Migrate() //this line resets the database when the server runs, commented out to persist
 	http.HandleFunc("/ws", wrapperHandler(handlefuncs.HandleConnection))
 	http.HandleFunc("/login", handlefuncs.HandleLogin)
@@ -51,7 +61,7 @@ func main() {
 	http.Handle("/search-Follower", wrapperHandler(handlefuncs.HandleSearchFollower))
 
 	fmt.Println("Starting server on http://localhost:8000")
-	err := http.ListenAndServe(":8000", nil)
+	err = http.ListenAndServe(":8000", nil)
 	if err != nil {
 		fmt.Println(err)
 	}
