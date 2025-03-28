@@ -9,12 +9,6 @@ import (
 
 var CharacterLimit int = 63206
 
-// var database *sql.DB
-
-// func SetDatabase(db *sql.DB) {
-// 	database = db
-// }
-
 type Image struct {
 	Data string `json:"data"`
 }

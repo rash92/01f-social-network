@@ -8,11 +8,8 @@ import (
 )
 
 func HashPassword(password string) ([]byte, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 14)
-	if err != nil {
-		return nil, err
-	}
-	return hashedPassword, nil
+
+	return bcrypt.GenerateFromPassword([]byte(password), 14)
 }
 
 func IsLoginValid(email, enteredPass string) (string, error) {

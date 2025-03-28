@@ -3,24 +3,26 @@ package dbfuncs
 import (
 	"database/sql"
 
-	"log"
 	"sync"
 	"time"
 )
 
 // global database variable, so we only have to open it once and can access it etc.
 // possibly we don't want it globally and open and close it as needed
-var db *sql.DB
+
+type Database interface {
+	QueryRow(query string, args ...any) *sql.Row
+	Prepare(query string) (*sql.Stmt, error)
+	Query(query string, args ...any) (*sql.Rows, error)
+}
+
+var db Database
 
 var dbLock sync.RWMutex
 
 // opens database at beginning, should close automatically on server quit
-func init() {
-	var err error
-	db, err = sql.Open("sqlite3", "file:./pkg/db/sqlite/sqlite.db?_foreign_keys=on")
-	if err != nil {
-		log.Fatal("Invalid DB config, unable to open database:", err)
-	}
+func Configure(database Database) {
+	db = database
 }
 
 // structs based on database for entering and retrieving info
@@ -143,8 +145,8 @@ type CommentLike struct {
 type GroupMessage struct {
 	Id        string
 	SenderId  string
-	Nickname string
-	Avatar string
+	Nickname  string
+	Avatar    string
 	GroupId   string
 	Message   string
 	CreatedAt time.Time
