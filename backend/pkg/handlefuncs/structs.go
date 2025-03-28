@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-var CharacterLimit int = 63206
+const CharacterLimit int = 63206
 
 type Image struct {
 	Data string `json:"data"`
