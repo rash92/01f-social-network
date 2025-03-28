@@ -6,16 +6,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// test function
-// func TestYourFunc(t *testing.T) {
-// 	actualString := YourFunc()
-// 	expectedString := "dwarvesv"
-// 	if actualString != expectedString {
-// 		t.Errorf("Expected String(%s) is not same as"+
-// 			" actual string (%s)", expectedString, actualString)
-// 	}
-// }
-
 func TestHashPassword(t *testing.T) {
 
 	password := "hello"
