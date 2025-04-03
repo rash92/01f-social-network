@@ -14,4 +14,6 @@ redid convertbase64toimage, need to reorganize and get rid of it in dbfuncs and 
 
 - validatedCommentRequest that we made still not in use.
 
-- don't know about approach used to saving images and cleaning up in dbfuncs/comments.go, but seems to work. seek feedback and then also implement for saving images in posts.
+- don't know about approach used to saving images and cleaning up in dbfuncs/comments.go and dbfuncs/posts.go, but seems to work. seek feedback and possibly redo? In any case, old convertbase64toimage now commented out and using new one.
+
+erroring when making posts sometimes, to do with using unusable objects? may be preexisting. May be frontend thing.
