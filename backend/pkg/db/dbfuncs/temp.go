@@ -7,50 +7,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/google/uuid"
 )
-
-// type BasicUserInfo struct {
-// 	Avatar string `json:"Avatar"`
-// 	UserId         string `json:"UserId"`
-// 	FirstName      string `json:"FirstName"`
-// 	LastName       string `json:"LastName"`
-// 	Nickname       string `json:"Nickname"`
-// 	PrivacySetting string `json:"PrivacySetting"`
-// }
-
-func GetFollowersOrFollowing(ownerId string, itemId string, offset int) ([]string, error) {
-	items := []string{}
-	var oppositeId string
-	if itemId == "FollowerId" {
-		oppositeId = "FollowingId"
-	} else {
-		oppositeId = "FollowerId"
-	}
-	query := fmt.Sprintf("SELECT %s FROM Follows WHERE %s = ? LIMIT 10 OFFSET %d", itemId, oppositeId, offset)
-	rows, err := db.Query(query, ownerId)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var item string
-		err := rows.Scan(&item)
-		if err != nil {
-			return nil, err
-		}
-		nickname, err := GetNicknameFromId(item)
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, nickname)
-	}
-	sort.Strings(items)
-	return items, nil
-}
 
 func GetPosts(userId string, page int, batchSize int, usersOwnProfile bool) ([]Post, error) {
 	_ = page
@@ -118,41 +78,6 @@ func GetPosts(userId string, page int, batchSize int, usersOwnProfile bool) ([]P
 	}
 	return posts, nil
 }
-
-func GetNumberOfById(userId string, table string) (int, error) {
-	var count int
-	query := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE Creatorid=?", table)
-	err := db.QueryRow(query, userId).Scan(&count)
-	if err != nil {
-		return 0, fmt.Errorf("failed to execute query: %v", err)
-	}
-	return count, nil
-}
-
-// function seperated to avoid sql injection
-func GetNumberOfFollowersAndFollowing(flag string, ownerId string) (int, error) {
-	var count int
-	query := fmt.Sprintf("SELECT COUNT(*) FROM Follows WHERE %s=?", flag)
-	err := db.QueryRow(query, ownerId).Scan(&count)
-	if err != nil {
-		return 0, fmt.Errorf("failed to execute query: %v", err)
-	}
-	return count, nil
-}
-
-// func DeleteUserByUsername(username string) error {
-// 	stmt, err := db.Prepare("DELETE * FROM Follows")
-// 	if err != nil {
-// 		return err
-// 	}
-// 	_, err = stmt.Exec()
-// 	if err != nil {
-// 		//  you will get an arror if the user is not in the database
-// 		// fmt.Println("error in deleting user by username", err)
-// 		return err
-// 	}
-// 	return nil
-// }
 
 func SearchFollowers(query, ownerId string) ([]User, error) {
 	var users []User
