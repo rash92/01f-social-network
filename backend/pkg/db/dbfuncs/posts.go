@@ -349,7 +349,6 @@ func GetVisiblePosts(userId string) ([]Post, error) {
 	return posts, nil
 }
 
-// OR  EXISTS(SELECT 1 FROM GroupMembers gm  where gm.GroupId = Posts.GroupId AND gm.UserId =? AND gm.Status = 'accepted')
 func GetVisiblePostsForProfile(userId, profileOwnerId string) ([]Post, error) {
 	query := `
 	SELECT * FROM Posts

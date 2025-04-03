@@ -1671,18 +1671,18 @@ func comment(receivedData Comment) error {
 		CreatorNickname: receivedData.CreatorNickname,
 	}
 
+	var imageFile *dbfuncs.File
 	if receivedData.Image != "" {
-		imageUUID, err := dbfuncs.ConvertBase64ToImage(receivedData.Image, "./pkg/db/images")
+		imageFile, err = ConvertBase64ToImage(receivedData.Image)
 		if err != nil {
 			log.Println("error converting base64 to image", err)
 			notifyClientOfError(err, "post", receivedData.CreatorId, nil)
 			return err
 		}
-		newCommentDb.Image = imageUUID
-		receivedData.Image = imageUUID
+
 	}
 
-	id, err := dbfuncs.AddComment(&newCommentDb)
+	id, err := dbfuncs.AddComment(&newCommentDb, imageFile)
 	receivedData.Id = id
 	if err != nil {
 		notifyClientOfError(err, "comment", receivedData.CreatorId, nil)

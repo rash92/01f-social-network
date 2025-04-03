@@ -4,13 +4,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 // check if pointery way of doing it is working with * and & the right way etc., or if we want to just pass in by value
-func AddComment(comment *Comment) (string, error) {
+func AddComment(comment *Comment, imageFile *File) (string, error) {
 	dbLock.Lock()
 	defer dbLock.Unlock()
 
@@ -19,11 +21,39 @@ func AddComment(comment *Comment) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	comment.Id = id.String()
 	comment.CreatedAt = time.Now()
 
+	// don't know about this appraoch to saving image and cleaning up if it fails
+	imagePath := ""
+	fmt.Println("trying to save comment to db and as file")
+	if imageFile != nil {
+		imageId, err := uuid.NewRandom()
+		if err != nil {
+			return "", err
+		}
+
+		fileName := imageId.String() + imageFile.Extension
+		comment.Image = fileName
+		imagePath = filepath.Join(imageDirectory, fileName)
+		err = os.WriteFile(imagePath, imageFile.Bytes, 0644)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		comment.Image = ""
+	}
+	fmt.Println("after saving image file, imagePath is: ", imagePath, "comment has internally as image: ", comment.Image)
 	statement, err := db.Prepare("INSERT INTO Comments VALUES (?,?,?,?,?,?)")
 	if err != nil {
+		if imagePath != "" {
+			removeErr := os.Remove(imagePath)
+			if removeErr != nil {
+				return "", removeErr
+			}
+		}
+
 		return "", err
 	}
 	_, err = statement.Exec(comment.Id, comment.Body, comment.CreatorId, comment.PostId, comment.CreatedAt, comment.Image)

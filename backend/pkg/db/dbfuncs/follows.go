@@ -187,3 +187,25 @@ func GetPendingFollowingIdsByFollowerId(followerId string) ([]string, error) {
 	err = rows.Err()
 	return followingIds, err
 }
+
+func SearchFollowers(query, ownerId string) ([]User, error) {
+	var users []User
+	rows, err := db.Query("SELECT Id, Nickname, Avatar FROM users WHERE Id IN (SELECT FollowerId FROM Follows WHERE FollowingId = ?) AND (FirstName LIKE ? OR LastName LIKE ? OR Nickname LIKE ?)", ownerId, "%"+query+"%", "%"+query+"%", "%"+query+"%")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var user User
+		if err := rows.Scan(&user.Id, &user.Nickname, &user.Avatar); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}

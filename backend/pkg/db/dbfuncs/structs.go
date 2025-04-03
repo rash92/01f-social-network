@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+const imageDirectory = "./pkg/db/images"
+
 // global database variable, so we only have to open it once and can access it etc.
 // possibly we don't want it globally and open and close it as needed
 
@@ -23,6 +25,11 @@ var dbLock sync.RWMutex
 // opens database at beginning, should close automatically on server quit
 func Configure(database Database) {
 	db = database
+}
+
+type File struct {
+	Bytes     []byte
+	Extension string
 }
 
 // structs based on database for entering and retrieving info

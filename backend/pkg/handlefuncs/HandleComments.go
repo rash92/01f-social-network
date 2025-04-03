@@ -2,13 +2,10 @@ package handlefuncs
 
 import (
 	"backend/pkg/db/dbfuncs"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -31,14 +28,9 @@ func DbMessageToFrontend(dbMessage dbfuncs.GroupMessage) GroupMessage {
 	return frontendGroupMessage
 }
 
-type file struct {
-	bytes     []byte
-	extension string
-}
-
 type validatedCommentRequest struct {
 	Comment
-	image *file
+	image *dbfuncs.File
 }
 
 func validateCommentRequest(r *http.Request) (*validatedCommentRequest, error) {
@@ -73,43 +65,6 @@ func validateCommentRequest(r *http.Request) (*validatedCommentRequest, error) {
 	return &validated, nil
 }
 
-func ConvertBase64ToImage(base64String string) (*file, error) {
-	// Split the base64 string to isolate the MIME type and the actual data
-
-	splitData := strings.Split(base64String, ",")
-	if len(splitData) != 2 {
-		return nil, fmt.Errorf("invalid base64 string")
-	}
-
-	mimeType := strings.Split(splitData[0], ";")[0]
-	data := splitData[1]
-
-	// Map the MIME type to a file extension
-	mimeToExtension := map[string]string{
-		"data:image/jpeg": ".jpg",
-		"data:image/png":  ".png",
-		"data:image/gif":  ".gif",
-		// Add more mappings as needed
-	}
-	extension, ok := mimeToExtension[mimeType]
-	if !ok {
-		return nil, fmt.Errorf("unsupported file type: %s", mimeType)
-	}
-
-	// Decode the base64 string back to bytes
-	decodedData, err := base64.StdEncoding.DecodeString(data)
-	if err != nil {
-		return nil, err
-	}
-
-	image := file{
-		decodedData,
-		extension,
-	}
-
-	return &image, nil
-}
-
 func HandleAddComment(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {
@@ -118,9 +73,9 @@ func HandleAddComment(w http.ResponseWriter, r *http.Request) {
 
 	}
 	var newComment Comment
-	errj := json.NewDecoder(r.Body).Decode(&newComment)
-	if errj != nil {
-		http.Error(w, `{"error": "`+errj.Error()+`"}`, http.StatusBadRequest)
+	err := json.NewDecoder(r.Body).Decode(&newComment)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
 		return
 	}
 
@@ -143,18 +98,17 @@ func HandleAddComment(w http.ResponseWriter, r *http.Request) {
 		Dislikes:        0,
 		CreatorNickname: newComment.CreatorNickname,
 	}
-
+	var imageFile *dbfuncs.File
 	if newComment.Image != "" {
-		imageUUID, err := dbfuncs.ConvertBase64ToImage(newComment.Image, "./pkg/db/images")
+		imageFile, err = ConvertBase64ToImage(newComment.Image)
 		if err != nil {
 			http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 			log.Println("error converting base64 to image", err)
 			return
 		}
-		newCommentDb.Image = imageUUID
 	}
 
-	id, err := dbfuncs.AddComment(&newCommentDb)
+	id, err := dbfuncs.AddComment(&newCommentDb, imageFile)
 	if err != nil {
 		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 		return

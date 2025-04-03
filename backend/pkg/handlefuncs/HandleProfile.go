@@ -116,14 +116,6 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	profile.Posts, err = dbfuncs.GetPosts(userId, 1, 10, usersOwnProfile)
-	if err != nil {
-		errorMessage := fmt.Sprintf("error getting posts: %v", err.Error())
-		fmt.Println(err.Error(), "90")
-		http.Error(w, errorMessage, http.StatusInternalServerError)
-		return
-	}
-
 	if usersOwnProfile {
 		profile.Posts, err = dbfuncs.GetAllPostsByCreatorId(ownerId)
 		if err != nil {
