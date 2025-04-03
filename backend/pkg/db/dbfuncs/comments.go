@@ -10,12 +10,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// check if pointery way of doing it is working with * and & the right way etc., or if we want to just pass in by value
 func AddComment(comment *Comment, imageFile *File) (string, error) {
 	dbLock.Lock()
 	defer dbLock.Unlock()
 
-	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return "", err
@@ -26,7 +24,6 @@ func AddComment(comment *Comment, imageFile *File) (string, error) {
 
 	// don't know about this appraoch to saving image and cleaning up if it fails
 	imagePath := ""
-
 	if imageFile != nil {
 		imageId, err := uuid.NewRandom()
 		if err != nil {

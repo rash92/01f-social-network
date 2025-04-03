@@ -297,17 +297,11 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 	case "requestToFollow":
 		var receivedData Follow
 		unmarshalBody(signal.Body, &receivedData)
-		fmt.Println(receivedData)
 		err = requestToFollow(receivedData)
-		fmt.Println("returned from requestToFollow")
 	case "answerRequestToFollow":
-		fmt.Println("case: answerRequestToFollow")
 		var receivedData AnswerRequestToFollow
 		unmarshalBody(signal.Body, &receivedData)
-		log.Println("unmarshalled answer")
 		err = answerRequestToFollow(receivedData)
-		fmt.Println(err)
-		fmt.Println("retured from answerRequestToFollow")
 	case "unfollow":
 		var receivedData Unfollow
 		unmarshalBody(signal.Body, &receivedData)
@@ -315,12 +309,10 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 
 	case "post":
 		var receivedData Post
-		log.Println(signal.Body)
 		unmarshalBody(signal.Body, &receivedData)
 		err = post(receivedData)
 	case "groupPost":
 		var receivedData Post
-		log.Println(signal.Body)
 		unmarshalBody(signal.Body, &receivedData)
 		err = groupPost(receivedData)
 	case "comment":
@@ -360,7 +352,6 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 	case "createEvent":
 		var receivedData GroupEvent
 		unmarshalBody(signal.Body, &receivedData)
-		fmt.Println("createEvent unmarshalled")
 		err = createEvent(receivedData)
 	case "toggleAttendEvent":
 		var receivedData GroupEventParticipant
@@ -370,7 +361,6 @@ func broker(msgBytes []byte, userID string, conn *websocket.Conn) error {
 		err = fmt.Errorf("unexpected websocket message type: %s", signal.Type)
 	}
 
-	log.Println("end of broker")
 	return err
 }
 
@@ -773,6 +763,7 @@ func groupPost(receivedData Post) error {
 	}
 
 	receivedData.Id = dbPost.Id
+	receivedData.Image = dbPost.Image
 
 	signalBody, err := json.Marshal(receivedData)
 	if err != nil {
@@ -838,7 +829,7 @@ func post(receivedData Post) error {
 	}
 
 	receivedData.Id = dbPost.Id
-
+	receivedData.Image = dbPost.Image
 	signalBody, err := json.Marshal(receivedData)
 	if err != nil {
 		log.Println("error marshalling receivedData", err)
@@ -851,7 +842,6 @@ func post(receivedData Post) error {
 		Body: signalBody,
 	}
 
-	log.Println("about to enter switch case with privacy level: ", receivedData.PrivacyLevel)
 	switch receivedData.PrivacyLevel {
 	case "public":
 		connectionLock.RLock()
@@ -911,8 +901,6 @@ func post(receivedData Post) error {
 			}
 		}
 	}
-
-	// notifyClientOfError(err, "post", receivedData.CreatorId, nil)
 	return err
 }
 
@@ -1682,6 +1670,7 @@ func comment(receivedData Comment) error {
 
 	id, err := dbfuncs.AddComment(&newCommentDb, imageFile)
 	receivedData.Id = id
+	receivedData.Image = newCommentDb.Image
 	if err != nil {
 		notifyClientOfError(err, "comment", receivedData.CreatorId, nil)
 	}

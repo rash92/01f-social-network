@@ -3,7 +3,6 @@ package dbfuncs
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -46,6 +45,7 @@ func AddPost(post *Post, imageFile *File) error {
 	if err != nil {
 		return err
 	}
+
 	post.Id = id.String()
 	post.CreatedAt = time.Now()
 
@@ -168,7 +168,6 @@ func LikeDislikePost(UserId, PostId, likeOrDislike string) error {
 	dbLock.Lock()
 	defer dbLock.Unlock()
 
-	fmt.Println("likeOrDislike", likeOrDislike)
 	addLike := false
 	addDislike := false
 	if likeOrDislike == "like" {
@@ -348,9 +347,9 @@ func GetVisiblePosts(userId string) ([]Post, error) {
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println("group null string: ", groupId)
+
 		post.GroupId = StringNull(groupId)
-		fmt.Println("added groupId to post: ", post)
+
 		post.Likes, post.Dislikes, err = CountPostReacts(post.Id)
 		if err != nil {
 			return nil, err
