@@ -3,7 +3,6 @@ package dbfuncs
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -27,7 +26,7 @@ func AddComment(comment *Comment, imageFile *File) (string, error) {
 
 	// don't know about this appraoch to saving image and cleaning up if it fails
 	imagePath := ""
-	fmt.Println("trying to save comment to db and as file")
+
 	if imageFile != nil {
 		imageId, err := uuid.NewRandom()
 		if err != nil {
@@ -44,7 +43,7 @@ func AddComment(comment *Comment, imageFile *File) (string, error) {
 	} else {
 		comment.Image = ""
 	}
-	fmt.Println("after saving image file, imagePath is: ", imagePath, "comment has internally as image: ", comment.Image)
+
 	statement, err := db.Prepare("INSERT INTO Comments VALUES (?,?,?,?,?,?)")
 	if err != nil {
 		if imagePath != "" {
@@ -57,7 +56,18 @@ func AddComment(comment *Comment, imageFile *File) (string, error) {
 		return "", err
 	}
 	_, err = statement.Exec(comment.Id, comment.Body, comment.CreatorId, comment.PostId, comment.CreatedAt, comment.Image)
-	fmt.Println(comment.Id)
+
+	if err != nil {
+		if imagePath != "" {
+			removeErr := os.Remove(imagePath)
+			if removeErr != nil {
+				return "", removeErr
+			}
+		}
+
+		return "", err
+	}
+
 	return comment.Id, err
 }
 

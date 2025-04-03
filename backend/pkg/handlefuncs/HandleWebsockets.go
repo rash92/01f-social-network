@@ -755,18 +755,17 @@ func groupPost(receivedData Post) error {
 		PrivacyLevel: receivedData.PrivacyLevel,
 		GroupId:      receivedData.GroupId,
 	}
+	var imageFile *dbfuncs.File
 	if receivedData.Image != "" {
-		imageUUID, err := dbfuncs.ConvertBase64ToImage(receivedData.Image, "./pkg/db/images")
+		imageFile, err = ConvertBase64ToImage(receivedData.Image)
 		if err != nil {
 			log.Println("error converting base64 to image", err)
 			notifyClientOfError(err, "post", receivedData.CreatorId, nil)
 			return err
 		}
-		dbPost.Image = imageUUID
-		receivedData.Image = imageUUID
 	}
 
-	err = dbfuncs.AddPost(&dbPost)
+	err = dbfuncs.AddPost(&dbPost, imageFile)
 	if err != nil {
 		log.Println("error adding post to database", err)
 		notifyClientOfError(err, "post", receivedData.CreatorId, nil)
@@ -821,18 +820,17 @@ func post(receivedData Post) error {
 		CreatorId:    receivedData.CreatorId,
 		PrivacyLevel: receivedData.PrivacyLevel,
 	}
+	var imageFile *dbfuncs.File
 	if receivedData.Image != "" {
-		imageUUID, err := dbfuncs.ConvertBase64ToImage(receivedData.Image, "./pkg/db/images")
+		imageFile, err = ConvertBase64ToImage(receivedData.Image)
 		if err != nil {
 			log.Println("error converting base64 to image", err)
 			notifyClientOfError(err, "post", receivedData.CreatorId, nil)
 			return err
 		}
-		dbPost.Image = imageUUID
-		receivedData.Image = imageUUID
 	}
 
-	err = dbfuncs.AddPost(&dbPost)
+	err = dbfuncs.AddPost(&dbPost, imageFile)
 	if err != nil {
 		log.Println("error adding post to database", err)
 		notifyClientOfError(err, "post", receivedData.CreatorId, nil)

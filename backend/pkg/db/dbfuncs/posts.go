@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
@@ -36,23 +38,57 @@ func StringNull(ns sql.NullString) string {
 	return ns.String
 }
 
-func AddPost(post *Post) error {
+func AddPost(post *Post, imageFile *File) error {
 	dbLock.Lock()
 	defer dbLock.Unlock()
 
-	//may want to use autoincrement instead of uuids?
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return err
 	}
 	post.Id = id.String()
 	post.CreatedAt = time.Now()
+
+	//saving image, unsure if best way to do this
+	imagePath := ""
+	if imageFile != nil {
+		imageId, err := uuid.NewRandom()
+		if err != nil {
+			return err
+		}
+
+		fileName := imageId.String() + imageFile.Extension
+		post.Image = fileName
+		imagePath = filepath.Join(imageDirectory, fileName)
+		err = os.WriteFile(imagePath, imageFile.Bytes, 0644)
+		if err != nil {
+			return err
+		}
+	} else {
+		post.Image = ""
+	}
+
 	statement, err := db.Prepare("INSERT INTO Posts VALUES (?,?,?,?,?,?,?,?)")
 	if err != nil {
+		if imagePath != "" {
+			removeErr := os.Remove(imagePath)
+			if removeErr != nil {
+				return removeErr
+			}
+		}
 		return err
 	}
-	_, err = statement.Exec(post.Id, post.Title, post.Body, post.CreatorId, NullString(post.GroupId), post.CreatedAt, post.Image, post.PrivacyLevel)
 
+	_, err = statement.Exec(post.Id, post.Title, post.Body, post.CreatorId, NullString(post.GroupId), post.CreatedAt, post.Image, post.PrivacyLevel)
+	if err != nil {
+		if imagePath != "" {
+			removeErr := os.Remove(imagePath)
+			if removeErr != nil {
+				return removeErr
+			}
+		}
+		return err
+	}
 	return err
 }
 
