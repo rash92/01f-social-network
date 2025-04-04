@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const imageDirectory = "./pkg/db/images"
+var imageDirectory *string
 
 // global database variable, so we only have to open it once and can access it etc.
 // possibly we don't want it globally and open and close it as needed
@@ -23,8 +23,9 @@ var db Database
 var dbLock sync.RWMutex
 
 // opens database at beginning, should close automatically on server quit
-func Configure(database Database) {
+func Configure(database Database, imageFolder *string) {
 	db = database
+	imageDirectory = imageFolder
 }
 
 type File struct {

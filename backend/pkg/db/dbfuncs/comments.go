@@ -51,7 +51,7 @@ func AddComment(comment *Comment, imageFile *File) (string, error) {
 	}(comment)
 
 	if err != nil && comment.Image != "" {
-		removeErr := os.Remove(filepath.Join(imageDirectory, comment.Image))
+		removeErr := os.Remove(filepath.Join(*imageDirectory, comment.Image))
 		if removeErr != nil {
 			log.Println("Failed to remove file in cleanup step for comment: ", removeErr, "for file: ", comment.Image, "also had detabase insertion error: ", err)
 			return "", removeErr

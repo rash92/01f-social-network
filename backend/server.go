@@ -37,8 +37,9 @@ func main() {
 		log.Fatal("Invalid DB config, unable to open database:", err)
 	}
 	defer db.Close()
+	imagefolder := "./pkg/db/images"
 
-	dbfuncs.Configure(db)
+	dbfuncs.Configure(db, &imagefolder)
 
 	// sqlite.Migrate() //this line resets the database when the server runs, commented out to persist
 	http.HandleFunc("/ws", wrapperHandler(handlefuncs.HandleConnection))

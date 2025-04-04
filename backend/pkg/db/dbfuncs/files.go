@@ -15,7 +15,7 @@ func SaveImage(imageFile File) (string, error) {
 
 	fileName := imageId.String() + imageFile.Extension
 
-	imagePath := filepath.Join(imageDirectory, fileName)
+	imagePath := filepath.Join(*imageDirectory, fileName)
 	err = os.WriteFile(imagePath, imageFile.Bytes, 0644)
 	if err != nil {
 		return "", err

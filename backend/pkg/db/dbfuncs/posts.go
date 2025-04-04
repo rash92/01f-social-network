@@ -72,7 +72,7 @@ func AddPost(post *Post, imageFile *File) error {
 	}(post)
 
 	if err != nil && post.Image != "" {
-		removeErr := os.Remove(filepath.Join(imageDirectory, post.Image))
+		removeErr := os.Remove(filepath.Join(*imageDirectory, post.Image))
 		if removeErr != nil {
 			log.Println("Error removing file in cleanup step when adding post: ", removeErr, "for file: ", post.Image, "after database insertion error: ", err)
 			return removeErr
