@@ -13,7 +13,7 @@ import (
 
 func AddComment(comment *Comment, imageFile *File) (string, error) {
 	if comment.Image != "" || comment.Id != "" || (comment.CreatedAt != time.Time{}) {
-		err := errors.New("add comment called with fields already set that are expected to be empty: comment id: " + comment.Id + " Image id: " + comment.Image + " createdAt: " + comment.CreatedAt.String())
+		err := errors.New("add comment called with fields already set that are expected to be empty: comment id: {" + comment.Id + "}, Image id: {" + comment.Image + "}, createdAt: {" + comment.CreatedAt.String() + "}")
 		log.Println(err)
 		return "", err
 	}
@@ -39,7 +39,13 @@ func AddComment(comment *Comment, imageFile *File) (string, error) {
 		defer dbLock.Unlock()
 		statement, err := db.Prepare("INSERT INTO Comments VALUES (?,?,?,?,?,?)")
 		if err == nil {
-			_, err = statement.Exec(comment.Id, comment.Body, comment.CreatorId, comment.PostId, comment.CreatedAt, comment.Image)
+			_, err = statement.Exec(
+				comment.Id,
+				comment.Body,
+				comment.CreatorId,
+				comment.PostId,
+				comment.CreatedAt,
+				comment.Image)
 		}
 		return err
 	}(comment)
@@ -171,7 +177,13 @@ func GetAllCommentsByPostId(postId string) ([]Comment, error) {
 	var comments []Comment
 	for rows.Next() {
 		var comment Comment
-		err = rows.Scan(&comment.Id, &comment.Body, &comment.CreatorId, &comment.PostId, &comment.CreatedAt, &comment.Image)
+		err = rows.Scan(
+			&comment.Id,
+			&comment.Body,
+			&comment.CreatorId,
+			&comment.PostId,
+			&comment.CreatedAt,
+			&comment.Image)
 		if err != nil {
 			return nil, err
 		}
