@@ -3,6 +3,7 @@ package dbfuncs
 import (
 	"database/sql"
 	"errors"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -11,8 +12,11 @@ import (
 )
 
 func AddComment(comment *Comment, imageFile *File) (string, error) {
-	dbLock.Lock()
-	defer dbLock.Unlock()
+	if comment.Image != "" || comment.Id != "" || (comment.CreatedAt != time.Time{}) {
+		err := errors.New("add comment called with fields already set that are expected to be empty: comment id: " + comment.Id + " Image id: " + comment.Image + " createdAt: " + comment.CreatedAt.String())
+		log.Println(err)
+		return "", err
+	}
 
 	id, err := uuid.NewRandom()
 	if err != nil {
@@ -22,47 +26,30 @@ func AddComment(comment *Comment, imageFile *File) (string, error) {
 	comment.Id = id.String()
 	comment.CreatedAt = time.Now()
 
-	// don't know about this appraoch to saving image and cleaning up if it fails
-	imagePath := ""
 	if imageFile != nil {
-		imageId, err := uuid.NewRandom()
+		comment.Image, err = SaveImage(*imageFile)
 		if err != nil {
+			log.Println("error saving image: ", err)
 			return "", err
 		}
-
-		fileName := imageId.String() + imageFile.Extension
-		comment.Image = fileName
-		imagePath = filepath.Join(imageDirectory, fileName)
-		err = os.WriteFile(imagePath, imageFile.Bytes, 0644)
-		if err != nil {
-			return "", err
-		}
-	} else {
-		comment.Image = ""
 	}
 
-	statement, err := db.Prepare("INSERT INTO Comments VALUES (?,?,?,?,?,?)")
-	if err != nil {
-		if imagePath != "" {
-			removeErr := os.Remove(imagePath)
-			if removeErr != nil {
-				return "", removeErr
-			}
+	err = func(comment *Comment) error {
+		dbLock.Lock()
+		defer dbLock.Unlock()
+		statement, err := db.Prepare("INSERT INTO Comments VALUES (?,?,?,?,?,?)")
+		if err == nil {
+			_, err = statement.Exec(comment.Id, comment.Body, comment.CreatorId, comment.PostId, comment.CreatedAt, comment.Image)
 		}
+		return err
+	}(comment)
 
-		return "", err
-	}
-	_, err = statement.Exec(comment.Id, comment.Body, comment.CreatorId, comment.PostId, comment.CreatedAt, comment.Image)
-
-	if err != nil {
-		if imagePath != "" {
-			removeErr := os.Remove(imagePath)
-			if removeErr != nil {
-				return "", removeErr
-			}
+	if err != nil && comment.Image != "" {
+		removeErr := os.Remove(filepath.Join(imageDirectory, comment.Image))
+		if removeErr != nil {
+			log.Println("Failed to remove file in cleanup step for comment: ", removeErr, "for file: ", comment.Image, "also had detabase insertion error: ", err)
+			return "", removeErr
 		}
-
-		return "", err
 	}
 
 	return comment.Id, err

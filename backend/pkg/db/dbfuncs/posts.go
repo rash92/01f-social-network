@@ -3,6 +3,7 @@ package dbfuncs
 import (
 	"database/sql"
 	"errors"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -38,8 +39,11 @@ func StringNull(ns sql.NullString) string {
 }
 
 func AddPost(post *Post, imageFile *File) error {
-	dbLock.Lock()
-	defer dbLock.Unlock()
+	if post.Image != "" || post.Id != "" || (post.CreatedAt != time.Time{}) {
+		err := errors.New("add post called with fields already set that are expected to be empty: comment id: " + post.Id + " Image id: " + post.Image + " createdAt: " + post.CreatedAt.String())
+		log.Println(err)
+		return err
+	}
 
 	id, err := uuid.NewRandom()
 	if err != nil {
@@ -49,45 +53,30 @@ func AddPost(post *Post, imageFile *File) error {
 	post.Id = id.String()
 	post.CreatedAt = time.Now()
 
-	//saving image, unsure if best way to do this
-	imagePath := ""
 	if imageFile != nil {
-		imageId, err := uuid.NewRandom()
+		post.Image, err = SaveImage(*imageFile)
 		if err != nil {
+			log.Println("error saving image: ", err)
 			return err
 		}
-
-		fileName := imageId.String() + imageFile.Extension
-		post.Image = fileName
-		imagePath = filepath.Join(imageDirectory, fileName)
-		err = os.WriteFile(imagePath, imageFile.Bytes, 0644)
-		if err != nil {
-			return err
-		}
-	} else {
-		post.Image = ""
 	}
+	err = func(post *Post) error {
+		dbLock.Lock()
+		defer dbLock.Unlock()
+		statement, err := db.Prepare("INSERT INTO Posts VALUES (?,?,?,?,?,?,?,?)")
+		if err == nil {
+			_, err = statement.Exec(post.Id, post.Title, post.Body, post.CreatorId, NullString(post.GroupId), post.CreatedAt, post.Image, post.PrivacyLevel)
 
-	statement, err := db.Prepare("INSERT INTO Posts VALUES (?,?,?,?,?,?,?,?)")
-	if err != nil {
-		if imagePath != "" {
-			removeErr := os.Remove(imagePath)
-			if removeErr != nil {
-				return removeErr
-			}
 		}
 		return err
-	}
+	}(post)
 
-	_, err = statement.Exec(post.Id, post.Title, post.Body, post.CreatorId, NullString(post.GroupId), post.CreatedAt, post.Image, post.PrivacyLevel)
-	if err != nil {
-		if imagePath != "" {
-			removeErr := os.Remove(imagePath)
-			if removeErr != nil {
-				return removeErr
-			}
+	if err != nil && post.Image != "" {
+		removeErr := os.Remove(filepath.Join(imageDirectory, post.Image))
+		if removeErr != nil {
+			log.Println("Error removing file in cleanup step when adding post: ", removeErr, "for file: ", post.Image, "after database insertion error: ", err)
+			return removeErr
 		}
-		return err
 	}
 	return err
 }
