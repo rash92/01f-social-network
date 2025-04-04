@@ -33,15 +33,22 @@ func (db sickDatabase) Query(query string, args ...any) (*sql.Rows, error) {
 func TestAddComment(t *testing.T) {
 	//make a directory
 	//defer delete directory
-
 	//setting directory to nil, if it ever tries to use it it should nil pointer derefence panic
 	Configure(sdb, nil)
 
-	//testing without file
+	//testing without image file
 	testComment := Comment{}
 	_, err := AddComment(&testComment, nil)
 	if err.Error() != "default prepare error" {
 		t.Error(err)
 		t.Fatal("should have given a prepare error")
 	}
+
+	// testing with image file
+	// testImageDirectory := "./testimages"
+	// err = os.Mkdir(testImageDirectory, 0)
+	// if err != nil {
+	// 	t.Error(err)
+	// }
+
 }

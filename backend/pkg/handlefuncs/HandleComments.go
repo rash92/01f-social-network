@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"time"
 )
 
 func DbMessagesToFrontend(dbMessages []dbfuncs.GroupMessage) []GroupMessage {
@@ -93,7 +92,6 @@ func HandleAddComment(w http.ResponseWriter, r *http.Request) {
 		Body:            newComment.Body,
 		CreatorId:       newComment.CreatorId,
 		PostId:          newComment.PostID,
-		CreatedAt:       time.Now(),
 		Likes:           0,
 		Dislikes:        0,
 		CreatorNickname: newComment.CreatorNickname,

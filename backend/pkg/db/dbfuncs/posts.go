@@ -49,7 +49,6 @@ func AddPost(post *Post, imageFile *File) error {
 	if err != nil {
 		return err
 	}
-
 	post.Id = id.String()
 	post.CreatedAt = time.Now()
 
@@ -60,12 +59,22 @@ func AddPost(post *Post, imageFile *File) error {
 			return err
 		}
 	}
+
 	err = func(post *Post) error {
 		dbLock.Lock()
 		defer dbLock.Unlock()
+
 		statement, err := db.Prepare("INSERT INTO Posts VALUES (?,?,?,?,?,?,?,?)")
 		if err == nil {
-			_, err = statement.Exec(post.Id, post.Title, post.Body, post.CreatorId, NullString(post.GroupId), post.CreatedAt, post.Image, post.PrivacyLevel)
+			_, err = statement.Exec(
+				post.Id,
+				post.Title,
+				post.Body,
+				post.CreatorId,
+				NullString(post.GroupId),
+				post.CreatedAt,
+				post.Image,
+				post.PrivacyLevel)
 
 		}
 		return err
