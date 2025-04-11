@@ -3,10 +3,28 @@ package handlefuncs
 import (
 	"backend/pkg/db/dbfuncs"
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
+	"fmt"
 )
+
+// steps to mock dbfuncs functions, where in production you set
+// repository has any dbfuncs that are used in the functions we are testing,
+// which we set to mocked functions as needed in testing during arrange step
+// possibly move this to structs
+type repository struct {
+	AddComment func(*dbfuncs.Comment, *dbfuncs.File) (string, error)
+	//add more dbfuncs functions as needed when rewriting to test
+}
+
+func defaultRepository() repository {
+	return repository{
+		AddComment: dbfuncs.AddComment,
+	}
+}
+
+// by default set it up to use actual dbfuncs functions, which we overwrite in testing
+var repo repository = defaultRepository()
 
 func DbMessagesToFrontend(dbMessages []dbfuncs.GroupMessage) []GroupMessage {
 	var frontendGroupMessages []GroupMessage
@@ -27,44 +45,52 @@ func DbMessageToFrontend(dbMessage dbfuncs.GroupMessage) GroupMessage {
 	return frontendGroupMessage
 }
 
-type validatedCommentRequest struct {
-	Comment
-	image *dbfuncs.File
-}
+// type validatedCommentRequest struct {
+// 	Comment
+// 	image *dbfuncs.File
+// }
 
-func validateCommentRequest(r *http.Request) (*validatedCommentRequest, error) {
+// func validateCommentRequest(r *http.Request) (*validatedCommentRequest, error) {
 
-	if r.Method != http.MethodPost {
-		return nil, errors.New(`{"error": "405 Method Not Allowed"}`)
-	}
+// 	if r.Method != http.MethodPost {
+// 		return nil, errors.New(`{"error": "405 Method Not Allowed"}`)
+// 	}
 
-	validated := validatedCommentRequest{}
-	err := json.NewDecoder(r.Body).Decode(&validated)
-	if err != nil {
-		return nil, errors.New(`{"error": "` + err.Error() + `"}`)
-	}
+// 	validated := validatedCommentRequest{}
+// 	err := json.NewDecoder(r.Body).Decode(&validated)
+// 	if err != nil {
+// 		return nil, errors.New(`{"error": "` + err.Error() + `"}`)
+// 	}
 
-	if len(validated.Body) > CharacterLimit {
-		return nil, errors.New(`{"error": "413 Payload Too Large"}`)
-	}
+// 	if len(validated.Body) > CharacterLimit {
+// 		return nil, errors.New(`{"error": "413 Payload Too Large"}`)
+// 	}
 
-	if len(validated.Body) == 0 {
+// 	if len(validated.Body) == 0 {
 
-		return nil, errors.New(`{"error": "204 No Content"}`)
-	}
+// 		return nil, errors.New(`{"error": "204 No Content"}`)
+// 	}
 
-	if validated.Image != "" {
-		imageFile, err := ConvertBase64ToImage(validated.Image)
-		if err != nil {
-			return nil, err
-		}
-		validated.image = imageFile
-	}
+// 	if validated.Image != "" {
+// 		imageFile, err := ConvertBase64ToImage(validated.Image)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		validated.image = imageFile
+// 	}
 
-	return &validated, nil
-}
+// 	return &validated, nil
+// }
 
 func HandleAddComment(w http.ResponseWriter, r *http.Request) {
+	defer func(){
+		r := recover()
+		if r != nil{
+			msg := fmt.Sprintf("{panic: 500 Internal Server error} %v", r)
+			fmt.Println(msg)
+			http.Error(w, msg, http.StatusInternalServerError)
+		}
+	}()
 
 	if r.Method != http.MethodPost {
 		http.Error(w, `{"error": "405 Method Not Allowed"}`, http.StatusMethodNotAllowed)
@@ -106,7 +132,7 @@ func HandleAddComment(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	id, err := dbfuncs.AddComment(&newCommentDb, imageFile)
+	id, err := repo.AddComment(&newCommentDb, imageFile)
 	if err != nil {
 		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 		return
@@ -121,6 +147,6 @@ func HandleAddComment(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
-
+	err = json.NewEncoder(w).Encode(response)
+	_ = err
 }
