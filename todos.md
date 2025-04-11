@@ -7,3 +7,5 @@ handlefuncs/Handlecomments.go in unfinished state
 - db tests: test things that are easy to test, don't do super IO heavy stuff
 
 - for handlefuncs ones, make fake requests and responseWriters to use in tests, and also mock databases to deal with other end.
+
+- move repository struct in handlecomments to structs for use for other handlefuncs. Add tests in handlefuncs and dbfuncs that don't touch the db a ton.
