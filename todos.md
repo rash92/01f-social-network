@@ -13,3 +13,7 @@ handlefuncs/Handlecomments.go in unfinished state
 - update repository and default repository in handlefuncs/ structs.go for any dbfuncs functions used in the handlefuncs package so custom ones can later be used in testing.
 
 - test/fix docker compose/ dockerfile stuff
+
+- cleanup all the old unused commented functions
+
+- rewrite websockets?
