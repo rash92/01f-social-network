@@ -3,28 +3,10 @@ package handlefuncs
 import (
 	"backend/pkg/db/dbfuncs"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
-	"fmt"
 )
-
-// steps to mock dbfuncs functions, where in production you set
-// repository has any dbfuncs that are used in the functions we are testing,
-// which we set to mocked functions as needed in testing during arrange step
-// possibly move this to structs
-type repository struct {
-	AddComment func(*dbfuncs.Comment, *dbfuncs.File) (string, error)
-	//add more dbfuncs functions as needed when rewriting to test
-}
-
-func defaultRepository() repository {
-	return repository{
-		AddComment: dbfuncs.AddComment,
-	}
-}
-
-// by default set it up to use actual dbfuncs functions, which we overwrite in testing
-var repo repository = defaultRepository()
 
 func DbMessagesToFrontend(dbMessages []dbfuncs.GroupMessage) []GroupMessage {
 	var frontendGroupMessages []GroupMessage
@@ -83,9 +65,9 @@ func DbMessageToFrontend(dbMessage dbfuncs.GroupMessage) GroupMessage {
 // }
 
 func HandleAddComment(w http.ResponseWriter, r *http.Request) {
-	defer func(){
+	defer func() {
 		r := recover()
-		if r != nil{
+		if r != nil {
 			msg := fmt.Sprintf("{panic: 500 Internal Server error} %v", r)
 			fmt.Println(msg)
 			http.Error(w, msg, http.StatusInternalServerError)

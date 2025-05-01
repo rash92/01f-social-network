@@ -34,7 +34,7 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("chat", chat, "chatIDs", chatIDs)
 
 		if chat != "" {
-			user, err := dbfuncs.GetUserById(chat)
+			user, err := repo.GetUserById(chat)
 			if err != nil {
 				http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 				log.Println("error getting user from id", err)
@@ -52,14 +52,14 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	posts, err := dbfuncs.GetVisiblePosts(ownerId)
+	posts, err := repo.GetVisiblePosts(ownerId)
 	if err != nil {
 		log.Println("error getting posts :)", err)
 		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 		return
 	}
 
-	nofications, err := dbfuncs.GetAllNotificationsByRecieverId(ownerId)
+	nofications, err := repo.GetAllNotificationsByRecieverId(ownerId)
 	if err != nil {
 		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 		return

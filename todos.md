@@ -9,3 +9,5 @@ handlefuncs/Handlecomments.go in unfinished state
 - for handlefuncs ones, make fake requests and responseWriters to use in tests, and also mock databases to deal with other end.
 
 - move repository struct in handlecomments to structs for use for other handlefuncs. Add tests in handlefuncs and dbfuncs that don't touch the db a ton.
+
+- update repository and default repository in handlefuncs/ structs.go for any dbfuncs functions used in the handlefuncs package so custom ones can later be used in testing.

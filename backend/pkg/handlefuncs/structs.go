@@ -13,6 +13,30 @@ type Image struct {
 	Data string `json:"data"`
 }
 
+// steps to mock dbfuncs functions, where in production you set
+// repository has any dbfuncs that are used in the functions we are testing,
+// which we set to mocked functions as needed in testing during arrange step
+// possibly move this to structs
+type repository struct {
+	AddComment                      func(*dbfuncs.Comment, *dbfuncs.File) (string, error)
+	GetUserById                     func(string) (dbfuncs.User, error)
+	GetVisiblePosts                 func(string) ([]dbfuncs.Post, error)
+	GetAllNotificationsByRecieverId func(string) ([]dbfuncs.Notification, error)
+	//add more dbfuncs functions as needed when rewriting to test
+}
+
+func defaultRepository() repository {
+	return repository{
+		AddComment:                      dbfuncs.AddComment,
+		GetUserById:                     dbfuncs.GetUserById,
+		GetVisiblePosts:                 dbfuncs.GetVisiblePosts,
+		GetAllNotificationsByRecieverId: dbfuncs.GetAllNotificationsByRecieverId,
+	}
+}
+
+// by default set it up to use actual dbfuncs functions, which we overwrite in testing
+var repo repository = defaultRepository()
+
 type Post struct {
 	Id              string    `json:"Id"`
 	UserId          string    `json:"UserId"`
